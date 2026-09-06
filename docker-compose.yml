@@ -1,0 +1,32 @@
+# Optional local Postgres for the Makuro template.
+#
+# You already run a shared Postgres (infra-postgres / pgvector on :5432), so by
+# default this file does NOTHING unless you opt in with the `local-db` profile:
+#
+#   docker compose --profile local-db up -d
+#
+# If you use the shared instance instead, just point DATABASE_URL at it and
+# create the database once:
+#   docker exec infra-postgres psql -U <user> -d postgres -c "CREATE DATABASE makuro;"
+
+services:
+  db:
+    profiles: ['local-db']
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bip
+      POSTGRES_PASSWORD: makuro
+      POSTGRES_DB: makuro
+    ports:
+      - '5432:5432'
+    volumes:
+      - makuro_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U <user> -d makuro']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  makuro_pgdata:
