@@ -111,3 +111,12 @@ server/
   to the web-streams build which lacks `renderToPipeableStream`).
 - Auth session is checked server-side in route `loader`s (see
   `app/routes/dashboard.tsx`) so protected pages never flash.
+- **Google OAuth**: set `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` in `.env`;
+  the "Continue with Google" button appears automatically (see `server/auth.ts`
+  `socialProviders` and `app/routes/login.tsx`). Authorized redirect URI in
+  Google Console must be `${BETTER_AUTH_URL}/api/auth/callback/google`.
+- **No white flash (FOUC) on hard reload**: `app/root.tsx` puts
+  `ColorSchemeScript` (sets `data-mantine-color-scheme` synchronously) plus a
+  blocking inline `<style>` in `<head>` that paints the correct light/dark
+  background at first paint — before the main Mantine stylesheet loads (in dev
+  Vite injects that CSS via JS after paint, which is what caused the flash).

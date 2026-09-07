@@ -12,6 +12,7 @@ import {
 } from 'react-router';
 import type { Route } from './+types/root';
 import { queryClient } from './lib/query';
+import { theme } from './lib/theme';
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -19,9 +20,32 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="color-scheme" content="light dark" />
         <Meta />
         <Links />
-        <ColorSchemeScript />
+        {/*
+          ColorSchemeScript runs synchronously (blocking) in <head> and sets
+          data-mantine-color-scheme on <html> BEFORE first paint. Its
+          defaultColorScheme must match MantineProvider's to avoid a flip.
+        */}
+        <ColorSchemeScript defaultColorScheme="auto" />
+        {/*
+          Anti-FOUC: paint the correct background at first paint, before the
+          main Mantine stylesheet is applied (in dev Vite injects that CSS via
+          JS after paint, which otherwise causes a white flash on hard reload).
+          The attribute above is already set by ColorSchemeScript at this point.
+        */}
+        <style
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: static anti-FOUC CSS
+          dangerouslySetInnerHTML={{
+            __html: `
+:root { color-scheme: light; background-color: #fff; }
+:root[data-mantine-color-scheme='dark'] { color-scheme: dark; background-color: #242424; }
+:root[data-mantine-color-scheme='light'] { color-scheme: light; background-color: #fff; }
+html, body { background-color: inherit; }
+`,
+          }}
+        />
       </head>
       <body>
         {children}
@@ -35,7 +59,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <MantineProvider defaultColorScheme="auto">
+      <MantineProvider theme={theme} defaultColorScheme="auto">
         <Outlet />
       </MantineProvider>
     </QueryClientProvider>
