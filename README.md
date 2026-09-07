@@ -40,7 +40,7 @@ cp .env.example .env
 
 # 3. Database
 #    Option A: use an existing Postgres, just create the db:
-#    docker exec infra-postgres psql -U <user> -d postgres -c "CREATE DATABASE makuro;"
+#    docker exec <your-postgres> psql -U <user> -d postgres -c "CREATE DATABASE makuro;"
 #    Option B: spin up a local one:
 #    docker compose --profile local-db up -d
 

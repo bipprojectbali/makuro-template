@@ -7,7 +7,7 @@
 #
 # If you use the shared instance instead, just point DATABASE_URL at it and
 # create the database once:
-#   docker exec infra-postgres psql -U <user> -d postgres -c "CREATE DATABASE makuro;"
+#   docker exec <your-postgres> psql -U <user> -d postgres -c "CREATE DATABASE makuro;"
 
 services:
   db:
@@ -15,7 +15,7 @@ services:
     image: pgvector/pgvector:pg16
     restart: unless-stopped
     environment:
-      POSTGRES_USER: bip
+      POSTGRES_USER: makuro
       POSTGRES_PASSWORD: makuro
       POSTGRES_DB: makuro
     ports:
@@ -23,7 +23,7 @@ services:
     volumes:
       - makuro_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U <user> -d makuro']
+      test: ['CMD-SHELL', 'pg_isready -U makuro -d makuro']
       interval: 5s
       timeout: 5s
       retries: 10
