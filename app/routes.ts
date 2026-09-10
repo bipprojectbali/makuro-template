@@ -11,5 +11,8 @@ export default [
   layout('routes/super/layout.tsx', [
     route('dev', 'routes/super/dev.tsx'),
     route('dev/db-schema', 'routes/super/db-schema.tsx'),
+    route('dev/visits', 'routes/super/visits.tsx'),
+    route('dev/login-logs', 'routes/super/login-logs.tsx'),
+    route('dev/rate-limit-logs', 'routes/super/rate-limit-logs.tsx'),
   ]),
 ] satisfies RouteConfig;

@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm';
-import { boolean, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { boolean, index, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 
 // --- Better Auth core tables ---------------------------------------------
 // These match the Better Auth Drizzle adapter schema. You can regenerate
@@ -91,3 +91,54 @@ export const postRelations = relations(post, ({ one }) => ({
 export const userRelations = relations(user, ({ many }) => ({
   posts: many(post),
 }));
+
+// --- Analytics tables ---------------------------------------------------
+// visitLog: one row per incoming HTTP request. Bot flag derived from UA.
+export const visitLog = pgTable(
+  'visit_log',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    ip: text('ip'),
+    path: text('path').notNull(),
+    userAgent: text('user_agent'),
+    isBot: boolean('is_bot').default(false).notNull(),
+    botKind: text('bot_kind'),
+    userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [index('visit_log_created_at_idx').on(t.createdAt), index('visit_log_ip_idx').on(t.ip)],
+);
+
+// loginLog: one row per successful login (session created).
+export const loginLog = pgTable(
+  'login_log',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    ip: text('ip'),
+    userAgent: text('user_agent'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [index('login_log_user_id_idx').on(t.userId), index('login_log_created_at_idx').on(t.createdAt)],
+);
+
+// rateLimitLog: one row per rate-limited (rejected) request.
+export const rateLimitLog = pgTable(
+  'rate_limit_log',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    ip: text('ip'),
+    path: text('path').notNull(),
+    userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [index('rate_limit_log_created_at_idx').on(t.createdAt), index('rate_limit_log_ip_idx').on(t.ip)],
+);

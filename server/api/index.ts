@@ -4,7 +4,10 @@ import { auth } from '../auth';
 import { db } from '../db';
 import { post } from '../db/schema';
 import { logger } from '../logger';
+import { checkRateLimit, logRateLimit } from '../middleware/rate-limiter';
+import { recordVisit } from '../middleware/visitor';
 import { adminApi } from './admin';
+import { analyticsApi } from './analytics';
 
 /**
  * Resolve the current Better Auth session from request headers.
@@ -23,10 +26,31 @@ export const api = new Elysia({ prefix: '/api' })
   .mount(auth.handler)
   // Admin console endpoints (self-guarded by role).
   .use(adminApi)
+  // Analytics read endpoints (super-admin only).
+  .use(analyticsApi)
   // Derive the session for downstream handlers.
   .derive(async ({ request }) => {
     const s = await getSession(request.headers);
     return { user: s?.user ?? null, session: s?.session ?? null };
+  })
+  // Rate limiting + visitor tracking (fire-and-forget — must not block).
+  .onBeforeHandle(async ({ request, user, status }) => {
+    const url = new URL(request.url);
+    const ip =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+      request.headers.get('x-real-ip') ??
+      'unknown';
+
+    // Skip auth routes (Better Auth handles its own protection).
+    if (!url.pathname.startsWith('/api/auth/')) {
+      const { limited } = checkRateLimit(ip);
+      if (limited) {
+        void logRateLimit(ip === 'unknown' ? null : ip, url.pathname, (user as { id?: string } | null)?.id ?? null);
+        return status(429, { error: 'Too many requests' });
+      }
+    }
+
+    void recordVisit(request, (user as { id?: string } | null)?.id);
   })
   .get('/hello', () => ({
     message: 'Hello from Elysia + Bun \u26a1',

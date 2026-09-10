@@ -4,6 +4,7 @@ import { admin, multiSession } from 'better-auth/plugins';
 import { db } from './db';
 import * as schema from './db/schema';
 import { env, hasGoogleAuth } from './env';
+import { logger } from './logger';
 import { ac, ROLES, roles } from './permissions';
 
 export const auth = betterAuth({
@@ -30,6 +31,23 @@ export const auth = betterAuth({
     // between them. Cookie-based, so no extra DB tables/migration.
     multiSession({ maximumSessions: 5 }),
   ],
+  databaseHooks: {
+    session: {
+      create: {
+        after: async (session) => {
+          try {
+            await db.insert(schema.loginLog).values({
+              userId: session.userId,
+              ip: session.ipAddress ?? null,
+              userAgent: session.userAgent ?? null,
+            });
+          } catch (err) {
+            logger.warn({ err, userId: session.userId }, 'failed to write login_log');
+          }
+        },
+      },
+    },
+  },
   emailAndPassword: {
     enabled: true,
   },
