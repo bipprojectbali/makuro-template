@@ -1,7 +1,16 @@
 import { requireRole } from '@server/guard';
 import { ROLES } from '@server/permissions';
 import { getSidebarCollapsed } from '@server/sidebar';
-import { FiDatabase, FiHome, FiList, FiLogIn, FiSettings, FiShield, FiUsers } from 'react-icons/fi';
+import {
+  FiDatabase,
+  FiHome,
+  FiList,
+  FiLogIn,
+  FiSettings,
+  FiShield,
+  FiUser,
+  FiUsers,
+} from 'react-icons/fi';
 import { Outlet } from 'react-router';
 import { AppFrame, type NavItem } from '~/components/AppFrame';
 import type { AppContext } from '~/lib/app-context';
@@ -15,7 +24,10 @@ const NAV: NavItem[] = [
   { to: '/dev/rate-limit-logs', label: 'Rate Limits', icon: FiShield },
   { to: '/dev/settings', label: 'Settings', icon: FiSettings },
 ];
-const OTHER: NavItem[] = [{ to: '/dashboard', label: 'Dashboard', icon: FiHome }];
+const OTHER: NavItem[] = [
+  { to: '/dashboard', label: 'Dashboard', icon: FiHome },
+  { to: '/profile', label: 'Profile', icon: FiUser },
+];
 
 export async function loader({ request }: Route.LoaderArgs) {
   const auth = await requireRole(request, ROLES.SUPER_ADMIN);
