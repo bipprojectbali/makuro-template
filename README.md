@@ -1,32 +1,40 @@
-# Makuro — Fullstack Base Template (2026)
+# Makuro ⚡
 
-A batteries-included fullstack template where the **frontend and backend run on
-a single port / origin**. Elysia is the HTTP server; it serves the API under
-`/api/*` and hands everything else to the React Router v8 SSR handler. One
-origin means **no CORS** and **seamless auth cookies**.
+Fullstack template dengan **satu port, tanpa CORS, siap production**. Frontend dan backend berjalan dalam satu proses Elysia — tidak ada proxy, tidak ada CORS config, cookies langsung bekerja.
 
 ```
-Bun : Elysia (single port)
-  /api/auth/* -> Better Auth
-  /api/*      -> Elysia API (+ Eden Treaty typesafe client)
-  /assets/*   -> hashed static client assets (prod)
-  /*          -> React Router v8 SSR
+Browser  →  Bun/Node :3005
+              /api/auth/*  →  Better Auth
+              /api/*       →  Elysia API (Eden Treaty)
+              /assets/*    →  static Vite (immutable, prod)
+              /*           →  React Router v8 SSR
 ```
+
+## Apa yang sudah ada
+
+| Fitur | Detail |
+|---|---|
+| **Single-port** | API + SSR dalam satu Elysia server, dev dan prod identik |
+| **Type safety end-to-end** | Eden Treaty: tipe client diekstrak dari route Elysia, tanpa codegen |
+| **Auth lengkap** | Better Auth: Google OAuth, email+password, multi-session, sistem role |
+| **SSR tanpa waterfall** | React Router v8 loader berjalan server-side, session tersedia di loader |
+| **ORM type-safe** | Drizzle ORM + PostgreSQL, schema-as-code, migration files, Drizzle Studio |
+| **UI kit terkonfigurasi** | Mantine v9, TanStack Query, Zustand, Biome — semua sudah terhubung |
 
 ## Stack
 
-| Layer | Tech |
-|---|---|
-| Runtime | Bun |
-| Backend | Elysia + Eden Treaty |
-| ORM / DB | Drizzle ORM + PostgreSQL |
-| Auth | Better Auth (email + password) |
-| Frontend | React Router v8 (SSR) + React 19 |
-| UI | Mantine + @mantine/form |
-| Data fetching | TanStack Query |
-| Client state | Zustand |
-| Validation | TypeBox (API) + Zod (env / shared) |
-| Tooling | Biome, Pino, TypeScript |
+| Layer | Tech | Versi |
+|---|---|---|
+| Runtime | Bun | 1.4.x |
+| Backend | Elysia + Eden Treaty | 1.4.x |
+| Auth | Better Auth (Drizzle adapter) | 1.7.x |
+| ORM / DB | Drizzle ORM + PostgreSQL | 0.45 / PG 16 |
+| Frontend | React Router v8 SSR + React | 8.x / 19.x |
+| UI | Mantine + @mantine/form | 9.6.x |
+| Data fetching | TanStack Query | 5.x |
+| Client state | Zustand | 5.x |
+| Validation | TypeBox (API) + Zod (env) | 0.34 / 4.x |
+| Tooling | Biome, Pino, TypeScript, Vite | 2.5 / 10 / 7 / 8 |
 
 ## Quick start
 
@@ -34,21 +42,20 @@ Bun : Elysia (single port)
 # 1. Install
 bun install
 
-# 2. Configure env
+# 2. Konfigurasi env
 cp .env.example .env
-# edit DATABASE_URL + set BETTER_AUTH_SECRET (openssl rand -base64 32)
+# Wajib: DATABASE_URL, BETTER_AUTH_SECRET (openssl rand -base64 32)
+# Opsional: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 
-# 3. Database
-#    Option A: use an existing Postgres, just create the db:
-#    docker exec <your-postgres> psql -U <user> -d postgres -c "CREATE DATABASE makuro;"
-#    Option B: spin up a local one:
-#    docker compose --profile local-db up -d
+# 3. Buat database dan jalankan migrasi
+# Opsi A — pakai Postgres yang sudah ada:
+#   psql -c "CREATE DATABASE makuro;"
+# Opsi B — spin up lokal dengan Docker:
+#   docker compose --profile local-db up -d
+bun run db:migrate
 
-bun run db:generate   # create SQL migration from schema
-bun run db:migrate    # apply migrations
-
-# 4. Dev (single port, HMR)
-bun run dev           # http://localhost:3005
+# 4. Dev server (single port, HMR)
+bun run dev   # → http://localhost:3005
 
 # 5. Production
 bun run build
@@ -57,66 +64,93 @@ bun run start
 
 ## Scripts
 
-| Script | Purpose |
+| Script | Fungsi |
 |---|---|
-| `bun run dev` | Single-port dev server (Elysia + Vite middleware + RR SSR + HMR) |
-| `bun run build` | Build client + server bundles (`react-router build`) |
-| `bun run start` | Production single-port server (`server/prod.ts`) |
+| `bun run dev` | Dev server satu port (Elysia + Vite HMR + RR SSR) |
+| `bun run build` | Build client + server bundle |
+| `bun run start` | Production server (`server/prod.ts`) |
 | `bun run typecheck` | `react-router typegen` + `tsc --noEmit` |
 | `bun run lint` | Biome check |
 | `bun run format` | Biome format --write |
-| `bun run db:generate` | Generate SQL migration from Drizzle schema |
-| `bun run db:migrate` | Apply migrations |
-| `bun run db:push` | Push schema directly (interactive) |
+| `bun run db:generate` | Generate SQL migration dari Drizzle schema |
+| `bun run db:migrate` | Apply migration |
+| `bun run db:push` | Push schema langsung (interaktif) |
 | `bun run db:studio` | Drizzle Studio |
-| `bun run auth:generate` | Regenerate Better Auth tables from config |
+| `bun test server` | Test suite (bun:test, pakai DATABASE_URL_TEST) |
 
-## Project layout
+## Struktur project
 
 ```
-app/                 React Router app (SSR)
-  root.tsx           Providers: Mantine + TanStack Query
-  entry.client.tsx   Hydration
-  entry.server.tsx   SSR render (react-dom/server.node under Bun)
-  routes.ts          Route config
-  routes/            home / login / dashboard
-  lib/               eden client, query client, auth client
-  stores/            Zustand stores
+app/                   React Router app (SSR)
+  root.tsx             Provider: Mantine, TanStack Query, ModalsProvider
+  routes.ts            Konfigurasi route (per-role layout guards)
+  routes/
+    home.tsx           Landing page
+    login.tsx          Login / signup (Google OAuth + email)
+    go.tsx             Post-auth resolver (arahkan ke home role)
+    user/              Area user: /profile
+    admin/             Area admin: /dashboard
+    super/             Area super-admin: /dev, /dev/settings, dll
+  components/
+    AppFrame.tsx       Shell sidebar yang dipakai semua layout
+    UserMenu.tsx       Avatar + account switcher + sign out
+  lib/
+    eden.ts            Eden Treaty client (type-safe ke Elysia API)
+    auth-client.ts     Better Auth client
 server/
-  env.ts             Zod-validated env
-  logger.ts          Pino
-  auth.ts            Better Auth (Drizzle adapter)
-  api/index.ts       Elysia API (TypeBox validation)
-  db/                Drizzle client, schema, migrations
-  http-bridge.ts     Node <-> Fetch Request/Response bridge
-  dev.ts             Dev server (single port + Vite HMR)
-  prod.ts            Production server (single port)
+  env.ts               Env vars divalidasi Zod
+  auth.ts              Better Auth config (Drizzle adapter, plugins)
+  guard.ts             requireRole / requireAnyRole
+  permissions.ts       ROLES, homeFor(role), canBan(actor, target)
+  api/
+    index.ts           Elysia app, mount semua sub-router
+    admin.ts           Admin API (list users, ban, role change)
+    settings.ts        App settings API (GET public, PUT super-admin)
+  db/
+    schema.ts          Drizzle schema (user, session, account, app_setting, ...)
+    migrations/        SQL migration files
+  settings.ts          getSettings / upsertSettings
+  http-bridge.ts       Node ↔ Fetch Request/Response bridge
+  dev.ts               Dev server (Elysia + Vite middleware mode)
+  prod.ts              Production server (Bun.serve)
 ```
 
-## How single-port works
+## Cara single-port bekerja
 
-- **Dev** (`server/dev.ts`): a Node `http` server on one port. `/api/*` goes to
-  Elysia; everything else passes through the Vite dev middleware (assets + HMR),
-  then to the React Router SSR handler loaded from
-  `virtual:react-router/server-build`.
-- **Prod** (`server/prod.ts`): `Bun.serve` on one port. `/api/*` -> Elysia,
-  hashed assets served from `build/client` with immutable caching, everything
-  else -> the compiled React Router server build.
+**Dev** (`server/dev.ts`): Node `http` server di satu port. `/api/*` ke Elysia; sisanya ke Vite dev middleware (assets + HMR), lalu ke React Router SSR handler (`virtual:react-router/server-build`).
 
-## Notes
+**Prod** (`server/prod.ts`): `Bun.serve` di satu port. `/api/*` → Elysia, static assets dari `build/client` dengan immutable cache, sisanya → compiled React Router server build.
 
-- Because FE + BE share an origin, the Eden client and Better Auth client both
-  use relative URLs — no CORS, cookies just work.
-- SSR under Bun must import `react-dom/server.node` (the bare specifier resolves
-  to the web-streams build which lacks `renderToPipeableStream`).
-- Auth session is checked server-side in route `loader`s (see
-  `app/routes/dashboard.tsx`) so protected pages never flash.
-- **Google OAuth**: set `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` in `.env`;
-  the "Continue with Google" button appears automatically (see `server/auth.ts`
-  `socialProviders` and `app/routes/login.tsx`). Authorized redirect URI in
-  Google Console must be `${BETTER_AUTH_URL}/api/auth/callback/google`.
-- **No white flash (FOUC) on hard reload**: `app/root.tsx` puts
-  `ColorSchemeScript` (sets `data-mantine-color-scheme` synchronously) plus a
-  blocking inline `<style>` in `<head>` that paints the correct light/dark
-  background at first paint — before the main Mantine stylesheet loads (in dev
-  Vite injects that CSS via JS after paint, which is what caused the flash).
+Karena FE dan BE satu origin: Eden client dan Better Auth client pakai relative URL — tanpa CORS, cookies langsung bekerja.
+
+## Auth & roles
+
+Sistem role: `user` → `admin` → `super-admin`. Role tersimpan di tabel `user` via Better Auth admin plugin.
+
+| Role | Home | Area |
+|---|---|---|
+| `user` | `/profile` | Profile, settings akun |
+| `admin` | `/dashboard` | Dashboard, manajemen user (ban, role change) |
+| `super-admin` | `/dev` | Users, DB schema, visit log, login log, rate limit, app settings |
+
+Google OAuth: set `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`. Authorized redirect URI di Google Console: `${BETTER_AUTH_URL}/api/auth/callback/google`.
+
+## Testing
+
+```bash
+# Pastikan DATABASE_URL_TEST di .env
+bun test server
+```
+
+Test database dipisah dari dev/prod (`DATABASE_URL_TEST`). Guard bisa di-bypass di integration test dengan `mock.module('../guard', ...)` — bun:test otomatis hoist mock di atas static import.
+
+## Catatan teknis
+
+- **SSR di Bun**: import `react-dom/server.node` bukan bare `react-dom/server` (bare specifier resolve ke web-streams build tanpa `renderToPipeableStream`).
+- **No FOUC**: `ColorSchemeScript` + inline `<style>` blocking di `<head>` di `root.tsx` — background warna yang benar dirender sebelum Mantine CSS dimuat.
+- **Multiple Set-Cookie**: `http-bridge.ts` pakai `Headers.getSetCookie()` (WinterCG) untuk kumpulkan semua Set-Cookie header, lalu set sekaligus sebagai array ke Node.js response. Ini kritis untuk multi-session Better Auth.
+- **Sidebar collapsed state**: disimpan di cookie `mk-sidebar-collapsed`, dibaca server-side di layout loader — tidak ada flash saat hard reload.
+
+## Lisensi
+
+MIT
