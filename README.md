@@ -69,6 +69,9 @@ bun run start
 | `bun run dev` | Dev server satu port (Elysia + Vite HMR + RR SSR) |
 | `bun run build` | Build client + server bundle |
 | `bun run start` | Production server (`server/prod.ts`) |
+| `bun run build:binary` | Build binary native (platform saat ini) |
+| `bun run build:binary:linux` | Cross-compile ke Linux x64 glibc |
+| `bun run build:binary:linux-musl` | Cross-compile ke Linux x64 musl (Alpine/Docker) |
 | `bun run typecheck` | `react-router typegen` + `tsc --noEmit` |
 | `bun run lint` | Biome check |
 | `bun run format` | Biome format --write |
@@ -77,6 +80,34 @@ bun run start
 | `bun run db:push` | Push schema langsung (interaktif) |
 | `bun run db:studio` | Drizzle Studio |
 | `bun test server` | Test suite (bun:test, pakai DATABASE_URL_TEST) |
+
+## Binary distribution (tanpa Bun di server)
+
+```bash
+# Build binary untuk platform saat ini
+bun run build:binary          # → ./makuro
+
+# Cross-compile ke Linux (dari Mac atau mana saja)
+bun run build:binary:linux      # → ./makuro-linux-x64     (Ubuntu/Debian)
+bun run build:binary:linux-musl # → ./makuro-linux-musl    (Alpine, Docker)
+
+# Jalankan di server — tanpa perlu install Bun
+./makuro-linux-x64
+```
+
+**Yang perlu di-deploy bersama binary:**
+
+```
+makuro-linux-x64   ← binary ~60 MB (Bun runtime + semua server code)
+build/
+  client/          ← static assets (CSS, JS, favicon — dari Vite build)
+  server/
+    index.js       ← React Router SSR bundle
+```
+
+> **Catatan:** Binary embed seluruh Bun runtime (JavaScriptCore) sehingga ukurannya ~60–100 MB.
+> Static assets (`build/`) tetap perlu ikut karena dibaca dari filesystem saat runtime.
+> Ini berbeda dengan Go binary yang benar-benar satu file — trade-off dari embed JS runtime.
 
 ## Struktur project
 
