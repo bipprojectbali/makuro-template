@@ -1,4 +1,5 @@
 import { Avatar, Group, Loader, Menu, Text, UnstyledButton } from '@mantine/core';
+import { modals } from '@mantine/modals';
 import {
   type AccountOption,
   type DeviceSessionEntry,
@@ -117,11 +118,24 @@ export function UserMenu({ user, collapsed = false }: { user: AppUser; collapsed
         </Menu.Item>
         <Menu.Divider />
         <Menu.Item
+          color="red"
           leftSection={<FiLogOut size={16} />}
-          onClick={async () => {
-            await signOut();
-            navigate('/login');
-          }}
+          onClick={() =>
+            modals.openConfirmModal({
+              title: 'Sign out?',
+              children: (
+                <Text size="sm">
+                  Kamu akan keluar dari akun ini. Sesi aktif akan dihapus.
+                </Text>
+              ),
+              labels: { confirm: 'Sign out', cancel: 'Batal' },
+              confirmProps: { color: 'red' },
+              onConfirm: async () => {
+                await signOut();
+                navigate('/login');
+              },
+            })
+          }
         >
           Sign out
         </Menu.Item>

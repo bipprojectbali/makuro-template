@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun run --hot server/dev.ts",
-    "test": "bun test server",
+    "test": "NODE_ENV=test bun test server",
     "build": "react-router build",
     "start": "NODE_ENV=production bun run server/prod.ts",
     "typecheck": "react-router typegen && tsc --noEmit",
@@ -25,6 +25,7 @@
     "@mantine/core": "^9.6.0",
     "@mantine/form": "^9.6.0",
     "@mantine/hooks": "^9.6.0",
+    "@mantine/modals": "^9.6.1",
     "@react-router/dev": "^8.3.1",
     "@react-router/node": "^8.3.1",
     "@sinclair/typebox": "^0.34.52",

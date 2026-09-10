@@ -1,6 +1,24 @@
-import { Badge, Box, Button, Group, Stack, Table, Text, Title, Tooltip } from '@mantine/core';
+import {
+  ActionIcon,
+  Badge,
+  Box,
+  Button,
+  Group,
+  Pagination,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+  Title,
+  Tooltip,
+} from '@mantine/core';
+import { useDebouncedValue } from '@mantine/hooks';
+import { modals } from '@mantine/modals';
 import { useEffect, useState } from 'react';
-import { FiRefreshCw } from 'react-icons/fi';
+import { FiRefreshCw, FiSearch, FiTrash2 } from 'react-icons/fi';
+import { TbSortAscending, TbSortDescending } from 'react-icons/tb';
+
+const LIMIT = 25;
 
 type VisitRow = {
   id: string;
@@ -14,68 +32,122 @@ type VisitRow = {
 
 type Stats = { total: number; bots: number; humans: number };
 
-async function fetchStats(): Promise<Stats> {
-  const r = await fetch('/api/analytics/visits/stats');
-  return r.json();
-}
-
-async function fetchVisits(
-  before?: string,
-  botsOnly?: boolean,
-): Promise<{ rows: VisitRow[]; nextCursor: string | null }> {
-  const params = new URLSearchParams();
-  if (before) params.set('before', before);
-  if (botsOnly) params.set('botsOnly', 'true');
-  const r = await fetch(`/api/analytics/visits?${params}`);
-  return r.json();
-}
-
 export default function VisitsPage() {
-  const [stats, setStats] = useState<Stats | null>(null);
   const [rows, setRows] = useState<VisitRow[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
+  const [total, setTotal] = useState(0);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [page, setPage] = useState(1);
+  const [sort, setSort] = useState<'asc' | 'desc'>('desc');
+  const [search, setSearch] = useState('');
   const [botsOnly, setBotsOnly] = useState(false);
   const [loading, setLoading] = useState(true);
-
-  const load = async (reset = false) => {
-    setLoading(true);
-    try {
-      const [s, d] = await Promise.all([
-        fetchStats(),
-        fetchVisits(reset ? undefined : (cursor ?? undefined), botsOnly),
-      ]);
-      setStats(s);
-      setRows(reset ? d.rows : (prev) => [...prev, ...d.rows]);
-      setCursor(d.nextCursor);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [debouncedSearch] = useDebouncedValue(search, 300);
 
   useEffect(() => {
-    load(true);
-  }, [botsOnly]);
+    let cancelled = false;
+    setLoading(true);
+
+    const params = new URLSearchParams({ page: String(page), limit: String(LIMIT), sort });
+    if (debouncedSearch) params.set('search', debouncedSearch);
+    if (botsOnly) params.set('botsOnly', 'true');
+
+    Promise.all([
+      fetch(`/api/analytics/visits?${params}`).then((r) => r.json()),
+      fetch('/api/analytics/visits/stats').then((r) => r.json()),
+    ])
+      .then(([d, s]) => {
+        if (cancelled) return;
+        setRows(d.rows);
+        setTotal(d.total);
+        setStats(s);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [page, sort, debouncedSearch, botsOnly, refreshKey]);
+
+  const applyFilter = (fn: () => void) => {
+    fn();
+    setPage(1);
+  };
+
+  const deleteRow = (id: string) => {
+    modals.openConfirmModal({
+      title: 'Hapus kunjungan',
+      children: <Text size="sm">Hapus catatan kunjungan ini?</Text>,
+      labels: { confirm: 'Hapus', cancel: 'Batal' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        setDeleting(id);
+        await fetch(`/api/analytics/visits/${id}`, { method: 'DELETE' });
+        setDeleting(null);
+        setRefreshKey((k) => k + 1);
+      },
+    });
+  };
+
+  const purge = () => {
+    modals.openConfirmModal({
+      title: 'Purge visit logs',
+      children: (
+        <Text size="sm">
+          Hapus semua visit log yang lebih dari 30 hari? Tindakan ini tidak bisa dibatalkan.
+        </Text>
+      ),
+      labels: { confirm: 'Purge', cancel: 'Batal' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        await fetch('/api/analytics/purge?days=30', { method: 'DELETE' });
+        setRefreshKey((k) => k + 1);
+      },
+    });
+  };
+
+  const clearAll = () => {
+    modals.openConfirmModal({
+      title: 'Hapus semua visit logs',
+      children: (
+        <Text size="sm">
+          Hapus <strong>semua</strong> visit log termasuk yang baru? Tindakan ini tidak bisa
+          dibatalkan.
+        </Text>
+      ),
+      labels: { confirm: 'Hapus Semua', cancel: 'Batal' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        await fetch('/api/analytics/purge?days=0', { method: 'DELETE' });
+        setRefreshKey((k) => k + 1);
+      },
+    });
+  };
 
   const fmt = (iso: string) => new Date(iso).toLocaleString();
+  const totalPages = Math.max(1, Math.ceil(total / LIMIT));
+  const SortIcon = sort === 'desc' ? TbSortDescending : TbSortAscending;
 
   return (
     <Stack gap="md" p="md">
-      <Group justify="space-between">
+      <Group justify="space-between" wrap="nowrap">
         <Title order={3}>Visitor Logs</Title>
         <Group gap="xs">
-          <Button
-            variant={botsOnly ? 'filled' : 'light'}
-            size="xs"
-            onClick={() => setBotsOnly((v) => !v)}
-          >
-            Bots only
+          <Button size="xs" color="red" variant="outline" onClick={clearAll} disabled={total === 0}>
+            Clear All
+          </Button>
+          <Button size="xs" color="red" variant="light" onClick={purge} disabled={total === 0}>
+            Purge 30d+
           </Button>
           <Button
-            variant="light"
             size="xs"
+            variant="light"
             leftSection={<FiRefreshCw size={12} />}
             loading={loading}
-            onClick={() => load(true)}
+            onClick={() => setRefreshKey((k) => k + 1)}
           >
             Refresh
           </Button>
@@ -96,15 +168,42 @@ export default function VisitsPage() {
         </Group>
       )}
 
+      <Group gap="xs">
+        <TextInput
+          placeholder="Cari IP atau path…"
+          leftSection={<FiSearch size={14} />}
+          value={search}
+          onChange={(e) => applyFilter(() => setSearch(e.currentTarget.value))}
+          size="xs"
+          style={{ flex: 1, maxWidth: 320 }}
+        />
+        <Button
+          size="xs"
+          variant={botsOnly ? 'filled' : 'light'}
+          color="red"
+          onClick={() => applyFilter(() => setBotsOnly((b) => !b))}
+        >
+          Bots only
+        </Button>
+      </Group>
+
       <Box style={{ overflowX: 'auto' }}>
         <Table striped highlightOnHover withTableBorder withColumnBorders fz="xs">
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Time</Table.Th>
+              <Table.Th
+                style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                onClick={() => applyFilter(() => setSort((s) => (s === 'desc' ? 'asc' : 'desc')))}
+              >
+                <Group gap={4}>
+                  Waktu <SortIcon size={13} />
+                </Group>
+              </Table.Th>
               <Table.Th>IP</Table.Th>
               <Table.Th>Path</Table.Th>
-              <Table.Th>Type</Table.Th>
+              <Table.Th>Tipe</Table.Th>
               <Table.Th>User</Table.Th>
+              <Table.Th style={{ width: 36 }} />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -117,7 +216,7 @@ export default function VisitsPage() {
                   </Text>
                 </Table.Td>
                 <Table.Td>
-                  <Text ff="monospace" size="xs" truncate maw={260}>
+                  <Text ff="monospace" size="xs" truncate maw={220}>
                     {r.path}
                   </Text>
                 </Table.Td>
@@ -135,17 +234,29 @@ export default function VisitsPage() {
                   )}
                 </Table.Td>
                 <Table.Td>
-                  <Text ff="monospace" size="xs" c="dimmed" truncate maw={160}>
+                  <Text ff="monospace" size="xs" c="dimmed" truncate maw={130}>
                     {r.userId ?? '—'}
                   </Text>
+                </Table.Td>
+                <Table.Td>
+                  <ActionIcon
+                    size="xs"
+                    color="red"
+                    variant="subtle"
+                    loading={deleting === r.id}
+                    onClick={() => deleteRow(r.id)}
+                    aria-label="Hapus"
+                  >
+                    <FiTrash2 size={12} />
+                  </ActionIcon>
                 </Table.Td>
               </Table.Tr>
             ))}
             {rows.length === 0 && !loading && (
               <Table.Tr>
-                <Table.Td colSpan={5}>
+                <Table.Td colSpan={6}>
                   <Text ta="center" c="dimmed" size="sm" py="md">
-                    No visits yet.
+                    Belum ada kunjungan.
                   </Text>
                 </Table.Td>
               </Table.Tr>
@@ -154,11 +265,16 @@ export default function VisitsPage() {
         </Table>
       </Box>
 
-      {cursor && (
-        <Button variant="subtle" size="xs" loading={loading} onClick={() => load(false)}>
-          Load more
-        </Button>
-      )}
+      <Group justify="space-between" align="center">
+        <Text size="xs" c="dimmed">
+          {total > 0
+            ? `${(page - 1) * LIMIT + 1}–${Math.min(page * LIMIT, total)} of ${total}`
+            : '0 hasil'}
+        </Text>
+        {totalPages > 1 && (
+          <Pagination value={page} total={totalPages} onChange={setPage} size="xs" />
+        )}
+      </Group>
     </Stack>
   );
 }
