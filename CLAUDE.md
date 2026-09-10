@@ -56,6 +56,40 @@ Button yang tidak bisa dipakai (misal: "Purge" saat tidak ada data) → `disable
 
 **Cara agent menerapkan:** Setiap kali menulis fitur baru yang mengandung aksi async, delete, atau state change penting → langsung terapkan standar di atas tanpa menunggu instruksi. Ini bukan optional — ini adalah definisi "fitur selesai" di project ini.
 
+## Mobile-Friendly — Standar Minimum Wajib
+
+App ini harus dapat diakses dengan baik di perangkat mobile, bukan hanya desktop. Admin console tetap primary desktop, namun **tidak boleh rusak di mobile**. Agent wajib menerapkan ini secara proaktif pada setiap halaman yang ditulis atau dimodifikasi.
+
+### 1. Layout Responsif
+- Gunakan Mantine `Grid`, `SimpleGrid`, `Stack`, `Group` dengan breakpoints — **bukan** fixed-width atau pixel hardcode.
+- Hindari `width: 800px` atau sejenisnya; gunakan `maxWidth` dan `100%` agar menyesuaikan layar.
+- Kolom yang tidak muat di mobile → ubah ke single column via `cols={{ base: 1, sm: 2, md: 3 }}`.
+
+### 2. Tabel Lebar
+- Setiap tabel **wajib** dibungkus `<Box style={{ overflowX: 'auto' }}>` agar bisa discroll horizontal di mobile, bukan overflow keluar layar.
+- Pertimbangkan `truncate` + `maw` untuk kolom teks panjang.
+
+### 3. Touch Targets
+- Tombol aksi utama minimum `size="sm"`. Hindari `size="xs"` untuk elemen yang jadi target utama tap.
+- `ActionIcon` kecil (ikon hapus, edit di tabel) boleh `size="xs"` karena di dalam tabel yang sudah scroll.
+- Jangan menempatkan dua touch target yang sangat berdekatan tanpa jarak (`gap` minimal `xs`).
+
+### 4. Navigasi & Sidebar
+- Sidebar/nav wajib collapsible di mobile — gunakan Mantine `AppShell` dengan `navbar.breakpoint` yang tepat.
+- Jangan hardcode sidebar selalu terbuka tanpa toggle.
+
+### 5. Form & Input
+- Set `inputMode` yang sesuai: `inputMode="email"` untuk email, `inputMode="numeric"` untuk angka — agar keyboard mobile muncul yang tepat.
+- Input tidak boleh menyebabkan zoom otomatis browser mobile (pastikan `font-size` minimal 16px di input, atau gunakan Mantine default yang sudah handle ini).
+
+### 6. Padding & Spacing di Mobile
+- Halaman wajib punya padding minimal `p="md"` atau `p="sm"` — tidak boleh nempel ke pinggir layar.
+- Gunakan breakpoint spacing: `p={{ base: 'sm', md: 'md' }}` bila perlu.
+
+**Cara agent menerapkan:** Setiap halaman baru atau yang dimodifikasi → cek apakah layout masih masuk akal di layar 375px lebar (iPhone SE). Jika ada elemen yang overflow atau terlalu kecil untuk di-tap → perbaiki sebelum commit. Ini bukan opsional.
+
+**Blocker:** Layout overflow horizontal tanpa `overflowX: 'auto'`, atau fixed-width yang melampaui 375px → STOP sebelum commit.
+
 ## Binary Build — Catatan Penting untuk Agent
 
 Saat bekerja dengan `bun build --compile --asset`:
