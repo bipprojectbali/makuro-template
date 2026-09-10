@@ -56,11 +56,28 @@ Button yang tidak bisa dipakai (misal: "Purge" saat tidak ada data) → `disable
 
 **Cara agent menerapkan:** Setiap kali menulis fitur baru yang mengandung aksi async, delete, atau state change penting → langsung terapkan standar di atas tanpa menunggu instruksi. Ini bukan optional — ini adalah definisi "fitur selesai" di project ini.
 
+## Binary Build — Catatan Penting untuk Agent
+
+Saat bekerja dengan `bun build --compile --asset`:
+
+- `Bun.isStandaloneExecutable` — API resmi untuk deteksi binary mode (boolean). **Jangan** gunakan regex pada `Bun.main`.
+- `--asset ./build/client` meng-embed files sebagai `client/` di VFS (**strip satu level direktori induk** — `build/` dihapus).
+- `import.meta.dir` dalam compiled binary = `/$bunfs/root` (bukan path disk tempat binary berada).
+- `Bun.file(path).exists()` bekerja normal untuk embedded VFS files.
+- Path CLIENT_DIR yang benar:
+  ```ts
+  const CLIENT_DIR = Bun.isStandaloneExecutable
+    ? path.join(import.meta.dir, 'client') + '/'          // binary: /$bunfs/root/client/
+    : path.join(import.meta.dir, '../build/client') + '/'; // script: ../build/client/
+  ```
+- SSR bundle di-embed via **static import** (`import * as ssrBuild from '../build/server/index.js'`) — Bun mengikuti static import dan mem-bundle seluruh deps ke binary.
+- `Bun.embeddedFiles` berguna untuk debug: menampilkan path dan ukuran semua file yang di-embed.
+
 ## Stack
 
 - **Runtime:** Bun
 - **Server:** Elysia
-- **Frontend:** React Router v7 (SPA mode), Mantine v9
+- **Frontend:** React Router v8 SSR, Mantine v9
 - **DB:** PostgreSQL + Drizzle ORM
 - **Auth:** Better Auth
 - **Test runner:** `bun test server` (bun:test)

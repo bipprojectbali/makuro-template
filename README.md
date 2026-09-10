@@ -91,23 +91,25 @@ bun run build:binary          # → ./makuro
 bun run build:binary:linux      # → ./makuro-linux-x64     (Ubuntu/Debian)
 bun run build:binary:linux-musl # → ./makuro-linux-musl    (Alpine, Docker)
 
-# Jalankan di server — tanpa perlu install Bun
+# Jalankan di server — satu file, tanpa perlu install Bun atau build/ folder
 ./makuro-linux-x64
 ```
 
-**Yang perlu di-deploy bersama binary:**
+**Satu file, tidak ada dependensi eksternal:**
 
 ```
-makuro-linux-x64   ← binary ~60 MB (Bun runtime + semua server code)
-build/
-  client/          ← static assets (CSS, JS, favicon — dari Vite build)
-  server/
-    index.js       ← React Router SSR bundle
+makuro-linux-x64   ← binary ~130 MB — semua embedded:
+                     • Bun runtime (JavaScriptCore)
+                     • Server code (Elysia, Better Auth, Drizzle)
+                     • React Router SSR bundle
+                     • Seluruh static assets (CSS, JS, favicon, dll)
 ```
 
-> **Catatan:** Binary embed seluruh Bun runtime (JavaScriptCore) sehingga ukurannya ~60–100 MB.
-> Static assets (`build/`) tetap perlu ikut karena dibaca dari filesystem saat runtime.
-> Ini berbeda dengan Go binary yang benar-benar satu file — trade-off dari embed JS runtime.
+Seperti Go binary: copy satu file ke server, langsung jalan. Tidak perlu `build/`, tidak perlu Node/Bun, tidak perlu `npm install`.
+
+> **Teknik:** SSR bundle di-embed via static `import * as ssrBuild from '../build/server/index.js'` — Bun bundler mengikuti static import dan mem-bundle seluruh dependensi (`@react-router/node`, `react-dom`, dll) ke dalam binary. `--asset ./build/client` embed seluruh direktori client ke VFS (tersedia di runtime sebagai `client/` — satu level parent directory di-strip). `inlineDynamicImports: true` di Vite memastikan SSR bundle adalah satu file tunggal tanpa dynamic chunk splits.
+
+> **Catatan:** Binary lebih besar (~130 MB) karena embed Bun runtime (JavaScriptCore). Trade-off yang sama dengan semua single-binary JS runtimes (Deno, Node SEA).
 
 ## Struktur project
 

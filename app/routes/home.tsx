@@ -21,8 +21,10 @@ import {
   FiGrid,
   FiLayers,
   FiLogIn,
+  FiPackage,
   FiShield,
   FiTerminal,
+  FiUsers,
   FiZap,
 } from 'react-icons/fi';
 import { Link } from 'react-router';
@@ -77,6 +79,18 @@ const FEATURES = [
     color: 'pink',
     title: 'UI kit production-ready',
     desc: 'Mantine v9 untuk komponen dan theming, TanStack Query untuk data fetching, Zustand untuk client state, Biome untuk linting. Semua sudah terkonfigurasi.',
+  },
+  {
+    icon: FiPackage,
+    color: 'cyan',
+    title: 'Deploy satu binary',
+    desc: 'Build ke binary native yang embed Bun runtime, SSR bundle, dan semua static assets. Copy satu file ke server, langsung jalan — tanpa Node, tanpa Bun, tanpa npm install.',
+  },
+  {
+    icon: FiUsers,
+    color: 'indigo',
+    title: 'Admin console built-in',
+    desc: 'Area role-based yang siap pakai: user, admin, dan super-admin masing-masing punya layout dan route terpisah. Manajemen user, ban, role change, dan app settings sudah tersedia.',
   },
 ];
 
@@ -210,8 +224,8 @@ export default function Home() {
             {[
               { value: '1', label: 'Port untuk segalanya' },
               { value: '0', label: 'CORS config diperlukan' },
+              { value: '1 file', label: 'Deploy ke server manapun' },
               { value: '100%', label: 'TypeScript server ke client' },
-              { value: '< 5 min', label: 'Ke dev server pertama' },
             ].map((s) => (
               <Stack key={s.label} gap={2} align="center" ta="center" py="sm">
                 <Text fw={700} size="xl" c="blue">
@@ -237,7 +251,7 @@ export default function Home() {
             </Text>
           </Stack>
 
-          <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="lg">
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="lg">
             {FEATURES.map((f) => (
               <Card key={f.title} withBorder padding="lg" style={{ height: '100%' }}>
                 <ThemeIcon size={44} radius="md" variant="light" color={f.color} mb="md">

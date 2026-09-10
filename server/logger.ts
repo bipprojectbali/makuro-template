@@ -1,16 +1,23 @@
 import pino from 'pino';
 import { env, isProd } from './env';
 
+// Bun.isStandaloneExecutable is true when running inside a compiled binary (bun build --compile).
+// In binary mode we avoid pino-pretty's worker threads and file-based logging.
+const isStandalone = Bun.isStandaloneExecutable;
+
 async function createLogger() {
+  if (isStandalone) {
+    // Binary mode: stdout-only JSON logging — no worker threads, no FS writes.
+    // Log rotation at the process-manager / container layer (systemd, Docker, etc.).
+    return pino({ level: 'info', base: { env: env.NODE_ENV } });
+  }
   if (isProd) {
-    // In production, write to both stdout and a daily-rotating log file.
-    // pino-roll's build() creates a SonicBoom stream (no worker threads) so
-    // it works in Bun without the bun-plugin-pino workaround.
+    // Regular prod (bun run start): stdout + daily-rotating log file via pino-roll.
+    // pino-roll's build() creates a SonicBoom stream (no worker threads).
     const build = (await import('pino-roll')).default;
     const rollStream = await build('logs/app.log', {
       frequency: '1d',
       size: '10m',
-      // Keep 7 rotated files (one week of daily logs).
       limit: { count: 7 },
     });
     return pino(
