@@ -14,5 +14,6 @@ export default [
     route('dev/visits', 'routes/super/visits.tsx'),
     route('dev/login-logs', 'routes/super/login-logs.tsx'),
     route('dev/rate-limit-logs', 'routes/super/rate-limit-logs.tsx'),
+    route('dev/settings', 'routes/super/settings.tsx'),
   ]),
 ] satisfies RouteConfig;

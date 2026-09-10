@@ -128,6 +128,18 @@ export const loginLog = pgTable(
   (t) => [index('login_log_user_id_idx').on(t.userId), index('login_log_created_at_idx').on(t.createdAt)],
 );
 
+// appSetting: singleton row (id='singleton') for runtime app configuration.
+export const appSetting = pgTable('app_setting', {
+  id: text('id').primaryKey().default('singleton'),
+  /** Allow users to sign in / sign up with email+password. Default: false (Google-only). */
+  emailAuthEnabled: boolean('email_auth_enabled').default(false).notNull(),
+  /** Allow new user registrations. Set false to close the app to new signups. */
+  signupEnabled: boolean('signup_enabled').default(true).notNull(),
+  updatedAt: timestamp('updated_at')
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
+
 // rateLimitLog: one row per rate-limited (rejected) request.
 export const rateLimitLog = pgTable(
   'rate_limit_log',

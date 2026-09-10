@@ -8,6 +8,7 @@ import { checkRateLimit, logRateLimit } from '../middleware/rate-limiter';
 import { recordVisit } from '../middleware/visitor';
 import { adminApi } from './admin';
 import { analyticsApi } from './analytics';
+import { settingsApi } from './settings';
 
 /**
  * Resolve the current Better Auth session from request headers.
@@ -28,6 +29,8 @@ export const api = new Elysia({ prefix: '/api' })
   .use(adminApi)
   // Analytics read endpoints (super-admin only).
   .use(analyticsApi)
+  // App settings (GET public, PUT super-admin only).
+  .use(settingsApi)
   // Derive the session for downstream handlers.
   .derive(async ({ request }) => {
     const s = await getSession(request.headers);
