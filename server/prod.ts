@@ -21,6 +21,7 @@ import * as ssrBuild from '../build/server/index.js';
 import { api } from './api';
 import { env } from './env';
 import { logger } from './logger';
+import { recordVisit } from './middleware/visitor';
 
 const build = ssrBuild as unknown as ServerBuild;
 const handler = createRequestHandler(build, 'production');
@@ -54,7 +55,8 @@ const server = Bun.serve({
       });
     }
 
-    // SSR.
+    // SSR. Record page visit (fire-and-forget — must not block response).
+    void recordVisit(request, null);
     return handler(request);
   },
 });

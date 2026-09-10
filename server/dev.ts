@@ -15,6 +15,7 @@ import { api } from './api';
 import { env } from './env';
 import { nodeToWebRequest, writeWebResponse } from './http-bridge';
 import { logger } from './logger';
+import { recordVisit } from './middleware/visitor';
 
 const vite = await createViteServer({
   server: { middlewareMode: true },
@@ -46,6 +47,7 @@ const server = createServer((req, res) => {
       const build = await vite.ssrLoadModule('virtual:react-router/server-build');
       const handler = createRequestHandler(build as never, 'development');
       const request = await nodeToWebRequest(req);
+      void recordVisit(request, null);
       const response = await handler(request);
       await writeWebResponse(res, response);
     } catch (err) {

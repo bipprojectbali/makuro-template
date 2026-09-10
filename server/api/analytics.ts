@@ -5,7 +5,7 @@
 import { and, asc, desc, eq, ilike, lt, or, sql } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 import { db } from '../db';
-import { loginLog, rateLimitLog, visitLog } from '../db/schema';
+import { loginLog, rateLimitLog, user, visitLog } from '../db/schema';
 import { requireRole } from '../guard';
 import { ROLES } from '../permissions';
 
@@ -113,6 +113,7 @@ export const analyticsApi = new Elysia({ prefix: '/analytics' })
         ? or(
             ilike(loginLog.userId, `%${query.search}%`),
             ilike(loginLog.ip, `%${query.search}%`),
+            ilike(user.name, `%${query.search}%`),
           )
         : undefined;
 
@@ -121,16 +122,23 @@ export const analyticsApi = new Elysia({ prefix: '/analytics' })
           .select({
             id: loginLog.id,
             userId: loginLog.userId,
+            userName: user.name,
+            userImage: user.image,
             ip: loginLog.ip,
             userAgent: loginLog.userAgent,
             createdAt: loginLog.createdAt,
           })
           .from(loginLog)
+          .leftJoin(user, eq(loginLog.userId, user.id))
           .where(where)
           .orderBy(order(loginLog.createdAt))
           .limit(limit)
           .offset(offset),
-        db.select({ count: sql<number>`count(*)::int` }).from(loginLog).where(where),
+        db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(loginLog)
+          .leftJoin(user, eq(loginLog.userId, user.id))
+          .where(where),
       ]);
 
       return { rows, total: totals?.count ?? 0, page, limit };

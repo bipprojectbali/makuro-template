@@ -1,5 +1,6 @@
 import {
   ActionIcon,
+  Avatar,
   Box,
   Button,
   Group,
@@ -22,6 +23,8 @@ const LIMIT = 25;
 type LoginRow = {
   id: string;
   userId: string;
+  userName: string | null;
+  userImage: string | null;
   ip: string | null;
   userAgent: string | null;
   createdAt: string;
@@ -166,7 +169,7 @@ export default function LoginLogsPage() {
                   Waktu <SortIcon size={13} />
                 </Group>
               </Table.Th>
-              <Table.Th>User ID</Table.Th>
+              <Table.Th>User</Table.Th>
               <Table.Th>IP</Table.Th>
               <Table.Th>User Agent</Table.Th>
               <Table.Th style={{ width: 36 }} />
@@ -177,9 +180,19 @@ export default function LoginLogsPage() {
               <Table.Tr key={r.id}>
                 <Table.Td style={{ whiteSpace: 'nowrap' }}>{fmt(r.createdAt)}</Table.Td>
                 <Table.Td>
-                  <Text ff="monospace" size="xs" truncate maw={160}>
-                    {r.userId}
-                  </Text>
+                  <Group gap="xs" wrap="nowrap">
+                    <Avatar src={r.userImage} size={24} radius="xl">
+                      {r.userName ? r.userName.charAt(0).toUpperCase() : '?'}
+                    </Avatar>
+                    <Stack gap={0}>
+                      <Text size="xs" fw={500} lh={1.3}>
+                        {r.userName ?? '—'}
+                      </Text>
+                      <Text ff="monospace" size="xs" c="dimmed" truncate maw={140} lh={1.3}>
+                        {r.userId}
+                      </Text>
+                    </Stack>
+                  </Group>
                 </Table.Td>
                 <Table.Td>
                   <Text ff="monospace" size="xs">

@@ -5,7 +5,6 @@ import { db } from '../db';
 import { post } from '../db/schema';
 import { logger } from '../logger';
 import { checkRateLimit, logRateLimit } from '../middleware/rate-limiter';
-import { recordVisit } from '../middleware/visitor';
 import { adminApi } from './admin';
 import { analyticsApi } from './analytics';
 import { settingsApi } from './settings';
@@ -52,8 +51,6 @@ export const api = new Elysia({ prefix: '/api' })
         return status(429, { error: 'Too many requests' });
       }
     }
-
-    void recordVisit(request, (user as { id?: string } | null)?.id);
   })
   .get('/hello', () => ({
     message: 'Hello from Elysia + Bun \u26a1',
