@@ -108,39 +108,111 @@ export function meta(_: Route.MetaArgs) {
 
 **Blocker:** route yang dirender tanpa `export function meta()` → STOP sebelum commit. Redirect-only routes (tidak punya `default export` komponen) dikecualikan.
 
-## Mobile-Friendly — Standar Minimum Wajib
+## Mobile-Friendly — Standar Ketat Wajib Dipatuhi Agent
 
-App ini harus dapat diakses dengan baik di perangkat mobile, bukan hanya desktop. Admin console tetap primary desktop, namun **tidak boleh rusak di mobile**. Agent wajib menerapkan ini secara proaktif pada setiap halaman yang ditulis atau dimodifikasi.
+App ini harus bisa diakses dengan baik di mobile. Admin console tetap primary desktop, namun **tidak boleh rusak di mobile**. Agent wajib menerapkan semua aturan di bawah ini secara proaktif — bukan menunggu diminta. Standar ini berlaku untuk setiap halaman baru maupun yang dimodifikasi.
 
-### 1. Layout Responsif
-- Gunakan Mantine `Grid`, `SimpleGrid`, `Stack`, `Group` dengan breakpoints — **bukan** fixed-width atau pixel hardcode.
-- Hindari `width: 800px` atau sejenisnya; gunakan `maxWidth` dan `100%` agar menyesuaikan layar.
-- Kolom yang tidak muat di mobile → ubah ke single column via `cols={{ base: 1, sm: 2, md: 3 }}`.
+### 1. Navigasi — AppShell dengan Mobile Header Wajib
 
-### 2. Tabel Lebar
-- Setiap tabel **wajib** dibungkus `<Box style={{ overflowX: 'auto' }}>` agar bisa discroll horizontal di mobile, bukan overflow keluar layar.
-- Pertimbangkan `truncate` + `maw` untuk kolom teks panjang.
+Jangan pernah menempatkan `<Burger>` sebagai elemen `pos="fixed"` floating tanpa `AppShell.Header`. Pola yang wajib dipakai:
 
-### 3. Touch Targets
-- Tombol aksi utama minimum `size="sm"`. Hindari `size="xs"` untuk elemen yang jadi target utama tap.
-- `ActionIcon` kecil (ikon hapus, edit di tabel) boleh `size="xs"` karena di dalam tabel yang sudah scroll.
-- Jangan menempatkan dua touch target yang sangat berdekatan tanpa jarak (`gap` minimal `xs`).
+```tsx
+<AppShell
+  header={{ height: { base: 52, sm: 0 } }}  // header hanya muncul di mobile
+  navbar={{ width: 240, breakpoint: 'sm', collapsed: { mobile: !mobileOpened } }}
+>
+  <AppShell.Header withBorder={false} hiddenFrom="sm">
+    <Group h="100%" px="md" gap="sm">
+      <Burger opened={mobileOpened} onClick={toggleMobile} size="sm" aria-label="Toggle navigation" />
+      <Text fw={700}>Nama App</Text>
+    </Group>
+  </AppShell.Header>
+  <AppShell.Navbar>...</AppShell.Navbar>
+  <AppShell.Main>...</AppShell.Main>
+</AppShell>
+```
 
-### 4. Navigasi & Sidebar
-- Sidebar/nav wajib collapsible di mobile — gunakan Mantine `AppShell` dengan `navbar.breakpoint` yang tepat.
-- Jangan hardcode sidebar selalu terbuka tanpa toggle.
+**Blocker:** Burger floating fixed tanpa AppShell.Header → STOP.
 
-### 5. Form & Input
-- Set `inputMode` yang sesuai: `inputMode="email"` untuk email, `inputMode="numeric"` untuk angka — agar keyboard mobile muncul yang tepat.
-- Input tidak boleh menyebabkan zoom otomatis browser mobile (pastikan `font-size` minimal 16px di input, atau gunakan Mantine default yang sudah handle ini).
+### 2. Tabel — Kolom Wajib Responsif
 
-### 6. Padding & Spacing di Mobile
-- Halaman wajib punya padding minimal `p="md"` atau `p="sm"` — tidak boleh nempel ke pinggir layar.
-- Gunakan breakpoint spacing: `p={{ base: 'sm', md: 'md' }}` bila perlu.
+Semua tabel harus scrollable horizontal DAN menyembunyikan kolom tidak esensial di mobile:
 
-**Cara agent menerapkan:** Setiap halaman baru atau yang dimodifikasi → cek apakah layout masih masuk akal di layar 375px lebar (iPhone SE). Jika ada elemen yang overflow atau terlalu kecil untuk di-tap → perbaiki sebelum commit. Ini bukan opsional.
+```tsx
+// Wrapper scroll — wajib ada
+<Box style={{ overflowX: 'auto' }}>
+  <Table>
+    <Table.Thead>
+      <Table.Tr>
+        <Table.Th>Kolom Penting</Table.Th>
+        <Table.Th visibleFrom="sm">Kolom Sekunder</Table.Th>  {/* hidden di mobile */}
+      </Table.Tr>
+    </Table.Thead>
+    <Table.Tbody>
+      <Table.Tr>
+        <Table.Td>...</Table.Td>
+        <Table.Td visibleFrom="sm">...</Table.Td>  {/* hidden di mobile */}
+      </Table.Tr>
+    </Table.Tbody>
+  </Table>
+</Box>
+```
 
-**Blocker:** Layout overflow horizontal tanpa `overflowX: 'auto'`, atau fixed-width yang melampaui 375px → STOP sebelum commit.
+Alternatif: `<Table.ScrollContainer minWidth={640}>` bila semua kolom harus tampil.
+
+**Prioritas kolom yang wajib tampil di mobile:** kolom identitas utama (nama/path) + status + aksi.
+**Kolom yang boleh disembunyikan di mobile:** IP, User Agent, User ID, timestamp sekunder, kolom detail.
+
+**Blocker:** Tabel tanpa `overflowX: 'auto'` wrapper atau `Table.ScrollContainer` → STOP.
+
+### 3. Page Header — Tombol Action Wajib Wrap
+
+Header halaman yang berisi judul + tombol-tombol wajib menggunakan `wrap="wrap"`:
+
+```tsx
+// ✅ Benar — buttons wrap ke bawah bila tidak muat
+<Group justify="space-between" align="flex-start" wrap="wrap">
+  <Title order={3}>Judul Halaman</Title>
+  <Group gap="xs" wrap="wrap" justify="flex-end">
+    <Button>Clear All</Button>
+    <Button>Purge 30d+</Button>
+    <Button>Refresh</Button>
+  </Group>
+</Group>
+
+// ❌ Salah — buttons overflow layar di mobile
+<Group justify="space-between" wrap="nowrap">
+```
+
+**Blocker:** Header dengan `wrap="nowrap"` yang berisi tombol-tombol → STOP.
+
+### 4. Layout & Spacing
+
+- Gunakan Mantine `Grid`, `SimpleGrid`, `Stack` dengan breakpoints — **bukan** fixed-width pixel.
+- `width: 800px`, `minWidth: 600px` pada container utama → gunakan `maw` + `w="100%"` sebagai gantinya.
+- Padding halaman: minimal `p="sm"` di mobile — gunakan `p={{ base: 'sm', md: 'md' }}` bila perlu.
+- Kolom grid yang tidak muat di mobile → `cols={{ base: 1, sm: 2, md: 3 }}`.
+
+### 5. Touch Targets
+
+- Tombol aksi utama: minimum `size="sm"` (44px touch area).
+- `ActionIcon` kecil di dalam tabel: boleh `size="xs"` karena tabel sudah scrollable.
+- Jarak antar touch target: minimal `gap="xs"`.
+- Hindari link/button berdekatan tanpa jarak yang cukup.
+
+### 6. Form & Input
+
+- Set `inputMode` yang sesuai: `inputMode="email"`, `inputMode="numeric"`, `inputMode="url"`.
+- Jangan set `font-size` di bawah 16px pada input — browser mobile akan auto-zoom.
+- Mantine input component sudah handle ini secara default, jangan override ke ukuran lebih kecil.
+
+**Cara agent menerapkan:** Bayangkan layar 375px lebar (iPhone SE). Apakah semua elemen visible dan bisa di-tap? Apakah ada overflow horizontal tanpa scroll? Apakah burger tidak menimpa konten? Jika ada masalah → perbaiki sebelum commit.
+
+**Blocker (semua harus dipenuhi sebelum commit):**
+- ❌ Burger floating tanpa AppShell.Header
+- ❌ Tabel tanpa scroll wrapper
+- ❌ Page header `wrap="nowrap"` dengan banyak tombol
+- ❌ Container fixed-width melampaui 375px tanpa overflow handling
 
 ## Binary Build — Catatan Penting untuk Agent
 

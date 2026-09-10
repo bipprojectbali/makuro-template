@@ -129,9 +129,9 @@ export default function LoginLogsPage() {
 
   return (
     <Stack gap="md" p="md">
-      <Group justify="space-between" wrap="nowrap">
+      <Group justify="space-between" align="flex-start" wrap="wrap">
         <Title order={3}>Login Logs</Title>
-        <Group gap="xs">
+        <Group gap="xs" wrap="wrap" justify="flex-end">
           <Tooltip
             label="Hapus semua log (visit, login, rate-limit) termasuk yang terbaru. Tidak bisa dibatalkan."
             withArrow
@@ -190,8 +190,8 @@ export default function LoginLogsPage() {
                 </Group>
               </Table.Th>
               <Table.Th>User</Table.Th>
-              <Table.Th>IP</Table.Th>
-              <Table.Th>User Agent</Table.Th>
+              <Table.Th visibleFrom="sm">IP</Table.Th>
+              <Table.Th visibleFrom="sm">User Agent</Table.Th>
               <Table.Th style={{ width: 36 }} />
             </Table.Tr>
           </Table.Thead>
@@ -214,12 +214,12 @@ export default function LoginLogsPage() {
                     </Stack>
                   </Group>
                 </Table.Td>
-                <Table.Td>
+                <Table.Td visibleFrom="sm">
                   <Text ff="monospace" size="xs">
                     {r.ip ?? '—'}
                   </Text>
                 </Table.Td>
-                <Table.Td>
+                <Table.Td visibleFrom="sm">
                   <Tooltip label={r.userAgent ?? '—'} withArrow multiline maw={320} disabled={!r.userAgent}>
                     <Text size="xs" c="dimmed" truncate maw={220}>
                       {r.userAgent ?? '—'}
