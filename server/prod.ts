@@ -35,7 +35,7 @@ const CLIENT_DIR = Bun.isStandaloneExecutable
 const server = Bun.serve({
   port: env.PORT,
   idleTimeout: 60,
-  async fetch(request) {
+  async fetch(request, bunServer) {
     const url = new URL(request.url);
 
     // API + auth.
@@ -56,7 +56,11 @@ const server = Bun.serve({
     }
 
     // SSR. Record page visit (fire-and-forget — must not block response).
-    void recordVisit(request, null);
+    const remoteIp = bunServer.requestIP(request);
+    const ip = remoteIp
+      ? (remoteIp.address.startsWith('::ffff:') ? remoteIp.address.slice(7) : remoteIp.address)
+      : null;
+    void recordVisit(request, null, ip);
     return handler(request);
   },
 });

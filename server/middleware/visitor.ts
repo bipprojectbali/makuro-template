@@ -11,12 +11,13 @@ import { isbot, isbotMatch } from 'isbot';
 import { db } from '../db';
 import { visitLog } from '../db/schema';
 
-// Skip all API calls — visitor tracking should only cover page navigation,
-// not same-origin fetch requests from the SPA. Without this, every analytics
-// fetch creates new visit_log rows, causing counts to grow on every purge.
-const SKIP_PREFIXES = ['/api/', '/_vite/', '/assets/', '/favicon', '/manifest'];
+// Skip all API calls and internal browser requests — visitor tracking should only
+// cover page navigations, not same-origin fetch requests from the SPA.
+const SKIP_PREFIXES = ['/api/', '/_vite/', '/assets/', '/favicon', '/manifest', '/__manifest'];
 
 function shouldSkip(path: string): boolean {
+  // React Router loader fetches end with .data (e.g. /posts.data) — not page navigations.
+  if (path.endsWith('.data')) return true;
   return SKIP_PREFIXES.some((p) => path.startsWith(p));
 }
 
@@ -37,6 +38,7 @@ function classifyBot(ua: string): string | null {
 export async function recordVisit(
   request: Request,
   userId: string | null | undefined,
+  explicitIp?: string | null,
 ): Promise<void> {
   try {
     const url = new URL(request.url);
@@ -46,10 +48,14 @@ export async function recordVisit(
     const bot = isbot(ua);
     const botKind = bot ? classifyBot(ua) : null;
 
+    // Prefer explicit IP (from Bun.serve server.requestIP or Node socket),
+    // then fall back to reverse-proxy headers for traffic behind a load balancer.
     const ip =
-      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-      request.headers.get('x-real-ip') ??
-      null;
+      explicitIp !== undefined
+        ? explicitIp
+        : (request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+           request.headers.get('x-real-ip') ??
+           null);
 
     await db
       .insert(visitLog)

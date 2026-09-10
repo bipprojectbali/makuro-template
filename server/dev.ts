@@ -47,7 +47,10 @@ const server = createServer((req, res) => {
       const build = await vite.ssrLoadModule('virtual:react-router/server-build');
       const handler = createRequestHandler(build as never, 'development');
       const request = await nodeToWebRequest(req);
-      void recordVisit(request, null);
+      // Extract IP from Node socket; normalize IPv6-mapped IPv4 (::ffff:x.x.x.x → x.x.x.x).
+      const rawIp = req.socket.remoteAddress ?? null;
+      const ip = rawIp?.startsWith('::ffff:') ? rawIp.slice(7) : rawIp;
+      void recordVisit(request, null, ip);
       const response = await handler(request);
       await writeWebResponse(res, response);
     } catch (err) {
