@@ -128,21 +128,37 @@ export default function LoginLogsPage() {
       <Group justify="space-between" wrap="nowrap">
         <Title order={3}>Login Logs</Title>
         <Group gap="xs">
-          <Button size="xs" color="red" variant="outline" onClick={clearAll} disabled={total === 0}>
-            Clear All
-          </Button>
-          <Button size="xs" color="red" variant="light" onClick={purge} disabled={total === 0}>
-            Purge 30d+
-          </Button>
-          <Button
-            size="xs"
-            variant="light"
-            leftSection={<FiRefreshCw size={12} />}
-            loading={loading}
-            onClick={() => setRefreshKey((k) => k + 1)}
+          <Tooltip
+            label="Hapus semua log (visit, login, rate-limit) termasuk yang terbaru. Tidak bisa dibatalkan."
+            withArrow
+            multiline
+            maw={260}
           >
-            Refresh
-          </Button>
+            <Button size="xs" color="red" variant="outline" onClick={clearAll} disabled={total === 0}>
+              Clear All
+            </Button>
+          </Tooltip>
+          <Tooltip
+            label="Hapus semua log (visit, login, rate-limit) yang lebih dari 30 hari. Aman untuk maintenance rutin."
+            withArrow
+            multiline
+            maw={260}
+          >
+            <Button size="xs" color="red" variant="light" onClick={purge} disabled={total === 0}>
+              Purge 30d+
+            </Button>
+          </Tooltip>
+          <Tooltip label="Muat ulang data terbaru" withArrow>
+            <Button
+              size="xs"
+              variant="light"
+              leftSection={<FiRefreshCw size={12} />}
+              loading={loading}
+              onClick={() => setRefreshKey((k) => k + 1)}
+            >
+              Refresh
+            </Button>
+          </Tooltip>
         </Group>
       </Group>
 
