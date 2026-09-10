@@ -6,7 +6,7 @@ import {
   toAccountOptions,
 } from '@server/session-accounts';
 import { useState } from 'react';
-import { FiCheck, FiLogOut, FiPlus } from 'react-icons/fi';
+import { FiCheck, FiLogOut, FiMoreVertical, FiPlus } from 'react-icons/fi';
 import { useNavigate } from 'react-router';
 import type { AppUser } from '~/lib/app-context';
 import { authClient, signOut, useSession } from '~/lib/auth-client';
@@ -66,14 +66,17 @@ export function UserMenu({ user, collapsed = false }: { user: AppUser; collapsed
               imageProps={{ referrerPolicy: 'no-referrer' }}
             />
             {!collapsed && (
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <Text size="sm" fw={500} truncate>
-                  {current.name}
-                </Text>
-                <Text size="xs" c="dimmed" truncate>
-                  {current.email}
-                </Text>
-              </div>
+              <>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <Text size="sm" fw={500} truncate>
+                    {current.name}
+                  </Text>
+                  <Text size="xs" c="dimmed" truncate>
+                    {current.email}
+                  </Text>
+                </div>
+                <FiMoreVertical size={14} style={{ flexShrink: 0, opacity: 0.4 }} />
+              </>
             )}
           </Group>
         </UnstyledButton>
