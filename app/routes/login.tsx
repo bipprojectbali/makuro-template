@@ -12,6 +12,7 @@ import {
 } from '@mantine/core';
 import { hasLength, isEmail, isNotEmpty, useForm } from '@mantine/form';
 import { hasGoogleAuth } from '@server/env';
+import { getSettings } from '@server/settings';
 import { useState } from 'react';
 import { FcGoogle } from 'react-icons/fc';
 import { useNavigate } from 'react-router';
@@ -22,13 +23,14 @@ export function meta(_: Route.MetaArgs) {
   return [{ title: 'Sign in — Makuro' }];
 }
 
-// Expose server-only flags to the client (whether Google OAuth is configured).
-export function loader() {
-  return { googleEnabled: hasGoogleAuth };
+export async function loader() {
+  const { emailAuthEnabled, signupEnabled } = await getSettings();
+  return { googleEnabled: hasGoogleAuth, emailAuthEnabled, signupEnabled };
 }
 
 export default function Login({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();
+  const { googleEnabled, emailAuthEnabled, signupEnabled } = loaderData;
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -87,20 +89,22 @@ export default function Login({ loaderData }: Route.ComponentProps) {
         Welcome to Makuro
       </Title>
 
-      <SegmentedControl
-        fullWidth
-        mb="md"
-        value={mode}
-        onChange={(v) => setMode(v as 'signin' | 'signup')}
-        data={[
-          { label: 'Sign in', value: 'signin' },
-          { label: 'Sign up', value: 'signup' },
-        ]}
-      />
+      {emailAuthEnabled && signupEnabled && (
+        <SegmentedControl
+          fullWidth
+          mb="md"
+          value={mode}
+          onChange={(v) => setMode(v as 'signin' | 'signup')}
+          data={[
+            { label: 'Sign in', value: 'signin' },
+            { label: 'Sign up', value: 'signup' },
+          ]}
+        />
+      )}
 
       <Paper withBorder p="lg" shadow="sm">
         <Stack>
-          {loaderData.googleEnabled && (
+          {googleEnabled && (
             <>
               <Button
                 variant="default"
@@ -111,42 +115,50 @@ export default function Login({ loaderData }: Route.ComponentProps) {
               >
                 Continue with Google
               </Button>
-              <Divider label="or" labelPosition="center" />
+              {emailAuthEnabled && <Divider label="or" labelPosition="center" />}
             </>
           )}
 
-          <form onSubmit={submit}>
-            <Stack>
-              {mode === 'signup' && (
+          {emailAuthEnabled && (
+            <form onSubmit={submit}>
+              <Stack>
+                {mode === 'signup' && signupEnabled && (
+                  <TextInput
+                    label="Name"
+                    placeholder="Your name"
+                    key={form.key('name')}
+                    {...form.getInputProps('name')}
+                  />
+                )}
                 <TextInput
-                  label="Name"
-                  placeholder="Your name"
-                  key={form.key('name')}
-                  {...form.getInputProps('name')}
+                  label="Email"
+                  placeholder="you@example.com"
+                  key={form.key('email')}
+                  {...form.getInputProps('email')}
                 />
-              )}
-              <TextInput
-                label="Email"
-                placeholder="you@example.com"
-                key={form.key('email')}
-                {...form.getInputProps('email')}
-              />
-              <PasswordInput
-                label="Password"
-                placeholder="At least 8 characters"
-                key={form.key('password')}
-                {...form.getInputProps('password')}
-              />
-              {error && (
-                <Text c="red" size="sm">
-                  {error}
-                </Text>
-              )}
-              <Button type="submit" loading={loading} fullWidth>
-                {mode === 'signup' ? 'Create account' : 'Sign in'}
-              </Button>
-            </Stack>
-          </form>
+                <PasswordInput
+                  label="Password"
+                  placeholder="At least 8 characters"
+                  key={form.key('password')}
+                  {...form.getInputProps('password')}
+                />
+                {error && (
+                  <Text c="red" size="sm">
+                    {error}
+                  </Text>
+                )}
+                <Button type="submit" loading={loading} fullWidth>
+                  {mode === 'signup' && signupEnabled ? 'Create account' : 'Sign in'}
+                </Button>
+              </Stack>
+            </form>
+          )}
+
+          {!googleEnabled && !emailAuthEnabled && (
+            <Text c="dimmed" size="sm" ta="center">
+              Login tidak tersedia. Hubungi administrator.
+            </Text>
+          )}
         </Stack>
       </Paper>
     </Container>

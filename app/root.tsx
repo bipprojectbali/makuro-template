@@ -1,6 +1,7 @@
 import '@mantine/core/styles.css';
 
 import { ColorSchemeScript, MantineProvider, mantineHtmlProps } from '@mantine/core';
+import { ModalsProvider } from '@mantine/modals';
 import { QueryClientProvider } from '@tanstack/react-query';
 import {
   isRouteErrorResponse,
@@ -68,7 +69,9 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <MantineProvider theme={theme} defaultColorScheme="auto">
-        <Outlet />
+        <ModalsProvider>
+          <Outlet />
+        </ModalsProvider>
       </MantineProvider>
     </QueryClientProvider>
   );

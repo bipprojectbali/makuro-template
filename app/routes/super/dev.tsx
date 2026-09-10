@@ -13,6 +13,7 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
+import { modals } from '@mantine/modals';
 import {
   canActOnTarget,
   canImpersonate,
@@ -123,10 +124,22 @@ export default function Dev() {
                 { value: ROLES.ADMIN, label: 'admin' },
               ]}
               onChange={(val) => {
-                if (val && val !== target)
-                  run(u.id, () =>
-                    client.api.admin.users({ id: u.id }).role.post({ role: val as Role }),
-                  );
+                if (!val || val === target) return;
+                const newRole = val as Role;
+                modals.openConfirmModal({
+                  title: 'Ubah role pengguna?',
+                  children: (
+                    <Text size="sm">
+                      Role <b>{u.name}</b> akan diubah dari <b>{target}</b> ke <b>{newRole}</b>.
+                    </Text>
+                  ),
+                  labels: { confirm: 'Ubah role', cancel: 'Batal' },
+                  onCancel: () => setUsers((prev) => [...prev]),
+                  onConfirm: () =>
+                    run(u.id, () =>
+                      client.api.admin.users({ id: u.id }).role.post({ role: newRole }),
+                    ),
+                });
               }}
             />
           ) : (
@@ -171,7 +184,20 @@ export default function Dev() {
                   color="red"
                   loading={busy}
                   leftSection={<FiSlash size={14} />}
-                  onClick={() => run(u.id, () => client.api.admin.users({ id: u.id }).ban.post({}))}
+                  onClick={() =>
+                    modals.openConfirmModal({
+                      title: 'Ban pengguna?',
+                      children: (
+                        <Text size="sm">
+                          <b>{u.name}</b> tidak akan bisa login. Kamu bisa unban kapan saja.
+                        </Text>
+                      ),
+                      labels: { confirm: 'Ban pengguna', cancel: 'Batal' },
+                      confirmProps: { color: 'red' },
+                      onConfirm: () =>
+                        run(u.id, () => client.api.admin.users({ id: u.id }).ban.post({})),
+                    })
+                  }
                 >
                   Ban
                 </Button>
@@ -192,8 +218,22 @@ export default function Dev() {
                 variant="subtle"
                 color="red"
                 loading={busy}
-                aria-label="Delete user"
-                onClick={() => run(u.id, () => client.api.admin.users({ id: u.id }).delete())}
+                aria-label="Hapus pengguna"
+                onClick={() =>
+                  modals.openConfirmModal({
+                    title: 'Hapus pengguna?',
+                    children: (
+                      <Text size="sm">
+                        <b>{u.name}</b> akan dihapus permanen beserta semua sesinya. Aksi ini tidak
+                        bisa dibatalkan.
+                      </Text>
+                    ),
+                    labels: { confirm: 'Hapus permanen', cancel: 'Batal' },
+                    confirmProps: { color: 'red' },
+                    onConfirm: () =>
+                      run(u.id, () => client.api.admin.users({ id: u.id }).delete()),
+                  })
+                }
               >
                 <FiTrash2 size={16} />
               </ActionIcon>
@@ -240,7 +280,21 @@ export default function Dev() {
                 <Table.Th />
               </Table.Tr>
             </Table.Thead>
-            <Table.Tbody>{rows}</Table.Tbody>
+            <Table.Tbody>
+              {rows.length > 0 ? (
+                rows
+              ) : (
+                <Table.Tr>
+                  <Table.Td colSpan={5}>
+                    <Text c="dimmed" py="md" ta="center">
+                      {search
+                        ? `Tidak ada pengguna yang cocok dengan "${search}"`
+                        : 'Belum ada pengguna.'}
+                    </Text>
+                  </Table.Td>
+                </Table.Tr>
+              )}
+            </Table.Tbody>
           </Table>
         </Table.ScrollContainer>
       )}
