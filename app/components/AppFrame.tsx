@@ -69,7 +69,7 @@ export function AppFrame({
   );
   const secondary = secondaryNav ?? [];
   const homePath = navItems[0]?.to ?? '/';
-  const isActive = (to: string) => pathname === to || pathname.startsWith(`${to}/`);
+  const isActive = (to: string) => pathname === to;
 
   function toggleCollapsed() {
     setCollapsed((c) => {

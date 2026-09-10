@@ -11,7 +11,10 @@ import { isbot, isbotMatch } from 'isbot';
 import { db } from '../db';
 import { visitLog } from '../db/schema';
 
-const SKIP_PREFIXES = ['/api/auth/', '/_vite/', '/assets/', '/favicon', '/manifest'];
+// Skip all API calls — visitor tracking should only cover page navigation,
+// not same-origin fetch requests from the SPA. Without this, every analytics
+// fetch creates new visit_log rows, causing counts to grow on every purge.
+const SKIP_PREFIXES = ['/api/', '/_vite/', '/assets/', '/favicon', '/manifest'];
 
 function shouldSkip(path: string): boolean {
   return SKIP_PREFIXES.some((p) => path.startsWith(p));
