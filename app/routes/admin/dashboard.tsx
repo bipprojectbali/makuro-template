@@ -2,6 +2,10 @@ import { Stack, Text, Title } from '@mantine/core';
 import { useApp } from '~/lib/app-context';
 import { useSession } from '~/lib/auth-client';
 
+export function meta() {
+  return [{ title: 'Dashboard — Makuro' }];
+}
+
 export default function Dashboard() {
   const { user: ctxUser } = useApp();
   const { data } = useSession();

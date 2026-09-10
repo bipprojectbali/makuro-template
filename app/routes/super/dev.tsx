@@ -29,6 +29,10 @@ import { useApp } from '~/lib/app-context';
 import { authClient } from '~/lib/auth-client';
 import { client } from '~/lib/eden';
 
+export function meta() {
+  return [{ title: 'Users — Makuro Dev' }];
+}
+
 const PAGE_SIZE = 20;
 
 type AdminUser = {

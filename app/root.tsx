@@ -15,6 +15,13 @@ import type { Route } from './+types/root';
 import { queryClient } from './lib/query';
 import { theme } from './lib/theme';
 
+export function meta(_: Route.MetaArgs) {
+  return [
+    { title: 'Makuro' },
+    { name: 'description', content: 'Bun + Elysia + React Router v8 SSR + Drizzle + Better Auth. Fullstack template siap production.' },
+  ];
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" {...mantineHtmlProps}>

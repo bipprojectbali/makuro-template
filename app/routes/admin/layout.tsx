@@ -7,6 +7,10 @@ import { AppFrame, type NavItem } from '~/components/AppFrame';
 import type { AppContext } from '~/lib/app-context';
 import type { Route } from './+types/layout';
 
+export function meta(_: Route.MetaArgs) {
+  return [{ title: 'Admin — Makuro' }];
+}
+
 const NAV: NavItem[] = [{ to: '/dashboard', label: 'Dashboard', icon: FiHome }];
 const PROFILE: NavItem = { to: '/profile', label: 'Profile', icon: FiUser };
 

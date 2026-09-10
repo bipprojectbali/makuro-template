@@ -3,6 +3,10 @@ import { introspectDrizzleSchema } from '@server/db/schema-introspect';
 import { lazy, Suspense } from 'react';
 import type { Route } from './+types/db-schema';
 
+export function meta(_: Route.MetaArgs) {
+  return [{ title: 'DB Schema — Makuro Dev' }];
+}
+
 // Lazy-load the React Flow component — it uses browser-only APIs and must not
 // render on the server during SSR.
 const DbSchemaGraph = lazy(() =>

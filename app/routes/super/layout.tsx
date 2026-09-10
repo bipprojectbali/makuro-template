@@ -16,6 +16,10 @@ import { AppFrame, type NavItem } from '~/components/AppFrame';
 import type { AppContext } from '~/lib/app-context';
 import type { Route } from './+types/layout';
 
+export function meta(_: Route.MetaArgs) {
+  return [{ title: 'Dev Console — Makuro' }];
+}
+
 const NAV: NavItem[] = [
   { to: '/dev', label: 'Users', icon: FiUsers },
   { to: '/dev/db-schema', label: 'DB Schema', icon: FiDatabase },

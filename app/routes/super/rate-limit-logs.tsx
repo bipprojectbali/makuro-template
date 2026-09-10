@@ -18,6 +18,10 @@ import { useEffect, useState } from 'react';
 import { FiRefreshCw, FiSearch, FiTrash2 } from 'react-icons/fi';
 import { TbSortAscending, TbSortDescending } from 'react-icons/tb';
 
+export function meta() {
+  return [{ title: 'Rate Limit Logs — Makuro Dev' }];
+}
+
 const LIMIT = 25;
 
 type RateLimitRow = {

@@ -56,6 +56,58 @@ Button yang tidak bisa dipakai (misal: "Purge" saat tidak ada data) → `disable
 
 **Cara agent menerapkan:** Setiap kali menulis fitur baru yang mengandung aksi async, delete, atau state change penting → langsung terapkan standar di atas tanpa menunggu instruksi. Ini bukan optional — ini adalah definisi "fitur selesai" di project ini.
 
+## SEO & Meta Tags — Wajib di Setiap Route
+
+Setiap route yang dirender (bukan redirect-only) **wajib** punya `export function meta()`. Ini berlaku untuk route halaman maupun layout route. Tanpa ini, browser tab kosong dan search engine tidak mendapat sinyal apapun.
+
+### Format Wajib
+
+```ts
+// Halaman publik (landing, login, dll)
+export function meta(_: Route.MetaArgs) {
+  return [
+    { title: 'Judul Halaman — Makuro' },
+    { name: 'description', content: 'Deskripsi singkat halaman ini, 120–160 karakter.' },
+  ];
+}
+
+// Halaman app/admin (tidak diindex search engine, tapi title tetap wajib)
+export function meta() {
+  return [{ title: 'Nama Halaman — Makuro' }];
+}
+```
+
+### Konvensi Title
+
+- Format: `"Nama Halaman — Brand"` — nama halaman di depan, brand di belakang.
+- Halaman publik: sertakan `description` (120–160 karakter, deskriptif, tidak duplikat).
+- Halaman admin/app: cukup `title`, tidak perlu `description` (tidak diindex).
+- Root (`root.tsx`) wajib punya `meta()` sebagai **fallback global** — halaman yang tidak define meta sendiri akan fallback ke sini.
+
+### Favicon
+
+- Favicon didefinisikan secara hardcoded di `root.tsx` `<head>` sebagai `<link rel="icon" href="/favicon.svg" type="image/svg+xml" />`.
+- File favicon ada di `public/favicon.svg` — jangan ganti tanpa alasan, ini brand identity.
+- Jangan duplikasi favicon lewat `meta()` — sudah cukup di hardcoded.
+
+### Halaman Publik — OG Tags (Open Graph)
+
+Untuk halaman yang bisa dishare (home, landing page):
+
+```ts
+export function meta(_: Route.MetaArgs) {
+  return [
+    { title: 'Makuro — Fullstack Template' },
+    { name: 'description', content: '...' },
+    { property: 'og:title', content: 'Makuro — Fullstack Template' },
+    { property: 'og:description', content: '...' },
+    { property: 'og:type', content: 'website' },
+  ];
+}
+```
+
+**Blocker:** route yang dirender tanpa `export function meta()` → STOP sebelum commit. Redirect-only routes (tidak punya `default export` komponen) dikecualikan.
+
 ## Mobile-Friendly — Standar Minimum Wajib
 
 App ini harus dapat diakses dengan baik di perangkat mobile, bukan hanya desktop. Admin console tetap primary desktop, namun **tidak boleh rusak di mobile**. Agent wajib menerapkan ini secara proaktif pada setiap halaman yang ditulis atau dimodifikasi.
