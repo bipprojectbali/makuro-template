@@ -8,5 +8,8 @@ export default [
   // Strict per-role areas. Each layout guards its role; children inherit it.
   layout('routes/user/layout.tsx', [route('profile', 'routes/user/profile.tsx')]),
   layout('routes/admin/layout.tsx', [route('dashboard', 'routes/admin/dashboard.tsx')]),
-  layout('routes/super/layout.tsx', [route('dev', 'routes/super/dev.tsx')]),
+  layout('routes/super/layout.tsx', [
+    route('dev', 'routes/super/dev.tsx'),
+    route('dev/db-schema', 'routes/super/db-schema.tsx'),
+  ]),
 ] satisfies RouteConfig;
