@@ -36,9 +36,23 @@ function readBody(req: IncomingMessage): Promise<Buffer> {
 
 export async function writeWebResponse(res: ServerResponse, webRes: Response): Promise<void> {
   res.statusCode = webRes.status;
+
+  // Set-Cookie must stay as separate entries — Node's setHeader overwrites on
+  // repeated calls, so collect all cookies then set them at once as an array.
+  const _getSetCookie = (webRes.headers as { getSetCookie?: () => string[] }).getSetCookie;
+  const hasNative = typeof _getSetCookie === 'function';
+  const cookies: string[] = hasNative ? _getSetCookie.call(webRes.headers) : [];
+
   webRes.headers.forEach((value, key) => {
+    if (key.toLowerCase() === 'set-cookie') {
+      // Fallback when getSetCookie() is unavailable (non-Bun/undici runtimes).
+      if (!hasNative) cookies.push(value);
+      return;
+    }
     res.setHeader(key, value);
   });
+
+  if (cookies.length > 0) res.setHeader('set-cookie', cookies);
 
   if (!webRes.body) {
     res.end();
