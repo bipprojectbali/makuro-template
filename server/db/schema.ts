@@ -19,6 +19,11 @@ export const user = pgTable('user', {
   updatedAt: timestamp('updated_at')
     .$defaultFn(() => new Date())
     .notNull(),
+  // Better Auth admin plugin fields.
+  role: text('role'),
+  banned: boolean('banned').default(false),
+  banReason: text('ban_reason'),
+  banExpires: timestamp('ban_expires'),
 });
 
 export const session = pgTable('session', {
@@ -32,6 +37,8 @@ export const session = pgTable('session', {
   userId: text('user_id')
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),
+  // Better Auth admin plugin: set while an admin impersonates this user.
+  impersonatedBy: text('impersonated_by'),
 });
 
 export const account = pgTable('account', {

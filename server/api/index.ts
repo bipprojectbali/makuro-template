@@ -4,6 +4,7 @@ import { auth } from '../auth';
 import { db } from '../db';
 import { post } from '../db/schema';
 import { logger } from '../logger';
+import { adminApi } from './admin';
 
 /**
  * Resolve the current Better Auth session from request headers.
@@ -20,6 +21,8 @@ async function getSession(headers: Headers) {
 export const api = new Elysia({ prefix: '/api' })
   // Mount Better Auth handler for all /api/auth/* routes.
   .mount(auth.handler)
+  // Admin console endpoints (self-guarded by role).
+  .use(adminApi)
   // Derive the session for downstream handlers.
   .derive(async ({ request }) => {
     const s = await getSession(request.headers);

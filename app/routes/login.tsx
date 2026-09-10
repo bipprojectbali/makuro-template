@@ -13,8 +13,8 @@ import {
 import { hasLength, isEmail, isNotEmpty, useForm } from '@mantine/form';
 import { hasGoogleAuth } from '@server/env';
 import { useState } from 'react';
+import { FcGoogle } from 'react-icons/fc';
 import { useNavigate } from 'react-router';
-import { GoogleIcon } from '~/components/GoogleIcon';
 import { signIn, signUp } from '~/lib/auth-client';
 import type { Route } from './+types/login';
 
@@ -60,7 +60,8 @@ export default function Login({ loaderData }: Route.ComponentProps) {
         setError(res.error.message ?? 'Authentication failed');
         return;
       }
-      navigate('/dashboard');
+      // /go resolves the role server-side and lands on the right area.
+      navigate('/go');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unexpected error');
     } finally {
@@ -72,8 +73,8 @@ export default function Login({ loaderData }: Route.ComponentProps) {
     setError(null);
     setGoogleLoading(true);
     try {
-      // Redirects to Google, then back to /dashboard on success.
-      await signIn.social({ provider: 'google', callbackURL: '/dashboard' });
+      // Redirects to Google, then to /go which routes to the role's home.
+      await signIn.social({ provider: 'google', callbackURL: '/go' });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Google sign-in failed');
       setGoogleLoading(false);
@@ -104,7 +105,7 @@ export default function Login({ loaderData }: Route.ComponentProps) {
               <Button
                 variant="default"
                 fullWidth
-                leftSection={<GoogleIcon size={18} />}
+                leftSection={<FcGoogle size={18} />}
                 loading={googleLoading}
                 onClick={continueWithGoogle}
               >

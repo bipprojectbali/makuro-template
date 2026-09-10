@@ -10,6 +10,8 @@ const EnvSchema = z.object({
   // Google OAuth (optional — social login is enabled only when both are set).
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
+  // Comma-separated emails granted super-admin (env is the source of truth).
+  SUPER_ADMIN_EMAILS: z.string().optional(),
 });
 
 const parsed = EnvSchema.safeParse(process.env);
@@ -23,3 +25,11 @@ if (!parsed.success) {
 export const env = parsed.data;
 export const isProd = env.NODE_ENV === 'production';
 export const hasGoogleAuth = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
+
+/** Normalized set of super-admin emails (lowercased, de-duped, blanks dropped). */
+export const superAdminEmails: ReadonlySet<string> = new Set(
+  (env.SUPER_ADMIN_EMAILS ?? '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean),
+);
