@@ -12,6 +12,9 @@ const EnvSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   // Comma-separated emails granted super-admin (env is the source of truth).
   SUPER_ADMIN_EMAILS: z.string().optional(),
+  // MCP debug server — if not set, /api/mcp returns 503.
+  // Generate: openssl rand -hex 32
+  MCP_ADMIN_TOKEN: z.string().min(32).optional(),
 });
 
 const parsed = EnvSchema.safeParse(process.env);

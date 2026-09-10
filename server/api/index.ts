@@ -4,6 +4,7 @@ import { auth } from '../auth';
 import { db } from '../db';
 import { post } from '../db/schema';
 import { logger } from '../logger';
+import { mcpPlugin } from '../mcp';
 import { adminApi } from './admin';
 
 /**
@@ -23,6 +24,8 @@ export const api = new Elysia({ prefix: '/api' })
   .mount(auth.handler)
   // Admin console endpoints (self-guarded by role).
   .use(adminApi)
+  // MCP debug server at /api/mcp — protected by MCP_ADMIN_TOKEN bearer or query param.
+  .use(mcpPlugin)
   // Derive the session for downstream handlers.
   .derive(async ({ request }) => {
     const s = await getSession(request.headers);
