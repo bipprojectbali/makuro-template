@@ -5,6 +5,7 @@ import {
   Button,
   Group,
   Pagination,
+  Paper,
   Stack,
   Table,
   Text,
@@ -177,7 +178,8 @@ export default function LoginLogsPage() {
         />
       </Group>
 
-      <Box style={{ overflowX: 'auto' }}>
+      {/* Desktop table */}
+      <Box style={{ overflowX: 'auto' }} visibleFrom="sm">
         <Table striped highlightOnHover withTableBorder withColumnBorders fz="xs">
           <Table.Thead>
             <Table.Tr>
@@ -252,6 +254,43 @@ export default function LoginLogsPage() {
           </Table.Tbody>
         </Table>
       </Box>
+
+      {/* Mobile card list */}
+      <Stack gap="xs" hiddenFrom="sm">
+        {rows.map((r) => (
+          <Paper key={r.id} withBorder p="sm" radius="md">
+            <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
+              <Group gap="xs" wrap="nowrap" align="flex-start" style={{ flex: 1, minWidth: 0 }}>
+                <Avatar src={r.userImage} size={36} radius="xl" style={{ flexShrink: 0 }}>
+                  {r.userName ? r.userName.charAt(0).toUpperCase() : '?'}
+                </Avatar>
+                <Stack gap={2} style={{ minWidth: 0 }}>
+                  <Text size="sm" fw={500} truncate>{r.userName ?? '—'}</Text>
+                  <Text ff="monospace" size="xs" c="dimmed" truncate>{r.userId}</Text>
+                  <Group gap={4} wrap="nowrap">
+                    <Text size="xs" c="dimmed">{fmt(r.createdAt)}</Text>
+                    {r.ip && <Text size="xs" c="dimmed">· {r.ip}</Text>}
+                  </Group>
+                </Stack>
+              </Group>
+              <ActionIcon
+                size="sm"
+                color="red"
+                variant="subtle"
+                loading={deleting === r.id}
+                onClick={() => deleteRow(r.id)}
+                aria-label="Hapus"
+                style={{ flexShrink: 0 }}
+              >
+                <FiTrash2 size={14} />
+              </ActionIcon>
+            </Group>
+          </Paper>
+        ))}
+        {rows.length === 0 && !loading && (
+          <Text ta="center" c="dimmed" size="sm" py="md">Belum ada login tercatat.</Text>
+        )}
+      </Stack>
 
       <Group justify="space-between" align="center">
         <Text size="xs" c="dimmed">

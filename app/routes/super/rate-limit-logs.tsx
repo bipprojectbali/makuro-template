@@ -5,6 +5,7 @@ import {
   Button,
   Group,
   Pagination,
+  Paper,
   Stack,
   Table,
   Text,
@@ -175,7 +176,8 @@ export default function RateLimitLogsPage() {
         />
       </Group>
 
-      <Box style={{ overflowX: 'auto' }}>
+      {/* Desktop table */}
+      <Box style={{ overflowX: 'auto' }} visibleFrom="sm">
         <Table striped highlightOnHover withTableBorder withColumnBorders fz="xs">
           <Table.Thead>
             <Table.Tr>
@@ -238,6 +240,44 @@ export default function RateLimitLogsPage() {
           </Table.Tbody>
         </Table>
       </Box>
+
+      {/* Mobile card list */}
+      <Stack gap="xs" hiddenFrom="sm">
+        {rows.map((r) => (
+          <Paper key={r.id} withBorder p="sm" radius="md">
+            <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
+              <Stack gap={4} style={{ minWidth: 0, flex: 1 }}>
+                <Group gap="xs" wrap="nowrap" align="center">
+                  <Badge color="orange" size="xs" ff="monospace" style={{ flexShrink: 0 }}>
+                    {r.ip ?? '—'}
+                  </Badge>
+                  <Text ff="monospace" size="xs" fw={500} truncate style={{ minWidth: 0 }}>
+                    {r.path}
+                  </Text>
+                </Group>
+                <Text size="xs" c="dimmed">{fmt(r.createdAt)}</Text>
+                {r.userId && (
+                  <Text ff="monospace" size="xs" c="dimmed" truncate>{r.userId}</Text>
+                )}
+              </Stack>
+              <ActionIcon
+                size="sm"
+                color="red"
+                variant="subtle"
+                loading={deleting === r.id}
+                onClick={() => deleteRow(r.id)}
+                aria-label="Hapus"
+                style={{ flexShrink: 0 }}
+              >
+                <FiTrash2 size={14} />
+              </ActionIcon>
+            </Group>
+          </Paper>
+        ))}
+        {rows.length === 0 && !loading && (
+          <Text ta="center" c="dimmed" size="sm" py="md">Belum ada request yang di-rate-limit.</Text>
+        )}
+      </Stack>
 
       <Group justify="space-between" align="center">
         <Text size="xs" c="dimmed">

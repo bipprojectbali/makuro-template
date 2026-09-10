@@ -5,6 +5,7 @@ import {
   Button,
   Group,
   Pagination,
+  Paper,
   Stack,
   Table,
   Text,
@@ -207,7 +208,8 @@ export default function VisitsPage() {
         </Button>
       </Group>
 
-      <Box style={{ overflowX: 'auto' }}>
+      {/* Desktop table */}
+      <Box style={{ overflowX: 'auto' }} visibleFrom="sm">
         <Table striped highlightOnHover withTableBorder withColumnBorders fz="xs">
           <Table.Thead>
             <Table.Tr>
@@ -284,6 +286,51 @@ export default function VisitsPage() {
           </Table.Tbody>
         </Table>
       </Box>
+
+      {/* Mobile card list */}
+      <Stack gap="xs" hiddenFrom="sm">
+        {rows.map((r) => (
+          <Paper key={r.id} withBorder p="sm" radius="md">
+            <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
+              <Stack gap={4} style={{ minWidth: 0, flex: 1 }}>
+                <Group gap="xs" wrap="nowrap" align="center">
+                  {r.isBot ? (
+                    <Tooltip label={r.botKind ?? 'bot'} withArrow>
+                      <Badge color="red" size="xs" style={{ flexShrink: 0 }}>bot</Badge>
+                    </Tooltip>
+                  ) : (
+                    <Badge color="green" size="xs" style={{ flexShrink: 0 }}>human</Badge>
+                  )}
+                  <Text ff="monospace" size="sm" fw={500} truncate style={{ minWidth: 0 }}>
+                    {r.path}
+                  </Text>
+                </Group>
+                <Group gap={4} wrap="nowrap">
+                  <Text size="xs" c="dimmed">{fmt(r.createdAt)}</Text>
+                  {r.ip && <Text size="xs" c="dimmed">· {r.ip}</Text>}
+                </Group>
+                {r.userId && (
+                  <Text ff="monospace" size="xs" c="dimmed" truncate>{r.userId}</Text>
+                )}
+              </Stack>
+              <ActionIcon
+                size="sm"
+                color="red"
+                variant="subtle"
+                loading={deleting === r.id}
+                onClick={() => deleteRow(r.id)}
+                aria-label="Hapus"
+                style={{ flexShrink: 0 }}
+              >
+                <FiTrash2 size={14} />
+              </ActionIcon>
+            </Group>
+          </Paper>
+        ))}
+        {rows.length === 0 && !loading && (
+          <Text ta="center" c="dimmed" size="sm" py="md">Belum ada kunjungan.</Text>
+        )}
+      </Stack>
 
       <Group justify="space-between" align="center">
         <Text size="xs" c="dimmed">

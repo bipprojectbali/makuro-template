@@ -160,10 +160,39 @@ Semua tabel harus scrollable horizontal DAN menyembunyikan kolom tidak esensial 
 
 Alternatif: `<Table.ScrollContainer minWidth={640}>` bila semua kolom harus tampil.
 
-**Prioritas kolom yang wajib tampil di mobile:** kolom identitas utama (nama/path) + status + aksi.
-**Kolom yang boleh disembunyikan di mobile:** IP, User Agent, User ID, timestamp sekunder, kolom detail.
+**Untuk tabel dengan 4+ kolom data kaya — wajib gunakan card/list view di mobile:**
 
-**Blocker:** Tabel tanpa `overflowX: 'auto'` wrapper atau `Table.ScrollContainer` → STOP.
+```tsx
+{/* Desktop: tabel biasa */}
+<Box style={{ overflowX: 'auto' }} visibleFrom="sm">
+  <Table>...</Table>
+</Box>
+
+{/* Mobile: card list — semua data terlihat tanpa scroll horizontal */}
+<Stack gap="xs" hiddenFrom="sm">
+  {rows.map((r) => (
+    <Paper key={r.id} withBorder p="sm" radius="md">
+      <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
+        <Stack gap={4} style={{ minWidth: 0, flex: 1 }}>
+          {/* Data primer: path/nama/judul — truncate dengan minWidth: 0 */}
+          <Text truncate style={{ minWidth: 0 }}>{r.path}</Text>
+          {/* Data sekunder: timestamp, IP, ID — dimmed, kecil */}
+          <Text size="xs" c="dimmed">{fmt(r.createdAt)}</Text>
+        </Stack>
+        {/* Aksi: delete, edit — flexShrink: 0 agar tidak ikut dipersempit */}
+        <ActionIcon style={{ flexShrink: 0 }}>...</ActionIcon>
+      </Group>
+    </Paper>
+  ))}
+</Stack>
+```
+
+Pola ini berlaku untuk semua halaman log, tabel user, dan tabel data apapun dengan ≥4 kolom.
+
+**Prioritas kolom yang wajib tampil di mobile:** kolom identitas utama (nama/path) + status + aksi.
+**Kolom yang boleh disembunyikan di mobile dengan `visibleFrom="sm"`:** IP, User Agent, User ID, timestamp sekunder, kolom detail.
+
+**Blocker:** Tabel ≥4 kolom tanpa card view mobile DAN tanpa `overflowX: 'auto'` → STOP.
 
 ### 3. Page Header — Tombol Action Wajib Wrap
 
