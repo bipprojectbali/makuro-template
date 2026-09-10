@@ -21,6 +21,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="color-scheme" content="light dark" />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <Meta />
         <Links />
         {/*
@@ -43,6 +44,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
 :root[data-mantine-color-scheme='dark'] { color-scheme: dark; background-color: #242424; }
 :root[data-mantine-color-scheme='light'] { color-scheme: light; background-color: #fff; }
 html, body { background-color: inherit; }
+
+/* ThemeToggle: two variants always in DOM; CSS picks the visible one.
+   ColorSchemeScript sets data-mantine-color-scheme before first paint,
+   so the correct button is shown from the very first pixel — no flash. */
+[data-mantine-color-scheme='dark'] .mk-cs-light { display: none !important; }
+[data-mantine-color-scheme='light'] .mk-cs-dark  { display: none !important; }
+:root:not([data-mantine-color-scheme]) .mk-cs-dark { display: none !important; }
 `,
           }}
         />

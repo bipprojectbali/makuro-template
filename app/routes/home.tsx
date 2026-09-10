@@ -1,5 +1,6 @@
 import { Anchor, Badge, Button, Card, Container, Group, Stack, Text, Title } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
+import { FiGithub, FiGrid, FiLogIn } from 'react-icons/fi';
 import { Link } from 'react-router';
 import { client } from '~/lib/eden';
 import type { Route } from './+types/home';
@@ -70,15 +71,20 @@ export default function Home() {
         </Group>
 
         <Group>
-          <Button component={Link} to="/login">
+          <Button component={Link} to="/login" leftSection={<FiLogIn size={16} />}>
             Login / Sign up
           </Button>
-          <Button component={Link} to="/dashboard" variant="default">
-            Dashboard
+          <Button component={Link} to="/go" variant="default" leftSection={<FiGrid size={16} />}>
+            Open app
           </Button>
         </Group>
 
-        <Anchor href="https://github.com/SaltyAom/elysia-fullstack-example" size="sm">
+        <Anchor
+          href="https://github.com/SaltyAom/elysia-fullstack-example"
+          size="sm"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+        >
+          <FiGithub size={14} />
           Reference: Elysia fullstack example
         </Anchor>
       </Stack>
