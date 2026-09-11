@@ -3,9 +3,11 @@ import {
   Alert,
   Badge,
   Button,
+  Divider,
   Group,
   Loader,
   Pagination,
+  Paper,
   Select,
   Stack,
   Table,
@@ -13,6 +15,7 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
+import { modals } from '@mantine/modals';
 import {
   canActOnTarget,
   canImpersonate,
@@ -27,6 +30,10 @@ import { FiLogIn, FiSearch, FiSlash, FiTrash2, FiUserCheck } from 'react-icons/f
 import { useApp } from '~/lib/app-context';
 import { authClient } from '~/lib/auth-client';
 import { client } from '~/lib/eden';
+
+export function meta() {
+  return [{ title: 'Users — Makuro Dev' }];
+}
 
 const PAGE_SIZE = 20;
 
@@ -123,10 +130,22 @@ export default function Dev() {
                 { value: ROLES.ADMIN, label: 'admin' },
               ]}
               onChange={(val) => {
-                if (val && val !== target)
-                  run(u.id, () =>
-                    client.api.admin.users({ id: u.id }).role.post({ role: val as Role }),
-                  );
+                if (!val || val === target) return;
+                const newRole = val as Role;
+                modals.openConfirmModal({
+                  title: 'Ubah role pengguna?',
+                  children: (
+                    <Text size="sm">
+                      Role <b>{u.name}</b> akan diubah dari <b>{target}</b> ke <b>{newRole}</b>.
+                    </Text>
+                  ),
+                  labels: { confirm: 'Ubah role', cancel: 'Batal' },
+                  onCancel: () => setUsers((prev) => [...prev]),
+                  onConfirm: () =>
+                    run(u.id, () =>
+                      client.api.admin.users({ id: u.id }).role.post({ role: newRole }),
+                    ),
+                });
               }}
             />
           ) : (
@@ -171,7 +190,20 @@ export default function Dev() {
                   color="red"
                   loading={busy}
                   leftSection={<FiSlash size={14} />}
-                  onClick={() => run(u.id, () => client.api.admin.users({ id: u.id }).ban.post({}))}
+                  onClick={() =>
+                    modals.openConfirmModal({
+                      title: 'Ban pengguna?',
+                      children: (
+                        <Text size="sm">
+                          <b>{u.name}</b> tidak akan bisa login. Kamu bisa unban kapan saja.
+                        </Text>
+                      ),
+                      labels: { confirm: 'Ban pengguna', cancel: 'Batal' },
+                      confirmProps: { color: 'red' },
+                      onConfirm: () =>
+                        run(u.id, () => client.api.admin.users({ id: u.id }).ban.post({})),
+                    })
+                  }
                 >
                   Ban
                 </Button>
@@ -192,8 +224,22 @@ export default function Dev() {
                 variant="subtle"
                 color="red"
                 loading={busy}
-                aria-label="Delete user"
-                onClick={() => run(u.id, () => client.api.admin.users({ id: u.id }).delete())}
+                aria-label="Hapus pengguna"
+                onClick={() =>
+                  modals.openConfirmModal({
+                    title: 'Hapus pengguna?',
+                    children: (
+                      <Text size="sm">
+                        <b>{u.name}</b> akan dihapus permanen beserta semua sesinya. Aksi ini tidak
+                        bisa dibatalkan.
+                      </Text>
+                    ),
+                    labels: { confirm: 'Hapus permanen', cancel: 'Batal' },
+                    confirmProps: { color: 'red' },
+                    onConfirm: () =>
+                      run(u.id, () => client.api.admin.users({ id: u.id }).delete()),
+                  })
+                }
               >
                 <FiTrash2 size={16} />
               </ActionIcon>
@@ -229,7 +275,7 @@ export default function Dev() {
           <Loader />
         </Group>
       ) : (
-        <Table.ScrollContainer minWidth={640}>
+        <Table.ScrollContainer minWidth={640} visibleFrom="sm">
           <Table verticalSpacing="sm" highlightOnHover>
             <Table.Thead>
               <Table.Tr>
@@ -240,10 +286,177 @@ export default function Dev() {
                 <Table.Th />
               </Table.Tr>
             </Table.Thead>
-            <Table.Tbody>{rows}</Table.Tbody>
+            <Table.Tbody>
+              {rows.length > 0 ? (
+                rows
+              ) : (
+                <Table.Tr>
+                  <Table.Td colSpan={5}>
+                    <Text c="dimmed" py="md" ta="center">
+                      {search
+                        ? `Tidak ada pengguna yang cocok dengan "${search}"`
+                        : 'Belum ada pengguna.'}
+                    </Text>
+                  </Table.Td>
+                </Table.Tr>
+              )}
+            </Table.Tbody>
           </Table>
         </Table.ScrollContainer>
       )}
+
+      {/* Mobile card list */}
+      {!loading && (
+        <Stack gap="xs" hiddenFrom="sm">
+          {users.length > 0 ? users.map((u) => {
+            const target = normalizeRole(u.role);
+            const isSelf = u.id === currentUserId;
+            const busy = busyId === u.id;
+            const editableRole = canSetRole(actorRole) && !isSelf && target !== ROLES.SUPER_ADMIN;
+            const canBan = !isSelf && target !== ROLES.SUPER_ADMIN && canActOnTarget(actorRole, target);
+            const showActions = canBan || (canImpersonate(actorRole) && !isSelf && target !== ROLES.SUPER_ADMIN) || (canSetRole(actorRole) && !isSelf && target !== ROLES.SUPER_ADMIN);
+
+            return (
+              <Paper key={u.id} withBorder p="sm" radius="md">
+                <Stack gap="xs">
+                  <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
+                    <Stack gap={2} style={{ minWidth: 0, flex: 1 }}>
+                      <Text fw={500} truncate>{u.name}</Text>
+                      <Text size="xs" c="dimmed" truncate>{u.email}</Text>
+                      <Text size="xs" c="dimmed">Bergabung {new Date(u.createdAt).toLocaleDateString()}</Text>
+                    </Stack>
+                    <Stack gap={4} align="flex-end" style={{ flexShrink: 0 }}>
+                      {editableRole ? (
+                        <Select
+                          size="xs"
+                          w={110}
+                          disabled={busy}
+                          value={target}
+                          data={[
+                            { value: ROLES.USER, label: 'user' },
+                            { value: ROLES.ADMIN, label: 'admin' },
+                          ]}
+                          onChange={(val) => {
+                            if (!val || val === target) return;
+                            const newRole = val as Role;
+                            modals.openConfirmModal({
+                              title: 'Ubah role pengguna?',
+                              children: (
+                                <Text size="sm">
+                                  Role <b>{u.name}</b> akan diubah dari <b>{target}</b> ke <b>{newRole}</b>.
+                                </Text>
+                              ),
+                              labels: { confirm: 'Ubah role', cancel: 'Batal' },
+                              onCancel: () => setUsers((prev) => [...prev]),
+                              onConfirm: () =>
+                                run(u.id, () =>
+                                  client.api.admin.users({ id: u.id }).role.post({ role: newRole }),
+                                ),
+                            });
+                          }}
+                        />
+                      ) : (
+                        <Badge variant="light" color={isAdminRole(target) ? 'blue' : 'gray'} size="sm">
+                          {target}
+                        </Badge>
+                      )}
+                      <Badge variant="light" color={u.banned ? 'red' : 'green'} size="sm">
+                        {u.banned ? 'banned' : 'active'}
+                      </Badge>
+                    </Stack>
+                  </Group>
+
+                  {showActions && (
+                    <>
+                      <Divider />
+                      <Group gap="xs" wrap="wrap">
+                        {canBan && (u.banned ? (
+                          <Button
+                            size="xs"
+                            variant="light"
+                            loading={busy}
+                            leftSection={<FiUserCheck size={14} />}
+                            onClick={() =>
+                              run(u.id, () => client.api.admin.users({ id: u.id }).unban.post({}))
+                            }
+                          >
+                            Unban
+                          </Button>
+                        ) : (
+                          <Button
+                            size="xs"
+                            variant="light"
+                            color="red"
+                            loading={busy}
+                            leftSection={<FiSlash size={14} />}
+                            onClick={() =>
+                              modals.openConfirmModal({
+                                title: 'Ban pengguna?',
+                                children: (
+                                  <Text size="sm">
+                                    <b>{u.name}</b> tidak akan bisa login. Kamu bisa unban kapan saja.
+                                  </Text>
+                                ),
+                                labels: { confirm: 'Ban pengguna', cancel: 'Batal' },
+                                confirmProps: { color: 'red' },
+                                onConfirm: () =>
+                                  run(u.id, () => client.api.admin.users({ id: u.id }).ban.post({})),
+                              })
+                            }
+                          >
+                            Ban
+                          </Button>
+                        ))}
+                        {canImpersonate(actorRole) && !isSelf && (
+                          <Button
+                            size="xs"
+                            variant="subtle"
+                            loading={busy}
+                            leftSection={<FiLogIn size={14} />}
+                            onClick={() => impersonate(u.id)}
+                          >
+                            Impersonate
+                          </Button>
+                        )}
+                        {canSetRole(actorRole) && !isSelf && (
+                          <ActionIcon
+                            size="sm"
+                            variant="subtle"
+                            color="red"
+                            loading={busy}
+                            aria-label="Hapus pengguna"
+                            onClick={() =>
+                              modals.openConfirmModal({
+                                title: 'Hapus pengguna?',
+                                children: (
+                                  <Text size="sm">
+                                    <b>{u.name}</b> akan dihapus permanen beserta semua sesinya. Aksi ini tidak bisa dibatalkan.
+                                  </Text>
+                                ),
+                                labels: { confirm: 'Hapus permanen', cancel: 'Batal' },
+                                confirmProps: { color: 'red' },
+                                onConfirm: () =>
+                                  run(u.id, () => client.api.admin.users({ id: u.id }).delete()),
+                              })
+                            }
+                          >
+                            <FiTrash2 size={14} />
+                          </ActionIcon>
+                        )}
+                      </Group>
+                    </>
+                  )}
+                </Stack>
+              </Paper>
+            );
+          }) : (
+            <Text c="dimmed" py="md" ta="center">
+              {search ? `Tidak ada pengguna yang cocok dengan "${search}"` : 'Belum ada pengguna.'}
+            </Text>
+          )}
+        </Stack>
+      )}
+
       {pageCount > 1 && (
         <Group justify="flex-end">
           <Pagination value={page} onChange={setPage} total={pageCount} />

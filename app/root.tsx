@@ -1,6 +1,7 @@
 import '@mantine/core/styles.css';
 
 import { ColorSchemeScript, MantineProvider, mantineHtmlProps } from '@mantine/core';
+import { ModalsProvider } from '@mantine/modals';
 import { QueryClientProvider } from '@tanstack/react-query';
 import {
   isRouteErrorResponse,
@@ -13,6 +14,13 @@ import {
 import type { Route } from './+types/root';
 import { queryClient } from './lib/query';
 import { theme } from './lib/theme';
+
+export function meta(_: Route.MetaArgs) {
+  return [
+    { title: 'Makuro' },
+    { name: 'description', content: 'Bun + Elysia + React Router v8 SSR + Drizzle + Better Auth. Fullstack template siap production.' },
+  ];
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -68,7 +76,9 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <MantineProvider theme={theme} defaultColorScheme="auto">
-        <Outlet />
+        <ModalsProvider>
+          <Outlet />
+        </ModalsProvider>
       </MantineProvider>
     </QueryClientProvider>
   );

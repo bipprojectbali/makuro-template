@@ -1,14 +1,37 @@
 import { requireRole } from '@server/guard';
 import { ROLES } from '@server/permissions';
 import { getSidebarCollapsed } from '@server/sidebar';
-import { FiHome, FiUsers } from 'react-icons/fi';
+import {
+  FiDatabase,
+  FiHome,
+  FiList,
+  FiLogIn,
+  FiSettings,
+  FiShield,
+  FiUser,
+  FiUsers,
+} from 'react-icons/fi';
 import { Outlet } from 'react-router';
 import { AppFrame, type NavItem } from '~/components/AppFrame';
 import type { AppContext } from '~/lib/app-context';
 import type { Route } from './+types/layout';
 
-const NAV: NavItem[] = [{ to: '/dev', label: 'Users', icon: FiUsers }];
-const OTHER: NavItem[] = [{ to: '/dashboard', label: 'Dashboard', icon: FiHome }];
+export function meta(_: Route.MetaArgs) {
+  return [{ title: 'Dev Console — Makuro' }];
+}
+
+const NAV: NavItem[] = [
+  { to: '/dev', label: 'Users', icon: FiUsers },
+  { to: '/dev/db-schema', label: 'DB Schema', icon: FiDatabase },
+  { to: '/dev/visits', label: 'Visits', icon: FiList },
+  { to: '/dev/login-logs', label: 'Login Logs', icon: FiLogIn },
+  { to: '/dev/rate-limit-logs', label: 'Rate Limits', icon: FiShield },
+  { to: '/dev/settings', label: 'Settings', icon: FiSettings },
+];
+const OTHER: NavItem[] = [
+  { to: '/dashboard', label: 'Dashboard', icon: FiHome },
+  { to: '/profile', label: 'Profile', icon: FiUser },
+];
 
 export async function loader({ request }: Route.LoaderArgs) {
   const auth = await requireRole(request, ROLES.SUPER_ADMIN);

@@ -69,7 +69,7 @@ export function AppFrame({
   );
   const secondary = secondaryNav ?? [];
   const homePath = navItems[0]?.to ?? '/';
-  const isActive = (to: string) => pathname === to || pathname.startsWith(`${to}/`);
+  const isActive = (to: string) => pathname === to;
 
   function toggleCollapsed() {
     setCollapsed((c) => {
@@ -118,6 +118,7 @@ export function AppFrame({
 
   return (
     <AppShell
+      header={{ height: { base: 52, sm: 0 } }}
       navbar={{
         width: collapsed ? 72 : 240,
         breakpoint: 'sm',
@@ -125,17 +126,23 @@ export function AppFrame({
       }}
       padding="md"
     >
-      <Burger
-        opened={mobileOpened}
-        onClick={toggleMobile}
-        hiddenFrom="sm"
-        size="sm"
-        pos="fixed"
-        top={12}
-        left={12}
-        style={{ zIndex: 200 }}
-        aria-label="Toggle navigation"
-      />
+      {/* Mobile-only top header — provides space + burger so content never overlaps */}
+      <AppShell.Header withBorder={false} hiddenFrom="sm">
+        <Group h="100%" px="md" gap="sm">
+          <Burger
+            opened={mobileOpened}
+            onClick={toggleMobile}
+            size="sm"
+            aria-label="Toggle navigation"
+          />
+          <Link to={homePath} style={{ textDecoration: 'none', color: 'inherit', minWidth: 0 }}>
+            <Group gap={6} wrap="nowrap">
+              <FiZap size={18} />
+              <Text fw={700} truncate>Makuro</Text>
+            </Group>
+          </Link>
+        </Group>
+      </AppShell.Header>
 
       <AppShell.Navbar p="sm">
         <AppShell.Section>

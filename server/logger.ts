@@ -1,22 +1,56 @@
 import pino from 'pino';
-import { logBuffer } from './mcp/log-buffer';
 import { env, isProd } from './env';
+import { logBuffer } from './mcp/log-buffer';
 
-const bufferStream = logBuffer.asWritable();
+// Bun.isStandaloneExecutable is true when running inside a compiled binary (bun build --compile).
+// In binary mode we avoid pino-pretty's worker threads and file-based logging.
+const isStandalone = Bun.isStandaloneExecutable;
 
-// Primary stream: pino-pretty in dev (via worker thread), stdout in prod.
-const primaryStream = isProd
-  ? process.stdout
-  : pino.transport({
-      target: 'pino-pretty',
-      options: { colorize: true, translateTime: 'SYS:HH:MM:ss', ignore: 'pid,hostname' },
+// In-memory ring buffer feeding the MCP log tools. Layered into every mode
+// (dev, prod, binary) at warn+ so an agent can read recent errors via /api/mcp.
+const bufferStream = { stream: logBuffer.asWritable(), level: 'warn' as const };
+
+async function createLogger() {
+  if (isStandalone) {
+    // Binary mode: stdout-only JSON logging — no worker threads, no FS writes.
+    // Log rotation at the process-manager / container layer (systemd, Docker, etc.).
+    return pino(
+      { level: 'info', base: { env: env.NODE_ENV } },
+      pino.multistream([{ stream: process.stdout, level: 'info' as const }, bufferStream]),
+    );
+  }
+  if (isProd) {
+    // Regular prod (bun run start): stdout + daily-rotating log file via pino-roll.
+    // pino-roll's build() creates a SonicBoom stream (no worker threads).
+    const build = (await import('pino-roll')).default;
+    const rollStream = await build('logs/app.log', {
+      frequency: '1d',
+      size: '10m',
+      limit: { count: 7 },
     });
+    return pino(
+      { level: 'info', base: { env: env.NODE_ENV } },
+      pino.multistream([
+        { stream: process.stdout, level: 'info' as const },
+        { stream: rollStream, level: 'warn' as const },
+        bufferStream,
+      ]),
+    );
+  }
+  // Dev: pretty console (worker thread) layered with the MCP buffer via multistream.
+  return pino(
+    { level: 'debug', base: { env: env.NODE_ENV } },
+    pino.multistream([
+      {
+        stream: pino.transport({
+          target: 'pino-pretty',
+          options: { colorize: true, translateTime: 'SYS:HH:MM:ss', ignore: 'pid,hostname' },
+        }),
+        level: 'debug' as const,
+      },
+      bufferStream,
+    ]),
+  );
+}
 
-export const logger = pino(
-  { level: isProd ? 'info' : 'debug', base: { env: env.NODE_ENV } },
-  pino.multistream([
-    { stream: primaryStream, level: isProd ? 'info' : 'debug' },
-    // Buffer captures warn+ (error/warn only) for MCP log tools.
-    { stream: bufferStream, level: 'warn' },
-  ]),
-);
+export const logger = await createLogger();
