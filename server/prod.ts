@@ -60,7 +60,7 @@ const server = Bun.serve({
     const ip = remoteIp
       ? (remoteIp.address.startsWith('::ffff:') ? remoteIp.address.slice(7) : remoteIp.address)
       : null;
-    void recordVisit(request, null, ip);
+    void recordVisit(request, ip);
     return handler(request);
   },
 });

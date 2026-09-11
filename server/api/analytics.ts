@@ -41,6 +41,7 @@ export const analyticsApi = new Elysia({ prefix: '/analytics' })
           ? or(
               ilike(visitLog.ip, `%${query.search}%`),
               ilike(visitLog.path, `%${query.search}%`),
+              ilike(user.name, `%${query.search}%`),
             )
           : undefined,
       );
@@ -54,14 +55,21 @@ export const analyticsApi = new Elysia({ prefix: '/analytics' })
             isBot: visitLog.isBot,
             botKind: visitLog.botKind,
             userId: visitLog.userId,
+            userName: user.name,
+            userImage: user.image,
             createdAt: visitLog.createdAt,
           })
           .from(visitLog)
+          .leftJoin(user, eq(visitLog.userId, user.id))
           .where(where)
           .orderBy(order(visitLog.createdAt))
           .limit(limit)
           .offset(offset),
-        db.select({ count: sql<number>`count(*)::int` }).from(visitLog).where(where),
+        db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(visitLog)
+          .leftJoin(user, eq(visitLog.userId, user.id))
+          .where(where),
       ]);
 
       return { rows, total: totals?.count ?? 0, page, limit };

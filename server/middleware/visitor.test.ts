@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test';
+import { normalizeIp } from './visitor';
 
 // Test the bot classification logic in isolation by importing just the helpers.
 // We can't import recordVisit directly (it hits the DB), so we test the
@@ -38,5 +39,25 @@ describe('bot detection (isbot)', () => {
   it('handles empty user agent gracefully', async () => {
     const { isbot } = await import('isbot');
     expect(() => isbot('')).not.toThrow();
+  });
+});
+
+describe('normalizeIp', () => {
+  it('rewrites IPv6 loopback ::1 to 127.0.0.1 (matches login_log)', () => {
+    expect(normalizeIp('::1')).toBe('127.0.0.1');
+  });
+
+  it('strips IPv4-mapped IPv6 prefix ::ffff:', () => {
+    expect(normalizeIp('::ffff:203.0.113.5')).toBe('203.0.113.5');
+  });
+
+  it('leaves a plain IPv4 address unchanged', () => {
+    expect(normalizeIp('198.51.100.7')).toBe('198.51.100.7');
+  });
+
+  it('returns null for null, undefined, or blank input', () => {
+    expect(normalizeIp(null)).toBeNull();
+    expect(normalizeIp(undefined)).toBeNull();
+    expect(normalizeIp('   ')).toBeNull();
   });
 });

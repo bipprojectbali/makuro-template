@@ -1,5 +1,6 @@
 import {
   ActionIcon,
+  Avatar,
   Badge,
   Box,
   Button,
@@ -32,6 +33,8 @@ type VisitRow = {
   isBot: boolean;
   botKind: string | null;
   userId: string | null;
+  userName: string | null;
+  userImage: string | null;
   createdAt: string;
 };
 
@@ -50,6 +53,7 @@ export default function VisitsPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [debouncedSearch] = useDebouncedValue(search, 300);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey is a manual refetch trigger (delete/purge/refresh)
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -191,7 +195,7 @@ export default function VisitsPage() {
 
       <Group gap="xs">
         <TextInput
-          placeholder="Cari IP atau path…"
+          placeholder="Cari IP, path, atau nama user…"
           leftSection={<FiSearch size={14} />}
           value={search}
           onChange={(e) => applyFilter(() => setSearch(e.currentTarget.value))}
@@ -256,9 +260,25 @@ export default function VisitsPage() {
                   )}
                 </Table.Td>
                 <Table.Td>
-                  <Text ff="monospace" size="xs" c="dimmed" truncate maw={130}>
-                    {r.userId ?? '—'}
-                  </Text>
+                  {r.userId ? (
+                    <Group gap="xs" wrap="nowrap">
+                      <Avatar src={r.userImage} size={24} radius="xl">
+                        {r.userName ? r.userName.charAt(0).toUpperCase() : '?'}
+                      </Avatar>
+                      <Stack gap={0}>
+                        <Text size="xs" fw={500} lh={1.3}>
+                          {r.userName ?? '—'}
+                        </Text>
+                        <Text ff="monospace" size="xs" c="dimmed" truncate maw={130} lh={1.3}>
+                          {r.userId}
+                        </Text>
+                      </Stack>
+                    </Group>
+                  ) : (
+                    <Text size="xs" c="dimmed">
+                      —
+                    </Text>
+                  )}
                 </Table.Td>
                 <Table.Td>
                   <ActionIcon
@@ -310,7 +330,14 @@ export default function VisitsPage() {
                   {r.ip && <Text size="xs" c="dimmed">· {r.ip}</Text>}
                 </Group>
                 {r.userId && (
-                  <Text ff="monospace" size="xs" c="dimmed" truncate>{r.userId}</Text>
+                  <Group gap={6} wrap="nowrap" mt={2}>
+                    <Avatar src={r.userImage} size={20} radius="xl">
+                      {r.userName ? r.userName.charAt(0).toUpperCase() : '?'}
+                    </Avatar>
+                    <Text size="xs" fw={500} truncate>
+                      {r.userName ?? r.userId}
+                    </Text>
+                  </Group>
                 )}
               </Stack>
               <ActionIcon

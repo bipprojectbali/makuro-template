@@ -407,7 +407,7 @@ export default function Dev() {
                             Ban
                           </Button>
                         ))}
-                        {canImpersonate(actorRole) && !isSelf && target !== ROLES.SUPER_ADMIN && (
+                        {canImpersonate(actorRole) && !isSelf && (
                           <Button
                             size="xs"
                             variant="subtle"
@@ -418,7 +418,7 @@ export default function Dev() {
                             Impersonate
                           </Button>
                         )}
-                        {canSetRole(actorRole) && !isSelf && target !== ROLES.SUPER_ADMIN && (
+                        {canSetRole(actorRole) && !isSelf && (
                           <ActionIcon
                             size="sm"
                             variant="subtle"

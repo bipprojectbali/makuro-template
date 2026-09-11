@@ -128,6 +128,55 @@ describe('GET /analytics/visits', () => {
   });
 });
 
+describe('GET /analytics/visits — user attribution', () => {
+  const testUserId = `visit-user-${crypto.randomUUID()}`;
+  const userName = 'Visit Attributed User';
+  let visitId = '';
+
+  beforeAll(async () => {
+    await db.insert(user).values({
+      id: testUserId,
+      name: userName,
+      email: `${testUserId}@test.local`,
+      image: 'https://example.com/avatar.png',
+      emailVerified: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  });
+
+  afterAll(async () => {
+    await db.delete(user).where(eq(user.id, testUserId)).catch(() => {});
+  });
+
+  beforeEach(async () => {
+    const [row] = await db
+      .insert(visitLog)
+      .values({ path: '/attributed', ip: '20.1.1.1', isBot: false, userId: testUserId })
+      .returning({ id: visitLog.id });
+    visitId = row.id;
+  });
+
+  afterEach(async () => {
+    if (visitId) await db.delete(visitLog).where(eq(visitLog.id, visitId)).catch(() => {});
+  });
+
+  test('joins user table: returns userName and userImage for logged-in visits', async () => {
+    const { body } = await get('/analytics/visits', { search: '20.1.1.1' });
+    const rows = body.rows as Array<{ userId: string; userName: string; userImage: string }>;
+    const row = rows.find((r) => r.userId === testUserId);
+    expect(row).toBeDefined();
+    expect(row?.userName).toBe(userName);
+    expect(row?.userImage).toBe('https://example.com/avatar.png');
+  });
+
+  test('search by user name filters results', async () => {
+    const { body } = await get('/analytics/visits', { search: 'Visit Attributed' });
+    const rows = body.rows as Array<{ userId: string }>;
+    expect(rows.some((r) => r.userId === testUserId)).toBe(true);
+  });
+});
+
 describe('DELETE /analytics/visits/:id', () => {
   let rowId = '';
 
