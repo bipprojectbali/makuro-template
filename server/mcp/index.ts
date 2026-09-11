@@ -18,6 +18,11 @@ function resolveToken(request: Request): string | null {
 export const mcpPlugin = mcp({
   serverInfo: { name: 'makuro-debug', version: '1.0.0' },
   capabilities: { tools: {} },
+  // Reply to each POST with a plain application/json body instead of an SSE
+  // stream. The MCP Streamable HTTP spec makes SSE optional for single
+  // request/response calls, and elysia-mcp 0.1.1's SSE writer double-prefixes
+  // frames (`data: event: message`), which spec-compliant clients cannot parse.
+  enableJsonResponse: true,
   authentication: async (ctx) => {
     if (!env.MCP_ADMIN_TOKEN) {
       return {
