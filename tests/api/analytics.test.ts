@@ -12,14 +12,14 @@ import Elysia from 'elysia';
 
 // Hoist mock before analytics.ts resolves its guard import.
 // bun:test hoists mock.module() calls above static imports automatically.
-mock.module('../guard', () => ({
+mock.module('../../server/guard', () => ({
   requireRole: async () => ({ user: { id: 'u-test' }, role: 'super-admin' }),
 }));
 
 import { asc, desc, eq } from 'drizzle-orm';
-import { db } from '../db';
-import { loginLog, rateLimitLog, user, visitLog } from '../db/schema';
-import { analyticsApi, pageParams } from './analytics';
+import { db } from '../../server/db';
+import { loginLog, rateLimitLog, user, visitLog } from '../../server/db/schema';
+import { analyticsApi, pageParams } from '../../server/api/analytics';
 
 const app = new Elysia().use(analyticsApi);
 

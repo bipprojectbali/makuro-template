@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun run --hot server/dev.ts",
-    "test": "NODE_ENV=test bun test server",
+    "test": "NODE_ENV=test bun test tests",
     "build": "react-router build",
     "start": "NODE_ENV=production bun run server/prod.ts",
     "build:binary": "react-router build && bun build --compile --asset ./build/client --minify server/binary-entry.ts --outfile makuro",

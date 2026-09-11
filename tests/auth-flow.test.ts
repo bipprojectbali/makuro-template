@@ -12,10 +12,10 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { redirect } from 'react-router';
-import { api } from './api';
-import { db } from './db';
-import { user } from './db/schema';
-import { redirectToHome } from './guard';
+import { api } from '../server/api';
+import { db } from '../server/db';
+import { user } from '../server/db/schema';
+import { redirectToHome } from '../server/guard';
 
 const TEST_EMAIL = `auth-flow-${crypto.randomUUID()}@test.local`;
 const TEST_PASS = 'TestPass123!';

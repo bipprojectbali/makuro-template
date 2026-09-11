@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { checkRateLimit } from './rate-limiter';
+import { checkRateLimit } from '../../server/middleware/rate-limiter';
 
 describe('checkRateLimit', () => {
   it('allows requests under the limit', () => {

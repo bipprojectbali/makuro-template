@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import type { ServerResponse } from 'node:http';
-import { nodeToWebRequest, writeWebResponse } from './http-bridge';
+import { nodeToWebRequest, writeWebResponse } from '../server/http-bridge';
 
 function mockServerResponse() {
   const headers: Record<string, string | string[]> = {};

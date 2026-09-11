@@ -267,13 +267,13 @@ Saat bekerja dengan `bun build --compile --asset`:
 - **Frontend:** React Router v8 SSR, Mantine v9
 - **DB:** PostgreSQL + Drizzle ORM
 - **Auth:** Better Auth
-- **Test runner:** `bun test server` (bun:test)
+- **Test runner:** `bun run test` (bun:test)
 
 ## Test
 
-- Jalankan: `bun test server` (otomatis set `NODE_ENV=test`)
-- File test: `server/**/*.test.ts`
+- Jalankan: `bun run test` — script ini yang men-set `NODE_ENV=test`. **Jangan** jalankan `bun test tests` langsung: tanpa `NODE_ENV=test`, `server/db/index.ts` memakai `DATABASE_URL` (dev/prod), bukan test DB.
+- Lokasi test: semua di root `tests/**/*.test.ts`, mirror struktur `server/` (`tests/api/`, `tests/db/`, `tests/mcp/`, `tests/middleware/`, sisanya di `tests/`). Import ke source relatif ke `server/` (mis. `../../server/api/admin` dari `tests/api/`, `../server/roles` dari `tests/`).
 - **Test database:** set `DATABASE_URL_TEST` di `.env` — ketika `NODE_ENV=test`, `server/db/index.ts` otomatis pakai `DATABASE_URL_TEST` bukan `DATABASE_URL`. Jika tidak di-set, fallback ke `DATABASE_URL` (berbahaya untuk data produksi).
 - Migrasi test DB: `DATABASE_URL=<url_test> bun run db:migrate`
-- Guard bypass di integration test: `mock.module('../guard', () => ({ requireRole: async () => ({}) }))` — bun:test otomatis hoist `mock.module` di atas static imports
+- Guard bypass di integration test: `mock.module('../../server/guard', () => ({ requireRole: async () => ({}) }))` — bun:test otomatis hoist `mock.module` di atas static imports
 - Cleanup: gunakan `beforeEach`/`afterEach` untuk insert/delete row test spesifik (bukan `DELETE FROM table` global)

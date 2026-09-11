@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { LEVEL_NAMES, LogBuffer, logBuffer } from './log-buffer';
+import { LEVEL_NAMES, LogBuffer, logBuffer } from '../../server/mcp/log-buffer';
 
 // ── LogBuffer unit tests ─────────────────────────────────────────────────────
 

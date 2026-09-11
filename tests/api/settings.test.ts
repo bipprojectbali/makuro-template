@@ -2,15 +2,15 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { mock } from 'bun:test';
 
 // Bypass auth — settings PUT requires super-admin; GET is public.
-mock.module('../guard', () => ({
+mock.module('../../server/guard', () => ({
   requireRole: async () => ({ user: { id: 'u-super' }, role: 'super-admin' }),
 }));
 
 import Elysia from 'elysia';
 import { eq } from 'drizzle-orm';
-import { db } from '../db';
-import { appSetting } from '../db/schema';
-import { settingsApi } from './settings';
+import { db } from '../../server/db';
+import { appSetting } from '../../server/db/schema';
+import { settingsApi } from '../../server/api/settings';
 
 const app = new Elysia().use(settingsApi);
 

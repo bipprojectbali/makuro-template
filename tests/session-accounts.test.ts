@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { type DeviceSessionEntry, toAccountOptions } from './session-accounts';
+import { type DeviceSessionEntry, toAccountOptions } from '../server/session-accounts';
 
 const entry = (token: string, user: Partial<DeviceSessionEntry['user']>): DeviceSessionEntry => ({
   session: { token },

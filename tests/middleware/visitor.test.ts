@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { normalizeIp } from './visitor';
+import { normalizeIp } from '../../server/middleware/visitor';
 
 // Test the bot classification logic in isolation by importing just the helpers.
 // We can't import recordVisit directly (it hits the DB), so we test the

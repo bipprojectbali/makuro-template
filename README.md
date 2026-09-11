@@ -79,7 +79,7 @@ bun run start
 | `bun run db:migrate` | Apply migration |
 | `bun run db:push` | Push schema langsung (interaktif) |
 | `bun run db:studio` | Drizzle Studio |
-| `bun test server` | Test suite (bun:test, pakai DATABASE_URL_TEST) |
+| `bun run test` | Test suite (bun:test, `tests/`, pakai DATABASE_URL_TEST) |
 
 ## Binary distribution (tanpa Bun di server)
 
@@ -172,10 +172,10 @@ Google OAuth: set `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`. Authorized redire
 
 ```bash
 # Pastikan DATABASE_URL_TEST di .env
-bun test server
+bun run test
 ```
 
-Test database dipisah dari dev/prod (`DATABASE_URL_TEST`). Guard bisa di-bypass di integration test dengan `mock.module('../guard', ...)` — bun:test otomatis hoist mock di atas static import.
+Semua test ada di root `tests/` (mirror struktur `server/`). Gunakan `bun run test` — script inilah yang men-set `NODE_ENV=test`; menjalankan `bun test tests` langsung tidak akan memakai test database. Test database dipisah dari dev/prod (`DATABASE_URL_TEST`). Guard bisa di-bypass di integration test dengan `mock.module('../../server/guard', ...)` — bun:test otomatis hoist mock di atas static import.
 
 ## Catatan teknis
 

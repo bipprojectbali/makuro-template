@@ -11,7 +11,7 @@ import {
   normalizeRole,
   ROLES,
   reconcileRole,
-} from './permissions';
+} from '../server/permissions';
 
 const envSet = (...emails: string[]) => new Set(emails.map((e) => e.toLowerCase()));
 

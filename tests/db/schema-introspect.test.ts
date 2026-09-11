@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { introspectDrizzleSchema } from './schema-introspect';
+import { introspectDrizzleSchema } from '../../server/db/schema-introspect';
 
 describe('introspectDrizzleSchema', () => {
   const result = introspectDrizzleSchema();
