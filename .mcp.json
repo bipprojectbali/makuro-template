@@ -4,7 +4,7 @@
       "type": "http",
       "url": "http://localhost:3005/api/mcp",
       "headers": {
-        "Authorization": "Bearer YOUR_MCP_ADMIN_TOKEN"
+        "Authorization": "Bearer ${MCP_ADMIN_TOKEN}"
       }
     }
   }
