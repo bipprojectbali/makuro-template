@@ -1,374 +1,299 @@
 import {
   ActionIcon,
-  Avatar,
-  Badge,
+  Alert,
   Box,
   Button,
+  Collapse,
   Group,
+  Menu,
   Pagination,
   Paper,
   Stack,
-  Table,
   Text,
-  TextInput,
   Title,
   Tooltip,
 } from '@mantine/core';
-import { useDebouncedValue } from '@mantine/hooks';
-import { modals } from '@mantine/modals';
-import { useEffect, useState } from 'react';
-import { FiRefreshCw, FiSearch, FiTrash2 } from 'react-icons/fi';
-import { TbSortAscending, TbSortDescending } from 'react-icons/tb';
+import { useDebouncedValue, useLocalStorage } from '@mantine/hooks';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import {
+  FiAlertCircle,
+  FiChevronDown,
+  FiChevronUp,
+  FiDownload,
+  FiMoreVertical,
+  FiRefreshCw,
+  FiTrash2,
+} from 'react-icons/fi';
+import { useVisitActions } from '~/components/visits/useVisitActions';
+import { VisitBreakdown } from '~/components/visits/VisitBreakdown';
+import { VisitCardList } from '~/components/visits/VisitCardList';
+import { VisitDetailDrawer } from '~/components/visits/VisitDetailDrawer';
+import { VisitEmptyState } from '~/components/visits/VisitEmptyState';
+import { VisitFilters } from '~/components/visits/VisitFilters';
+import { VisitStatsCards } from '~/components/visits/VisitStatsCards';
+import { VisitTable } from '~/components/visits/VisitTable';
+import {
+  DEFAULT_FILTERS,
+  exportVisitsUrl,
+  type VisitFilters as Filters,
+  fetchVisitStats,
+  fetchVisits,
+  hasActiveFilters,
+  type VisitRow,
+} from '~/lib/visits-api';
 
 export function meta() {
   return [{ title: 'Visitor Logs — Makuro Dev' }];
 }
 
 const LIMIT = 25;
-
-type VisitRow = {
-  id: string;
-  ip: string | null;
-  path: string;
-  isBot: boolean;
-  botKind: string | null;
-  userId: string | null;
-  userName: string | null;
-  userImage: string | null;
-  createdAt: string;
-};
-
-type Stats = { total: number; bots: number; humans: number };
+const nf = new Intl.NumberFormat('id-ID');
 
 export default function VisitsPage() {
-  const [rows, setRows] = useState<VisitRow[]>([]);
-  const [total, setTotal] = useState(0);
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [filters, setFiltersState] = useState<Filters>(DEFAULT_FILTERS);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<'asc' | 'desc'>('desc');
-  const [search, setSearch] = useState('');
-  const [botsOnly, setBotsOnly] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [deleting, setDeleting] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [debouncedSearch] = useDebouncedValue(search, 300);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [detail, setDetail] = useState<VisitRow | null>(null);
+  const [showSummary, setShowSummary] = useLocalStorage({
+    key: 'mk-visits-summary',
+    defaultValue: true,
+  });
+  const [debouncedSearch] = useDebouncedValue(filters.search, 300);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey is a manual refetch trigger (delete/purge/refresh)
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
+  const params = { ...filters, search: debouncedSearch, page, limit: LIMIT, sort };
+  const list = useQuery({
+    queryKey: ['visits', params],
+    queryFn: () => fetchVisits(params),
+    placeholderData: keepPreviousData,
+  });
+  const stats = useQuery({ queryKey: ['visits-stats'], queryFn: fetchVisitStats });
 
-    const params = new URLSearchParams({ page: String(page), limit: String(LIMIT), sort });
-    if (debouncedSearch) params.set('search', debouncedSearch);
-    if (botsOnly) params.set('botsOnly', 'true');
-
-    Promise.all([
-      fetch(`/api/analytics/visits?${params}`).then((r) => r.json()),
-      fetch('/api/analytics/visits/stats').then((r) => r.json()),
-    ])
-      .then(([d, s]) => {
-        if (cancelled) return;
-        setRows(d.rows);
-        setTotal(d.total);
-        setStats(s);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [page, sort, debouncedSearch, botsOnly, refreshKey]);
-
-  const applyFilter = (fn: () => void) => {
-    fn();
-    setPage(1);
-  };
-
-  const deleteRow = (id: string) => {
-    modals.openConfirmModal({
-      title: 'Hapus kunjungan',
-      children: <Text size="sm">Hapus catatan kunjungan ini?</Text>,
-      labels: { confirm: 'Hapus', cancel: 'Batal' },
-      confirmProps: { color: 'red' },
-      onConfirm: async () => {
-        setDeleting(id);
-        await fetch(`/api/analytics/visits/${id}`, { method: 'DELETE' });
-        setDeleting(null);
-        setRefreshKey((k) => k + 1);
-      },
-    });
-  };
-
-  const purge = () => {
-    modals.openConfirmModal({
-      title: 'Purge visit logs',
-      children: (
-        <Text size="sm">
-          Hapus semua visit log yang lebih dari 30 hari? Tindakan ini tidak bisa dibatalkan.
-        </Text>
-      ),
-      labels: { confirm: 'Purge', cancel: 'Batal' },
-      confirmProps: { color: 'red' },
-      onConfirm: async () => {
-        await fetch('/api/analytics/purge?days=30', { method: 'DELETE' });
-        setRefreshKey((k) => k + 1);
-      },
-    });
-  };
-
-  const clearAll = () => {
-    modals.openConfirmModal({
-      title: 'Hapus semua visit logs',
-      children: (
-        <Text size="sm">
-          Hapus <strong>semua</strong> visit log termasuk yang baru? Tindakan ini tidak bisa
-          dibatalkan.
-        </Text>
-      ),
-      labels: { confirm: 'Hapus Semua', cancel: 'Batal' },
-      confirmProps: { color: 'red' },
-      onConfirm: async () => {
-        await fetch('/api/analytics/purge?days=0', { method: 'DELETE' });
-        setRefreshKey((k) => k + 1);
-      },
-    });
-  };
-
-  const fmt = (iso: string) => new Date(iso).toLocaleString();
+  const rows = list.data?.rows ?? [];
+  const total = list.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / LIMIT));
-  const SortIcon = sort === 'desc' ? TbSortDescending : TbSortAscending;
+  const filtered = hasActiveFilters(filters);
+
+  const resetSelection = () => setSelected(new Set());
+  const setFilters = (patch: Partial<Filters>) => {
+    setFiltersState((f) => ({ ...f, ...patch }));
+    setPage(1);
+    resetSelection();
+  };
+  const resetFilters = () => setFilters(DEFAULT_FILTERS);
+
+  const actions = useVisitActions({
+    onDone: () => {
+      resetSelection();
+      setDetail(null);
+    },
+  });
+
+  const toggle = (id: string) =>
+    setSelected((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  const toggleAll = () =>
+    setSelected((s) =>
+      rows.every((r) => s.has(r.id)) ? new Set() : new Set(rows.map((r) => r.id)),
+    );
+
+  const listHandlers = {
+    selected,
+    onToggle: toggle,
+    onToggleAll: toggleAll,
+    onOpen: setDetail,
+    onDelete: actions.deleteOne,
+    deletingId: actions.deletingId,
+  };
+  const empty = <VisitEmptyState filtered={filtered} onReset={resetFilters} />;
+  const refresh = () => {
+    list.refetch();
+    stats.refetch();
+  };
 
   return (
-    <Stack gap="md" p="md">
+    <Stack gap="md" p={{ base: 'sm', md: 'md' }}>
       <Group justify="space-between" align="flex-start" wrap="wrap">
-        <Title order={3}>Visitor Logs</Title>
+        <div>
+          <Title order={3}>Visitor Logs</Title>
+          <Text size="sm" c="dimmed">
+            Setiap kunjungan halaman beserta lokasi, perangkat, sumber, dan user yang login.
+          </Text>
+        </div>
         <Group gap="xs" wrap="wrap" justify="flex-end">
           <Tooltip
-            label="Hapus semua log (visit, login, rate-limit) termasuk yang terbaru. Tidak bisa dibatalkan."
+            label={`Unduh CSV sesuai filter aktif (maks. ${nf.format(10_000)} baris)`}
             withArrow
-            multiline
-            maw={260}
           >
-            <Button size="xs" color="red" variant="outline" onClick={clearAll} disabled={total === 0}>
-              Clear All
-            </Button>
-          </Tooltip>
-          <Tooltip
-            label="Hapus semua log (visit, login, rate-limit) yang lebih dari 30 hari. Aman untuk maintenance rutin."
-            withArrow
-            multiline
-            maw={260}
-          >
-            <Button size="xs" color="red" variant="light" onClick={purge} disabled={total === 0}>
-              Purge 30d+
-            </Button>
-          </Tooltip>
-          <Tooltip label="Muat ulang data terbaru" withArrow>
             <Button
-              size="xs"
-              variant="light"
-              leftSection={<FiRefreshCw size={12} />}
-              loading={loading}
-              onClick={() => setRefreshKey((k) => k + 1)}
+              component="a"
+              href={exportVisitsUrl(filters)}
+              download
+              size="sm"
+              variant="default"
+              leftSection={<FiDownload size={14} />}
+              disabled={total === 0}
+              onClick={(e) => {
+                // Anchors ignore `disabled`; block navigation when there is nothing to export.
+                if (total === 0) e.preventDefault();
+              }}
             >
-              Refresh
+              Export CSV
             </Button>
           </Tooltip>
+          <Button
+            size="sm"
+            variant="light"
+            leftSection={<FiRefreshCw size={14} />}
+            loading={list.isFetching}
+            onClick={refresh}
+          >
+            Refresh
+          </Button>
+          <Menu position="bottom-end" withArrow shadow="md">
+            <Menu.Target>
+              <ActionIcon variant="default" size="lg" aria-label="Aksi lainnya">
+                <FiMoreVertical size={16} />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Label>Pembersihan log</Menu.Label>
+              <Menu.Item
+                leftSection={<FiTrash2 size={14} />}
+                onClick={actions.purgeOld}
+                disabled={stats.data?.total === 0}
+              >
+                Purge log lebih dari 30 hari
+              </Menu.Item>
+              <Menu.Item
+                color="red"
+                leftSection={<FiTrash2 size={14} />}
+                onClick={actions.clearAll}
+                disabled={stats.data?.total === 0}
+              >
+                Hapus semua log
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
         </Group>
       </Group>
 
-      {stats && (
-        <Group gap="sm">
-          <Badge color="blue" size="lg">
-            Total: {stats.total}
-          </Badge>
-          <Badge color="green" size="lg">
-            Humans: {stats.humans}
-          </Badge>
-          <Badge color="red" size="lg">
-            Bots: {stats.bots}
-          </Badge>
-        </Group>
+      <VisitStatsCards stats={stats.data} />
+
+      {stats.data && stats.data.total > 0 && (
+        <Stack gap="xs">
+          <Button
+            variant="subtle"
+            color="gray"
+            size="compact-sm"
+            rightSection={showSummary ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />}
+            onClick={() => setShowSummary((v) => !v)}
+            style={{ alignSelf: 'flex-start' }}
+          >
+            {showSummary ? 'Sembunyikan ringkasan' : 'Tampilkan ringkasan'}
+          </Button>
+          <Collapse expanded={showSummary}>
+            <VisitBreakdown
+              stats={stats.data}
+              onCountry={(c) => setFilters({ country: c })}
+              onDevice={(d) => setFilters({ device: d })}
+            />
+          </Collapse>
+        </Stack>
       )}
 
-      <Group gap="xs">
-        <TextInput
-          placeholder="Cari IP, path, atau nama user…"
-          leftSection={<FiSearch size={14} />}
-          value={search}
-          onChange={(e) => applyFilter(() => setSearch(e.currentTarget.value))}
-          size="xs"
-          style={{ flex: 1, maxWidth: 320 }}
-        />
-        <Button
-          size="xs"
-          variant={botsOnly ? 'filled' : 'light'}
-          color="red"
-          onClick={() => applyFilter(() => setBotsOnly((b) => !b))}
-        >
-          Bots only
-        </Button>
-      </Group>
+      <VisitFilters
+        filters={filters}
+        onChange={setFilters}
+        onReset={resetFilters}
+        countries={stats.data?.topCountries ?? []}
+        matchCount={list.data?.total}
+      />
 
-      {/* Desktop table */}
-      <Box style={{ overflowX: 'auto' }} visibleFrom="sm">
-        <Table striped highlightOnHover withTableBorder withColumnBorders fz="xs">
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th
-                style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
-                onClick={() => applyFilter(() => setSort((s) => (s === 'desc' ? 'asc' : 'desc')))}
+      {list.isError && (
+        <Alert color="red" icon={<FiAlertCircle size={16} />} title="Gagal memuat visitor logs">
+          <Group justify="space-between" wrap="wrap" gap="xs">
+            <Text size="sm">{(list.error as Error).message}</Text>
+            <Button size="xs" variant="light" color="red" onClick={() => list.refetch()}>
+              Coba lagi
+            </Button>
+          </Group>
+        </Alert>
+      )}
+
+      {selected.size > 0 && (
+        <Paper withBorder radius="md" p="sm" bg="var(--mantine-primary-color-light)">
+          <Group justify="space-between" wrap="wrap" gap="xs">
+            <Text size="sm" fw={500}>
+              {nf.format(selected.size)} kunjungan dipilih
+            </Text>
+            <Group gap="xs">
+              <Button size="xs" variant="subtle" color="gray" onClick={resetSelection}>
+                Batal pilih
+              </Button>
+              <Button
+                size="xs"
+                color="red"
+                leftSection={<FiTrash2 size={13} />}
+                loading={actions.bulkDeleting}
+                onClick={() => actions.deleteMany([...selected])}
               >
-                <Group gap={4}>
-                  Waktu <SortIcon size={13} />
-                </Group>
-              </Table.Th>
-              <Table.Th visibleFrom="sm">IP</Table.Th>
-              <Table.Th>Path</Table.Th>
-              <Table.Th>Tipe</Table.Th>
-              <Table.Th>User</Table.Th>
-              <Table.Th style={{ width: 36 }} />
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {rows.map((r) => (
-              <Table.Tr key={r.id}>
-                <Table.Td style={{ whiteSpace: 'nowrap' }}>{fmt(r.createdAt)}</Table.Td>
-                <Table.Td visibleFrom="sm">
-                  <Text ff="monospace" size="xs">
-                    {r.ip ?? '—'}
-                  </Text>
-                </Table.Td>
-                <Table.Td>
-                  <Text ff="monospace" size="xs" truncate maw={220}>
-                    {r.path}
-                  </Text>
-                </Table.Td>
-                <Table.Td>
-                  {r.isBot ? (
-                    <Tooltip label={r.botKind ?? 'bot'} withArrow>
-                      <Badge color="red" size="xs">
-                        bot
-                      </Badge>
-                    </Tooltip>
-                  ) : (
-                    <Badge color="green" size="xs">
-                      human
-                    </Badge>
-                  )}
-                </Table.Td>
-                <Table.Td>
-                  {r.userId ? (
-                    <Group gap="xs" wrap="nowrap">
-                      <Avatar src={r.userImage} size={24} radius="xl">
-                        {r.userName ? r.userName.charAt(0).toUpperCase() : '?'}
-                      </Avatar>
-                      <Stack gap={0}>
-                        <Text size="xs" fw={500} lh={1.3}>
-                          {r.userName ?? '—'}
-                        </Text>
-                        <Text ff="monospace" size="xs" c="dimmed" truncate maw={130} lh={1.3}>
-                          {r.userId}
-                        </Text>
-                      </Stack>
-                    </Group>
-                  ) : (
-                    <Text size="xs" c="dimmed">
-                      —
-                    </Text>
-                  )}
-                </Table.Td>
-                <Table.Td>
-                  <ActionIcon
-                    size="xs"
-                    color="red"
-                    variant="subtle"
-                    loading={deleting === r.id}
-                    onClick={() => deleteRow(r.id)}
-                    aria-label="Hapus"
-                  >
-                    <FiTrash2 size={12} />
-                  </ActionIcon>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-            {rows.length === 0 && !loading && (
-              <Table.Tr>
-                <Table.Td colSpan={6}>
-                  <Text ta="center" c="dimmed" size="sm" py="md">
-                    Belum ada kunjungan.
-                  </Text>
-                </Table.Td>
-              </Table.Tr>
-            )}
-          </Table.Tbody>
-        </Table>
+                Hapus terpilih
+              </Button>
+            </Group>
+          </Group>
+        </Paper>
+      )}
+
+      <Paper withBorder radius="md" visibleFrom="sm" style={{ overflow: 'hidden' }}>
+        <VisitTable
+          rows={rows}
+          loading={list.isPending}
+          fetching={list.isFetching}
+          sort={sort}
+          onToggleSort={() => {
+            setSort((s) => (s === 'desc' ? 'asc' : 'desc'));
+            setPage(1);
+          }}
+          empty={empty}
+          {...listHandlers}
+        />
+      </Paper>
+      <Box hiddenFrom="sm">
+        <VisitCardList rows={rows} loading={list.isPending} empty={empty} {...listHandlers} />
       </Box>
 
-      {/* Mobile card list */}
-      <Stack gap="xs" hiddenFrom="sm">
-        {rows.map((r) => (
-          <Paper key={r.id} withBorder p="sm" radius="md">
-            <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
-              <Stack gap={4} style={{ minWidth: 0, flex: 1 }}>
-                <Group gap="xs" wrap="nowrap" align="center">
-                  {r.isBot ? (
-                    <Tooltip label={r.botKind ?? 'bot'} withArrow>
-                      <Badge color="red" size="xs" style={{ flexShrink: 0 }}>bot</Badge>
-                    </Tooltip>
-                  ) : (
-                    <Badge color="green" size="xs" style={{ flexShrink: 0 }}>human</Badge>
-                  )}
-                  <Text ff="monospace" size="sm" fw={500} truncate style={{ minWidth: 0 }}>
-                    {r.path}
-                  </Text>
-                </Group>
-                <Group gap={4} wrap="nowrap">
-                  <Text size="xs" c="dimmed">{fmt(r.createdAt)}</Text>
-                  {r.ip && <Text size="xs" c="dimmed">· {r.ip}</Text>}
-                </Group>
-                {r.userId && (
-                  <Group gap={6} wrap="nowrap" mt={2}>
-                    <Avatar src={r.userImage} size={20} radius="xl">
-                      {r.userName ? r.userName.charAt(0).toUpperCase() : '?'}
-                    </Avatar>
-                    <Text size="xs" fw={500} truncate>
-                      {r.userName ?? r.userId}
-                    </Text>
-                  </Group>
-                )}
-              </Stack>
-              <ActionIcon
-                size="sm"
-                color="red"
-                variant="subtle"
-                loading={deleting === r.id}
-                onClick={() => deleteRow(r.id)}
-                aria-label="Hapus"
-                style={{ flexShrink: 0 }}
-              >
-                <FiTrash2 size={14} />
-              </ActionIcon>
-            </Group>
-          </Paper>
-        ))}
-        {rows.length === 0 && !loading && (
-          <Text ta="center" c="dimmed" size="sm" py="md">Belum ada kunjungan.</Text>
-        )}
-      </Stack>
-
-      <Group justify="space-between" align="center">
+      <Group justify="space-between" align="center" wrap="wrap" gap="xs">
         <Text size="xs" c="dimmed">
           {total > 0
-            ? `${(page - 1) * LIMIT + 1}–${Math.min(page * LIMIT, total)} of ${total}`
-            : '0 hasil'}
+            ? `Menampilkan ${nf.format((page - 1) * LIMIT + 1)}–${nf.format(Math.min(page * LIMIT, total))} dari ${nf.format(total)}`
+            : 'Tidak ada hasil'}
         </Text>
         {totalPages > 1 && (
-          <Pagination value={page} total={totalPages} onChange={setPage} size="xs" />
+          <Pagination
+            value={page}
+            total={totalPages}
+            onChange={(p) => {
+              setPage(p);
+              resetSelection();
+            }}
+            size="sm"
+            siblings={1}
+          />
         )}
       </Group>
+
+      <VisitDetailDrawer
+        row={detail}
+        onClose={() => setDetail(null)}
+        onDelete={actions.deleteOne}
+        deleting={detail !== null && actions.deletingId === detail.id}
+      />
     </Stack>
   );
 }

@@ -5,7 +5,7 @@ mock.module('../../server/guard', () => ({
   requireRole: async () => ({ user: { id: 'u-test' }, role: 'super-admin' }),
 }));
 
-import { eq, inArray } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 import { analyticsApi } from '../../server/api/analytics';
 import { buildVisitWhere, toCsv } from '../../server/api/analytics-visits.query';
 import { db } from '../../server/db';
