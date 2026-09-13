@@ -1,5 +1,9 @@
 import { Alert, Box, Button, Collapse, Group, Pagination, Paper, Stack, Text } from '@mantine/core';
 import { useDebouncedValue, useLocalStorage } from '@mantine/hooks';
+import { listVisits } from '@server/api/analytics-visits.query';
+import { getVisitStats } from '@server/api/analytics-visits.stats.query';
+import { requireRole } from '@server/guard';
+import { ROLES } from '@server/permissions';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { FiAlertCircle, FiChevronDown, FiChevronUp } from 'react-icons/fi';
@@ -13,6 +17,7 @@ import { VisitEmptyState } from '~/components/visits/VisitEmptyState';
 import { VisitFilters } from '~/components/visits/VisitFilters';
 import { VisitStatsCards } from '~/components/visits/VisitStatsCards';
 import { VisitTable } from '~/components/visits/VisitTable';
+import { toJson } from '~/lib/loader-json';
 import {
   DEFAULT_FILTERS,
   exportVisitsUrl,
@@ -20,17 +25,34 @@ import {
   fetchVisitStats,
   fetchVisits,
   hasActiveFilters,
+  type VisitListResponse,
   type VisitRow,
+  type VisitStats,
 } from '~/lib/visits-api';
+import type { Route } from './+types/visits';
 
 export function meta() {
   return [{ title: 'Visitor Logs — Makuro Dev' }];
 }
 
 const LIMIT = 25;
+
+/** SSR the default view (page 1, newest first) so the table is filled at first paint. */
+export async function loader({ request }: Route.LoaderArgs) {
+  await requireRole(request, ROLES.SUPER_ADMIN);
+  const [list, stats] = await Promise.all([
+    listVisits({ page: '1', limit: String(LIMIT), sort: 'desc' }),
+    getVisitStats(),
+  ]);
+  return {
+    list: toJson<VisitListResponse>(list),
+    stats: toJson<VisitStats>(stats),
+    loadedAt: Date.now(),
+  };
+}
 const nf = new Intl.NumberFormat('id-ID');
 
-export default function VisitsPage() {
+export default function VisitsPage({ loaderData }: Route.ComponentProps) {
   const [filters, setFiltersState] = useState<Filters>(DEFAULT_FILTERS);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<'asc' | 'desc'>('desc');
@@ -43,17 +65,25 @@ export default function VisitsPage() {
   const [debouncedSearch] = useDebouncedValue(filters.search, 300);
 
   const params = { ...filters, search: debouncedSearch, page, limit: LIMIT, sort };
+  const filtered = hasActiveFilters(filters);
   const list = useQuery({
     queryKey: ['visits', params],
     queryFn: () => fetchVisits(params),
     placeholderData: keepPreviousData,
+    // First paint uses SSR data; only the default view matches the loader's query.
+    initialData: !filtered && page === 1 && sort === 'desc' ? loaderData.list : undefined,
+    initialDataUpdatedAt: loaderData.loadedAt,
   });
-  const stats = useQuery({ queryKey: ['visits-stats'], queryFn: fetchVisitStats });
+  const stats = useQuery({
+    queryKey: ['visits-stats'],
+    queryFn: fetchVisitStats,
+    initialData: loaderData.stats,
+    initialDataUpdatedAt: loaderData.loadedAt,
+  });
 
   const rows = list.data?.rows ?? [];
   const total = list.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / LIMIT));
-  const filtered = hasActiveFilters(filters);
 
   const resetSelection = () => setSelected(new Set());
   const setFilters = (patch: Partial<Filters>) => {

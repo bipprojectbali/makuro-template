@@ -2,43 +2,30 @@
  * Login log endpoints for the super-admin console (/dev/login-logs).
  * Mounted under /analytics by analytics.ts. All routes require SUPER_ADMIN.
  */
-import { desc, eq, inArray, sql } from 'drizzle-orm';
+import { desc, eq, inArray } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 import { db } from '../db';
 import { loginLog, user } from '../db/schema';
 import { requireRole } from '../guard';
 import { ROLES } from '../permissions';
-import { buildLoginWhere, LoginListQuery, loginSelect, toLoginCsv } from './analytics-logins.query';
+import {
+  buildLoginWhere,
+  LoginListQuery,
+  listLogins,
+  loginSelect,
+  toLoginCsv,
+} from './analytics-logins.query';
 import { getLoginStats } from './analytics-logins.stats.query';
-import { pageParams } from './analytics-paging';
 
 export const LOGIN_EXPORT_MAX_ROWS = 10_000;
 const BULK_DELETE_MAX = 100;
-const count = sql<number>`count(*)::int`;
 
 export const loginsApi = new Elysia()
   .get(
     '/login-logs',
     async ({ request, query }) => {
       await requireRole(request, ROLES.SUPER_ADMIN);
-      const { page, limit, offset, order } = pageParams(query);
-      const where = buildLoginWhere(query);
-      const [rows, [totals]] = await Promise.all([
-        db
-          .select(loginSelect)
-          .from(loginLog)
-          .leftJoin(user, eq(loginLog.userId, user.id))
-          .where(where)
-          .orderBy(order(loginLog.createdAt))
-          .limit(limit)
-          .offset(offset),
-        db
-          .select({ count })
-          .from(loginLog)
-          .leftJoin(user, eq(loginLog.userId, user.id))
-          .where(where),
-      ]);
-      return { rows, total: totals?.count ?? 0, page, limit };
+      return listLogins(query);
     },
     { query: LoginListQuery },
   )

@@ -1,8 +1,9 @@
-import { ActionIcon, Checkbox, Group, Paper, Skeleton, Stack, Text } from '@mantine/core';
+import { ActionIcon, Checkbox, Group, Paper, Skeleton, Stack } from '@mantine/core';
 import { FiTrash2 } from 'react-icons/fi';
 import type { RateLimitRow } from '~/lib/rate-limit-logs-api';
 import { countryFlag, deviceSummary, formatRelative, locationLabel } from '~/lib/visits-format';
 import { UserCell } from '../logs/LogCells';
+import { TruncatedText } from '../logs/TruncatedText';
 import { MethodBadge } from './RateLimitCells';
 import type { RateLimitListHandlers } from './RateLimitTable';
 
@@ -59,17 +60,16 @@ export function RateLimitCardList({ rows, loading, empty, selected, deletingId, 
               <Stack gap={4} style={{ minWidth: 0, flex: 1 }}>
                 <Group gap="xs" wrap="nowrap" align="center">
                   <MethodBadge method={r.method} size="xs" />
-                  <Text ff="monospace" size="sm" fw={500} truncate style={{ minWidth: 0 }}>
+                  <TruncatedText ff="monospace" size="sm" fw={500} style={{ minWidth: 0 }}>
                     {r.path}
-                  </Text>
+                  </TruncatedText>
                 </Group>
-                <Text size="xs" c="dimmed" truncate>
-                  {formatRelative(r.createdAt)} · {r.ip ?? '—'}
-                  {flag ? ` · ${flag}` : ' ·'} {locationLabel(r)}
-                </Text>
-                <Text size="xs" c="dimmed" truncate>
+                <TruncatedText size="xs" c="dimmed">
+                  {`${formatRelative(r.createdAt)} · ${r.ip ?? '—'}${flag ? ` · ${flag}` : ' ·'} ${locationLabel(r)}`}
+                </TruncatedText>
+                <TruncatedText size="xs" c="dimmed">
                   {deviceSummary(r)}
-                </Text>
+                </TruncatedText>
                 {r.userId && <UserCell row={r} compact />}
               </Stack>
               <ActionIcon

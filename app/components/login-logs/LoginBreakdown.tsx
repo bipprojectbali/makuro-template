@@ -11,6 +11,7 @@ import {
 import { type LoginStats, methodMeta } from '~/lib/login-logs-api';
 import { countryFlag, countryName, deviceLabel, percent } from '~/lib/visits-format';
 import { BreakdownPanel } from '../logs/BreakdownPanel';
+import { TruncatedText } from '../logs/TruncatedText';
 
 const nf = new Intl.NumberFormat('id-ID');
 
@@ -49,9 +50,9 @@ function TopUsers({ stats, onUser }: { stats: LoginStats; onUser: (id: string) =
                       <Avatar src={u.image} size={20} radius="xl">
                         {u.name ? u.name.charAt(0).toUpperCase() : '?'}
                       </Avatar>
-                      <Text size="sm" truncate style={{ minWidth: 0 }}>
+                      <TruncatedText size="sm" style={{ minWidth: 0 }}>
                         {u.name ?? u.userId}
-                      </Text>
+                      </TruncatedText>
                     </Group>
                     <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
                       {nf.format(u.count)} · {pct}%

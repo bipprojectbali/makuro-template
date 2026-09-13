@@ -2,15 +2,15 @@
  * Rate-limit log endpoints for the super-admin console (/dev/rate-limit-logs).
  * Mounted under /analytics by analytics.ts. All routes require SUPER_ADMIN.
  */
-import { desc, eq, inArray, sql } from 'drizzle-orm';
+import { desc, eq, inArray } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 import { db } from '../db';
 import { rateLimitLog, user } from '../db/schema';
 import { requireRole } from '../guard';
 import { ROLES } from '../permissions';
-import { pageParams } from './analytics-paging';
 import {
   buildRateLimitWhere,
+  listRateLimits,
   RateLimitListQuery,
   rateLimitSelect,
   toRateLimitCsv,
@@ -19,31 +19,13 @@ import { getRateLimitStats } from './analytics-ratelimits.stats.query';
 
 export const RATE_LIMIT_EXPORT_MAX_ROWS = 10_000;
 const BULK_DELETE_MAX = 100;
-const count = sql<number>`count(*)::int`;
 
 export const rateLimitsApi = new Elysia()
   .get(
     '/rate-limit-logs',
     async ({ request, query }) => {
       await requireRole(request, ROLES.SUPER_ADMIN);
-      const { page, limit, offset, order } = pageParams(query);
-      const where = buildRateLimitWhere(query);
-      const [rows, [totals]] = await Promise.all([
-        db
-          .select(rateLimitSelect)
-          .from(rateLimitLog)
-          .leftJoin(user, eq(rateLimitLog.userId, user.id))
-          .where(where)
-          .orderBy(order(rateLimitLog.createdAt))
-          .limit(limit)
-          .offset(offset),
-        db
-          .select({ count })
-          .from(rateLimitLog)
-          .leftJoin(user, eq(rateLimitLog.userId, user.id))
-          .where(where),
-      ]);
-      return { rows, total: totals?.count ?? 0, page, limit };
+      return listRateLimits(query);
     },
     { query: RateLimitListQuery },
   )

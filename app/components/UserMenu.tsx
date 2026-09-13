@@ -10,6 +10,7 @@ import { FiCheck, FiLogOut, FiMoreVertical, FiPlus } from 'react-icons/fi';
 import { useNavigate } from 'react-router';
 import type { AppUser } from '~/lib/app-context';
 import { authClient, signOut, useSession } from '~/lib/auth-client';
+import { TruncatedText } from './logs/TruncatedText';
 
 /**
  * Avatar + account switcher shared by every area layout. Switching lands on /go
@@ -79,14 +80,14 @@ export function UserMenu({
               <>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <Group gap={6} wrap="nowrap">
-                    <Text size="sm" fw={500} truncate style={{ minWidth: 0 }}>
+                    <TruncatedText size="sm" fw={500} style={{ minWidth: 0 }}>
                       {current.name}
-                    </Text>
+                    </TruncatedText>
                     {roleBadge}
                   </Group>
-                  <Text size="xs" c="dimmed" truncate>
+                  <TruncatedText size="xs" c="dimmed">
                     {current.email}
-                  </Text>
+                  </TruncatedText>
                 </div>
                 <FiMoreVertical size={14} style={{ flexShrink: 0, opacity: 0.4 }} />
               </>
@@ -97,9 +98,9 @@ export function UserMenu({
       <Menu.Dropdown>
         <Menu.Label>
           <Group gap={6} wrap="nowrap">
-            <Text size="xs" truncate style={{ minWidth: 0 }}>
+            <TruncatedText size="xs" style={{ minWidth: 0 }}>
               {current.email}
-            </Text>
+            </TruncatedText>
             {roleBadge}
           </Group>
         </Menu.Label>
@@ -128,12 +129,10 @@ export function UserMenu({
               onClick={() => switchAccount(acc.token)}
             >
               <div style={{ minWidth: 0 }}>
-                <Text size="sm" truncate>
-                  {acc.name}
-                </Text>
-                <Text size="xs" c="dimmed" truncate>
+                <TruncatedText size="sm">{acc.name}</TruncatedText>
+                <TruncatedText size="xs" c="dimmed">
                   {acc.email}
-                </Text>
+                </TruncatedText>
               </div>
             </Menu.Item>
           ))

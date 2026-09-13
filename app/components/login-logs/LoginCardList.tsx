@@ -1,7 +1,8 @@
-import { ActionIcon, Avatar, Checkbox, Group, Paper, Skeleton, Stack, Text } from '@mantine/core';
+import { ActionIcon, Avatar, Checkbox, Group, Paper, Skeleton, Stack } from '@mantine/core';
 import { FiTrash2 } from 'react-icons/fi';
 import type { LoginRow } from '~/lib/login-logs-api';
 import { countryFlag, deviceSummary, formatRelative, locationLabel } from '~/lib/visits-format';
+import { TruncatedText } from '../logs/TruncatedText';
 import { MethodBadge } from './LoginCells';
 import type { LoginListHandlers } from './LoginTable';
 
@@ -57,21 +58,20 @@ export function LoginCardList({ rows, loading, empty, selected, deletingId, ...h
                 </Avatar>
                 <Stack gap={4} style={{ minWidth: 0 }}>
                   <Group gap="xs" wrap="nowrap">
-                    <Text size="sm" fw={500} truncate style={{ minWidth: 0 }}>
+                    <TruncatedText size="sm" fw={500} style={{ minWidth: 0 }}>
                       {r.userName ?? r.userId}
-                    </Text>
+                    </TruncatedText>
                     <MethodBadge method={r.method} size="xs" />
                   </Group>
-                  <Text size="xs" c="dimmed" truncate>
+                  <TruncatedText size="xs" c="dimmed">
                     {r.userEmail ?? r.userId}
-                  </Text>
-                  <Text size="xs" c="dimmed" truncate>
-                    {formatRelative(r.createdAt)} · {r.ip ?? '—'}
-                    {flag ? ` · ${flag}` : ' ·'} {locationLabel(r)}
-                  </Text>
-                  <Text size="xs" c="dimmed" truncate>
+                  </TruncatedText>
+                  <TruncatedText size="xs" c="dimmed">
+                    {`${formatRelative(r.createdAt)} · ${r.ip ?? '—'}${flag ? ` · ${flag}` : ' ·'} ${locationLabel(r)}`}
+                  </TruncatedText>
+                  <TruncatedText size="xs" c="dimmed">
                     {deviceSummary(r)}
-                  </Text>
+                  </TruncatedText>
                 </Stack>
               </Group>
               <ActionIcon

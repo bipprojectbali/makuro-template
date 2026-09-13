@@ -1,5 +1,6 @@
-import { Badge, Stack, Text, Tooltip } from '@mantine/core';
+import { Badge, Stack } from '@mantine/core';
 import type { RateLimitRow } from '~/lib/rate-limit-logs-api';
+import { TruncatedText } from '../logs/TruncatedText';
 
 const METHOD_COLORS: Record<string, string> = {
   GET: 'blue',
@@ -35,11 +36,9 @@ export function RequestCell({ row, maw = 280 }: { row: RateLimitRow; maw?: numbe
   return (
     <Stack gap={2} style={{ minWidth: 0 }}>
       <MethodBadge method={row.method} size="xs" />
-      <Tooltip label={row.path} withArrow openDelay={400} disabled={row.path.length < 36}>
-        <Text ff="monospace" size="sm" lh={1.3} truncate maw={maw}>
-          {row.path}
-        </Text>
-      </Tooltip>
+      <TruncatedText ff="monospace" size="sm" lh={1.3} maw={maw}>
+        {row.path}
+      </TruncatedText>
     </Stack>
   );
 }

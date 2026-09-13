@@ -1,5 +1,9 @@
 import { Alert, Box, Button, Collapse, Group, Pagination, Paper, Stack, Text } from '@mantine/core';
 import { useDebouncedValue, useLocalStorage } from '@mantine/hooks';
+import { listRateLimits } from '@server/api/analytics-ratelimits.query';
+import { getRateLimitStats } from '@server/api/analytics-ratelimits.stats.query';
+import { requireRole } from '@server/guard';
+import { ROLES } from '@server/permissions';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { FiAlertCircle, FiChevronDown, FiChevronUp, FiInfo } from 'react-icons/fi';
@@ -13,6 +17,7 @@ import { RateLimitStatsCards } from '~/components/rate-limit-logs/RateLimitStats
 import { RateLimitTable } from '~/components/rate-limit-logs/RateLimitTable';
 import { useRateLimitActions } from '~/components/rate-limit-logs/useRateLimitActions';
 import { VisitEmptyState } from '~/components/visits/VisitEmptyState';
+import { toJson } from '~/lib/loader-json';
 import {
   DEFAULT_RATE_LIMIT_FILTERS,
   exportRateLimitsUrl,
@@ -21,17 +26,34 @@ import {
   fetchRateLimits,
   formatWindow,
   hasActiveRateLimitFilters,
+  type RateLimitListResponse,
   type RateLimitRow,
+  type RateLimitStats,
 } from '~/lib/rate-limit-logs-api';
+import type { Route } from './+types/rate-limit-logs';
 
 export function meta() {
   return [{ title: 'Rate Limit Logs — Makuro Dev' }];
 }
 
 const LIMIT = 25;
+
+/** SSR the default view (page 1, newest first) so the table is filled at first paint. */
+export async function loader({ request }: Route.LoaderArgs) {
+  await requireRole(request, ROLES.SUPER_ADMIN);
+  const [list, stats] = await Promise.all([
+    listRateLimits({ page: '1', limit: String(LIMIT), sort: 'desc' }),
+    getRateLimitStats(),
+  ]);
+  return {
+    list: toJson<RateLimitListResponse>(list),
+    stats: toJson<RateLimitStats>(stats),
+    loadedAt: Date.now(),
+  };
+}
 const nf = new Intl.NumberFormat('id-ID');
 
-export default function RateLimitLogsPage() {
+export default function RateLimitLogsPage({ loaderData }: Route.ComponentProps) {
   const [filters, setFiltersState] = useState<Filters>(DEFAULT_RATE_LIMIT_FILTERS);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<'asc' | 'desc'>('desc');
@@ -44,17 +66,25 @@ export default function RateLimitLogsPage() {
   const [debouncedSearch] = useDebouncedValue(filters.search, 300);
 
   const params = { ...filters, search: debouncedSearch, page, limit: LIMIT, sort };
+  const filtered = hasActiveRateLimitFilters(filters);
   const list = useQuery({
     queryKey: ['rate-limit-logs', params],
     queryFn: () => fetchRateLimits(params),
     placeholderData: keepPreviousData,
+    // First paint uses SSR data; only the default view matches the loader's query.
+    initialData: !filtered && page === 1 && sort === 'desc' ? loaderData.list : undefined,
+    initialDataUpdatedAt: loaderData.loadedAt,
   });
-  const stats = useQuery({ queryKey: ['rate-limit-logs-stats'], queryFn: fetchRateLimitStats });
+  const stats = useQuery({
+    queryKey: ['rate-limit-logs-stats'],
+    queryFn: fetchRateLimitStats,
+    initialData: loaderData.stats,
+    initialDataUpdatedAt: loaderData.loadedAt,
+  });
 
   const rows = list.data?.rows ?? [];
   const total = list.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / LIMIT));
-  const filtered = hasActiveRateLimitFilters(filters);
 
   const resetSelection = () => setSelected(new Set());
   const setFilters = (patch: Partial<Filters>) => {

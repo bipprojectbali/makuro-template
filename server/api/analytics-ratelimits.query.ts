@@ -1,7 +1,9 @@
 /** Filter parsing + WHERE builder shared by the rate-limit list, count, and CSV export. */
-import { and, eq, gte, ilike, or, type SQL } from 'drizzle-orm';
+import { and, eq, gte, ilike, or, type SQL, sql } from 'drizzle-orm';
 import { t } from 'elysia';
+import { db } from '../db';
 import { rateLimitLog, user } from '../db/schema';
+import { pageParams } from './analytics-paging';
 
 export const RateLimitListQuery = t.Object({
   page: t.Optional(t.String()),
@@ -98,4 +100,28 @@ export function toRateLimitCsv(rows: Array<Record<string, unknown>>): string {
   const lines = [CSV_COLUMNS.join(',')];
   for (const r of rows) lines.push(CSV_COLUMNS.map((c) => csvCell(r[c])).join(','));
   return `﻿${lines.join('\r\n')}\r\n`;
+}
+
+const count = sql<number>`count(*)::int`;
+
+/** One page of rows + total for the given filters (shared by the API and SSR loaders). */
+export async function listRateLimits(query: RateLimitListQueryType) {
+  const { page, limit, offset, order } = pageParams(query);
+  const where = buildRateLimitWhere(query);
+  const [rows, [totals]] = await Promise.all([
+    db
+      .select(rateLimitSelect)
+      .from(rateLimitLog)
+      .leftJoin(user, eq(rateLimitLog.userId, user.id))
+      .where(where)
+      .orderBy(order(rateLimitLog.createdAt))
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({ count })
+      .from(rateLimitLog)
+      .leftJoin(user, eq(rateLimitLog.userId, user.id))
+      .where(where),
+  ]);
+  return { rows, total: totals?.count ?? 0, page, limit };
 }

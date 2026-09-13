@@ -1,5 +1,9 @@
 import { Alert, Box, Button, Collapse, Group, Pagination, Paper, Stack, Text } from '@mantine/core';
 import { useDebouncedValue, useLocalStorage } from '@mantine/hooks';
+import { listLogins } from '@server/api/analytics-logins.query';
+import { getLoginStats } from '@server/api/analytics-logins.stats.query';
+import { requireRole } from '@server/guard';
+import { ROLES } from '@server/permissions';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { FiAlertCircle, FiChevronDown, FiChevronUp } from 'react-icons/fi';
@@ -13,6 +17,7 @@ import { useLoginActions } from '~/components/login-logs/useLoginActions';
 import { LogPageHeader } from '~/components/logs/LogPageHeader';
 import { SelectionBar } from '~/components/logs/SelectionBar';
 import { VisitEmptyState } from '~/components/visits/VisitEmptyState';
+import { toJson } from '~/lib/loader-json';
 import {
   DEFAULT_LOGIN_FILTERS,
   exportLoginsUrl,
@@ -20,17 +25,34 @@ import {
   fetchLoginStats,
   fetchLogins,
   hasActiveLoginFilters,
+  type LoginListResponse,
   type LoginRow,
+  type LoginStats,
 } from '~/lib/login-logs-api';
+import type { Route } from './+types/login-logs';
 
 export function meta() {
   return [{ title: 'Login Logs — Makuro Dev' }];
 }
 
 const LIMIT = 25;
+
+/** SSR the default view (page 1, newest first) so the table is filled at first paint. */
+export async function loader({ request }: Route.LoaderArgs) {
+  await requireRole(request, ROLES.SUPER_ADMIN);
+  const [list, stats] = await Promise.all([
+    listLogins({ page: '1', limit: String(LIMIT), sort: 'desc' }),
+    getLoginStats(),
+  ]);
+  return {
+    list: toJson<LoginListResponse>(list),
+    stats: toJson<LoginStats>(stats),
+    loadedAt: Date.now(),
+  };
+}
 const nf = new Intl.NumberFormat('id-ID');
 
-export default function LoginLogsPage() {
+export default function LoginLogsPage({ loaderData }: Route.ComponentProps) {
   const [filters, setFiltersState] = useState<Filters>(DEFAULT_LOGIN_FILTERS);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<'asc' | 'desc'>('desc');
@@ -43,17 +65,25 @@ export default function LoginLogsPage() {
   const [debouncedSearch] = useDebouncedValue(filters.search, 300);
 
   const params = { ...filters, search: debouncedSearch, page, limit: LIMIT, sort };
+  const filtered = hasActiveLoginFilters(filters);
   const list = useQuery({
     queryKey: ['login-logs', params],
     queryFn: () => fetchLogins(params),
     placeholderData: keepPreviousData,
+    // First paint uses SSR data; only the default view matches the loader's query.
+    initialData: !filtered && page === 1 && sort === 'desc' ? loaderData.list : undefined,
+    initialDataUpdatedAt: loaderData.loadedAt,
   });
-  const stats = useQuery({ queryKey: ['login-logs-stats'], queryFn: fetchLoginStats });
+  const stats = useQuery({
+    queryKey: ['login-logs-stats'],
+    queryFn: fetchLoginStats,
+    initialData: loaderData.stats,
+    initialDataUpdatedAt: loaderData.loadedAt,
+  });
 
   const rows = list.data?.rows ?? [];
   const total = list.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / LIMIT));
-  const filtered = hasActiveLoginFilters(filters);
   const userLabel = filters.userId
     ? (rows.find((r) => r.userId === filters.userId)?.userName ??
       stats.data?.topUsers.find((u) => u.userId === filters.userId)?.name ??

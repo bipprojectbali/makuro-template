@@ -7,7 +7,7 @@ mock.module('../../server/guard', () => ({
 
 import { eq, inArray } from 'drizzle-orm';
 import { analyticsApi } from '../../server/api/analytics';
-import { buildLoginWhere, toLoginCsv } from '../../server/api/analytics-logins.query';
+import { buildLoginWhere, listLogins, toLoginCsv } from '../../server/api/analytics-logins.query';
 import { db } from '../../server/db';
 import { loginLog, user } from '../../server/db/schema';
 
@@ -163,6 +163,14 @@ describe('GET /analytics/login-logs', () => {
       .from(loginLog)
       .where(inArray(loginLog.id, ids));
     expect(left.map((r) => r.id)).toEqual([keep]);
+  });
+});
+
+describe('listLogins (shared by API + SSR loader)', () => {
+  test('mirrors GET /login-logs', async () => {
+    const r = await listLogins({ userId, limit: '10' });
+    expect(r.total).toBeGreaterThanOrEqual(1);
+    expect(r.rows.every((x) => x.userId === userId)).toBe(true);
   });
 });
 

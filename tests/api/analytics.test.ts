@@ -1,13 +1,4 @@
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  test,
-} from 'bun:test';
-import { mock } from 'bun:test';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, mock, test } from 'bun:test';
 import Elysia from 'elysia';
 
 // Hoist mock before analytics.ts resolves its guard import.
@@ -17,9 +8,9 @@ mock.module('../../server/guard', () => ({
 }));
 
 import { asc, desc, eq } from 'drizzle-orm';
+import { analyticsApi, pageParams } from '../../server/api/analytics';
 import { db } from '../../server/db';
 import { loginLog, rateLimitLog, user, visitLog } from '../../server/db/schema';
-import { analyticsApi, pageParams } from '../../server/api/analytics';
 
 const app = new Elysia().use(analyticsApi);
 
@@ -27,14 +18,20 @@ async function get(path: string, params: Record<string, string> = {}) {
   const url = new URL(`http://localhost${path}`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   const res = await app.handle(new Request(url.toString()));
-  return { status: res.status, body: (await res.json().catch(() => null)) as Record<string, unknown> };
+  return {
+    status: res.status,
+    body: (await res.json().catch(() => null)) as Record<string, unknown>,
+  };
 }
 
 async function httpDelete(path: string, params: Record<string, string> = {}) {
   const url = new URL(`http://localhost${path}`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   const res = await app.handle(new Request(url.toString(), { method: 'DELETE' }));
-  return { status: res.status, body: (await res.json().catch(() => null)) as Record<string, unknown> };
+  return {
+    status: res.status,
+    body: (await res.json().catch(() => null)) as Record<string, unknown>,
+  };
 }
 
 // ─── pageParams unit tests (no DB needed) ────────────────────────────────────
@@ -88,7 +85,10 @@ describe('GET /analytics/visits', () => {
 
   afterEach(async () => {
     for (const id of ids.splice(0)) {
-      await db.delete(visitLog).where(eq(visitLog.id, id)).catch(() => {});
+      await db
+        .delete(visitLog)
+        .where(eq(visitLog.id, id))
+        .catch(() => {});
     }
   });
 
@@ -146,7 +146,10 @@ describe('GET /analytics/visits — user attribution', () => {
   });
 
   afterAll(async () => {
-    await db.delete(user).where(eq(user.id, testUserId)).catch(() => {});
+    await db
+      .delete(user)
+      .where(eq(user.id, testUserId))
+      .catch(() => {});
   });
 
   beforeEach(async () => {
@@ -158,7 +161,11 @@ describe('GET /analytics/visits — user attribution', () => {
   });
 
   afterEach(async () => {
-    if (visitId) await db.delete(visitLog).where(eq(visitLog.id, visitId)).catch(() => {});
+    if (visitId)
+      await db
+        .delete(visitLog)
+        .where(eq(visitLog.id, visitId))
+        .catch(() => {});
   });
 
   test('joins user table: returns userName and userImage for logged-in visits', async () => {
@@ -189,7 +196,11 @@ describe('DELETE /analytics/visits/:id', () => {
   });
 
   afterEach(async () => {
-    if (rowId) await db.delete(visitLog).where(eq(visitLog.id, rowId)).catch(() => {});
+    if (rowId)
+      await db
+        .delete(visitLog)
+        .where(eq(visitLog.id, rowId))
+        .catch(() => {});
   });
 
   test('deletes the row and returns ok:true', async () => {
@@ -203,9 +214,7 @@ describe('DELETE /analytics/visits/:id', () => {
   });
 
   test('returns 404 for non-existent id', async () => {
-    const { status } = await httpDelete(
-      '/analytics/visits/00000000-0000-0000-0000-000000000000',
-    );
+    const { status } = await httpDelete('/analytics/visits/00000000-0000-0000-0000-000000000000');
     expect(status).toBe(404);
   });
 });
@@ -224,7 +233,11 @@ describe('DELETE /analytics/rate-limit-logs/:id', () => {
   });
 
   afterEach(async () => {
-    if (rowId) await db.delete(rateLimitLog).where(eq(rateLimitLog.id, rowId)).catch(() => {});
+    if (rowId)
+      await db
+        .delete(rateLimitLog)
+        .where(eq(rateLimitLog.id, rowId))
+        .catch(() => {});
   });
 
   test('deletes the rate-limit row and returns ok:true', async () => {
@@ -254,7 +267,10 @@ describe('DELETE /analytics/login-logs/:id', () => {
 
   afterAll(async () => {
     // cascade delete removes related loginLog rows automatically
-    await db.delete(user).where(eq(user.id, testUserId)).catch(() => {});
+    await db
+      .delete(user)
+      .where(eq(user.id, testUserId))
+      .catch(() => {});
   });
 
   beforeEach(async () => {
@@ -266,7 +282,11 @@ describe('DELETE /analytics/login-logs/:id', () => {
   });
 
   afterEach(async () => {
-    if (rowId) await db.delete(loginLog).where(eq(loginLog.id, rowId)).catch(() => {});
+    if (rowId)
+      await db
+        .delete(loginLog)
+        .where(eq(loginLog.id, rowId))
+        .catch(() => {});
   });
 
   test('deletes the login log row and returns ok:true', async () => {

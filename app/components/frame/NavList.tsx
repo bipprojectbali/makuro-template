@@ -44,6 +44,7 @@ function CollapsedItem({
     <ActionIcon
       component={Link}
       to={item.to}
+      prefetch="intent"
       onClick={onNavigate}
       variant={active ? 'light' : 'subtle'}
       color={active ? undefined : 'gray'}
@@ -108,6 +109,7 @@ export function NavList({ groups, collapsed, onNavigate }: Props) {
                   key={item.to}
                   component={Link}
                   to={item.to}
+                  prefetch="intent"
                   label={item.label}
                   description={undefined}
                   title={item.description}

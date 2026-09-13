@@ -7,7 +7,11 @@ mock.module('../../server/guard', () => ({
 
 import { inArray } from 'drizzle-orm';
 import { analyticsApi } from '../../server/api/analytics';
-import { buildRateLimitWhere, toRateLimitCsv } from '../../server/api/analytics-ratelimits.query';
+import {
+  buildRateLimitWhere,
+  listRateLimits,
+  toRateLimitCsv,
+} from '../../server/api/analytics-ratelimits.query';
 import { countRateLimitLastHour } from '../../server/api/analytics-ratelimits.stats.query';
 import { db } from '../../server/db';
 import { rateLimitLog } from '../../server/db/schema';
@@ -142,6 +146,14 @@ describe('GET /analytics/rate-limit-logs', () => {
       .where(inArray(rateLimitLog.id, ids));
     expect(left.map((r) => r.id)).toEqual([keep]);
     ids.splice(0, ids.length, keep);
+  });
+});
+
+describe('listRateLimits (shared by API + SSR loader)', () => {
+  test('mirrors GET /rate-limit-logs', async () => {
+    const r = await listRateLimits({ search: TAG, limit: '10' });
+    expect(r.total).toBeGreaterThanOrEqual(1);
+    expect(r.rows.every((x) => x.path.includes(TAG))).toBe(true);
   });
 });
 

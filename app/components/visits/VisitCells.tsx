@@ -1,6 +1,7 @@
-import { Badge, Stack, Text, Tooltip } from '@mantine/core';
+import { Badge, Stack, Tooltip } from '@mantine/core';
 import type { VisitRow } from '~/lib/visits-api';
 import { botKindLabel, refererHost } from '~/lib/visits-format';
+import { TruncatedText } from '../logs/TruncatedText';
 
 /** Visit-specific cells; generic time/client/device/user cells live in ../logs/LogCells. */
 export {
@@ -32,15 +33,13 @@ export function PathCell({ row, maw = 260 }: { row: VisitRow; maw?: number }) {
   const ref = refererHost(row.referer);
   return (
     <Stack gap={0} style={{ minWidth: 0 }}>
-      <Tooltip label={row.path} withArrow openDelay={400} disabled={row.path.length < 32}>
-        <Text ff="monospace" size="sm" lh={1.3} truncate maw={maw}>
-          {row.path}
-        </Text>
-      </Tooltip>
+      <TruncatedText ff="monospace" size="sm" lh={1.3} maw={maw}>
+        {row.path}
+      </TruncatedText>
       {ref && (
-        <Text size="xs" c="dimmed" lh={1.3} truncate maw={maw}>
-          dari {ref}
-        </Text>
+        <TruncatedText size="xs" c="dimmed" lh={1.3} maw={maw}>
+          {`dari ${ref}`}
+        </TruncatedText>
       )}
     </Stack>
   );

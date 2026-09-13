@@ -22,6 +22,7 @@ export default defineConfig(({ isSsrBuild }) => ({
       '@mantine/hooks',
       '@mantine/modals',
       '@mantine/notifications',
+      '@mantine/nprogress',
       '@tanstack/react-query',
       '@xyflow/react',
       'better-auth/client/plugins',

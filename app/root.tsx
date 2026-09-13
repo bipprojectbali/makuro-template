@@ -1,5 +1,6 @@
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
+import '@mantine/nprogress/styles.css';
 
 import { ColorSchemeScript, MantineProvider, mantineHtmlProps } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
@@ -14,6 +15,7 @@ import {
   ScrollRestoration,
 } from 'react-router';
 import type { Route } from './+types/root';
+import { RouteProgress } from './components/RouteProgress';
 import { queryClient } from './lib/query';
 import { theme } from './lib/theme';
 
@@ -82,6 +84,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <MantineProvider theme={theme} defaultColorScheme="auto">
+        <RouteProgress />
         <Notifications position="top-right" />
         <ModalsProvider>
           <Outlet />
