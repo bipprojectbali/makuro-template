@@ -5,12 +5,20 @@
  * `isbot` package (UA heuristics — catches ~67% of bots including GPTBot,
  * ClaudeBot, Googlebot, etc.).
  *
+ * Each row is enriched with geo (proxy headers), parsed device info, referer
+ * and language — see visitor-geo.ts and visitor-ua.ts.
+ *
  * Skipped paths: /api/auth/* (high-frequency auth polling) and static assets.
  */
 import { isbot, isbotMatch } from 'isbot';
 import { auth } from '../auth';
 import { db } from '../db';
 import { visitLog } from '../db/schema';
+import { primaryLanguage, resolveGeo, sanitizeReferer } from './visitor-geo';
+import { parseUserAgent } from './visitor-ua';
+
+// UA strings are unbounded client input; cap what we persist.
+const MAX_UA_LENGTH = 512;
 
 // Skip all API calls and internal browser requests — visitor tracking should only
 // cover page navigations, not same-origin fetch requests from the SPA.
@@ -46,10 +54,7 @@ function classifyBot(ua: string): string | null {
   return match;
 }
 
-export async function recordVisit(
-  request: Request,
-  explicitIp?: string | null,
-): Promise<void> {
+export async function recordVisit(request: Request, explicitIp?: string | null): Promise<void> {
   try {
     const url = new URL(request.url);
     if (shouldSkip(url.pathname)) return;
@@ -78,15 +83,28 @@ export async function recordVisit(
       null;
     const ip = normalizeIp(forwarded ?? explicitIp ?? null);
 
+    const device = parseUserAgent(ua, request.headers, bot);
+    const geo = resolveGeo(request.headers);
+
     await db
       .insert(visitLog)
       .values({
         ip,
         path: url.pathname,
-        userAgent: ua || null,
+        userAgent: ua ? ua.slice(0, MAX_UA_LENGTH) : null,
         isBot: bot,
         botKind,
         userId,
+        referer: sanitizeReferer(request.headers.get('referer')),
+        country: geo.country,
+        region: geo.region,
+        city: geo.city,
+        browser: device.browser,
+        browserVersion: device.browserVersion,
+        os: device.os,
+        osVersion: device.osVersion,
+        deviceType: device.deviceType,
+        language: primaryLanguage(request.headers.get('accept-language')),
       })
       .catch(() => {
         // Silently drop — analytics must not crash the request pipeline.

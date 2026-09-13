@@ -106,9 +106,28 @@ export const visitLog = pgTable(
     isBot: boolean('is_bot').default(false).notNull(),
     botKind: text('bot_kind'),
     userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
+    /** Referer origin + path (query string stripped — may carry tokens). */
+    referer: text('referer'),
+    /** ISO 3166-1 alpha-2 country code from the edge/proxy geo header (null when unknown/local). */
+    country: text('country'),
+    region: text('region'),
+    city: text('city'),
+    /** Parsed from User-Agent / Client Hints — see server/middleware/visitor-ua.ts. */
+    browser: text('browser'),
+    browserVersion: text('browser_version'),
+    os: text('os'),
+    osVersion: text('os_version'),
+    /** 'desktop' | 'mobile' | 'tablet' | 'bot' | null */
+    deviceType: text('device_type'),
+    /** Primary Accept-Language tag, e.g. 'id-ID'. */
+    language: text('language'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
-  (t) => [index('visit_log_created_at_idx').on(t.createdAt), index('visit_log_ip_idx').on(t.ip)],
+  (t) => [
+    index('visit_log_created_at_idx').on(t.createdAt),
+    index('visit_log_ip_idx').on(t.ip),
+    index('visit_log_country_idx').on(t.country),
+  ],
 );
 
 // loginLog: one row per successful login (session created).
