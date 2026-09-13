@@ -10,6 +10,7 @@ import { applyRateLimitSettings } from '../settings';
 import { adminApi } from './admin';
 import { analyticsApi } from './analytics';
 import { fileHealthApi } from './file-health';
+import { meApi } from './me';
 import { settingsApi } from './settings';
 
 /**
@@ -43,6 +44,8 @@ export const api = new Elysia({ prefix: '/api' })
   .use(fileHealthApi)
   // App settings (GET public, PUT super-admin only).
   .use(settingsApi)
+  // Current-user endpoints (profile page).
+  .use(meApi)
   // Derive the session for downstream handlers.
   .derive(async ({ request }) => {
     const s = await getSession(request.headers);

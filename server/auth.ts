@@ -57,6 +57,11 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  user: {
+    // Self-service account deletion from /profile. Credential accounts must
+    // confirm with their password; the client asks for it before calling.
+    deleteUser: { enabled: true },
+  },
   socialProviders: hasGoogleAuth
     ? {
         google: {
