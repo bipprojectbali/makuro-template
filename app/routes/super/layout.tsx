@@ -3,6 +3,7 @@ import { ROLES } from '@server/permissions';
 import { getSidebarCollapsed } from '@server/sidebar';
 import {
   FiDatabase,
+  FiFileText,
   FiHome,
   FiList,
   FiLogIn,
@@ -26,6 +27,7 @@ const NAV: NavItem[] = [
   { to: '/dev/visits', label: 'Visits', icon: FiList },
   { to: '/dev/login-logs', label: 'Login Logs', icon: FiLogIn },
   { to: '/dev/rate-limit-logs', label: 'Rate Limits', icon: FiShield },
+  { to: '/dev/file-health', label: 'File Health', icon: FiFileText },
   { to: '/dev/settings', label: 'Settings', icon: FiSettings },
 ];
 const OTHER: NavItem[] = [

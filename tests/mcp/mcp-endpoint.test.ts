@@ -16,8 +16,8 @@ import { eq } from 'drizzle-orm';
 import Elysia from 'elysia';
 import { db } from '../../server/db';
 import { post, session, user } from '../../server/db/schema';
-import { logBuffer } from '../../server/mcp/log-buffer';
 import { mcpPlugin } from '../../server/mcp/index';
+import { logBuffer } from '../../server/mcp/log-buffer';
 
 const TOKEN = process.env.MCP_ADMIN_TOKEN;
 const app = new Elysia().use(mcpPlugin);
@@ -118,16 +118,30 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (!TOKEN) return;
-  await db.delete(post).where(eq(post.id, seededPostId)).catch(() => {});
-  await db.delete(session).where(eq(session.userId, seededUserId)).catch(() => {});
-  await db.delete(user).where(eq(user.id, seededUserId)).catch(() => {});
+  await db
+    .delete(post)
+    .where(eq(post.id, seededPostId))
+    .catch(() => {});
+  await db
+    .delete(session)
+    .where(eq(session.userId, seededUserId))
+    .catch(() => {});
+  await db
+    .delete(user)
+    .where(eq(user.id, seededUserId))
+    .catch(() => {});
 });
 
 // ─── tools/call helper ────────────────────────────────────────────────────────
 async function callTool(name: string, args: Record<string, unknown> = {}) {
   const sid = await openSession();
   const res = await rpc(
-    { jsonrpc: '2.0', id: crypto.randomUUID(), method: 'tools/call', params: { name, arguments: args } },
+    {
+      jsonrpc: '2.0',
+      id: crypto.randomUUID(),
+      method: 'tools/call',
+      params: { name, arguments: args },
+    },
     { sid },
   );
   const body = (await res.json()) as {
@@ -182,13 +196,14 @@ describeIf('MCP handshake & JSON framing', () => {
 // ─── tools/list ───────────────────────────────────────────────────────────────
 
 describeIf('MCP tools/list', () => {
-  test('exposes exactly the 7 debug tools', async () => {
+  test('exposes exactly the 8 debug tools', async () => {
     const sid = await openSession();
     const res = await rpc({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, { sid });
     const body = (await res.json()) as { result?: { tools?: Array<{ name: string }> } };
     const names = (body.result?.tools ?? []).map((t) => t.name).sort();
     expect(names).toEqual(
       [
+        'check_file_health',
         'get_active_sessions',
         'get_app_status',
         'get_db_stats',
@@ -202,6 +217,35 @@ describeIf('MCP tools/list', () => {
 });
 
 // ─── tools/call: runtime tools ────────────────────────────────────────────────
+
+describeIf('tool: check_file_health', () => {
+  test('summarizes repo file health with context hazards', async () => {
+    const { status, text } = await callTool('check_file_health', { limit: 5 });
+    expect(status).toBe(200);
+    const body = JSON.parse(text) as {
+      available: boolean;
+      summary: { scanned: number };
+      over: unknown[];
+      contextHazards: Array<{ path: string; hazard: string; advice: string }>;
+    };
+    expect(body.available).toBe(true);
+    expect(body.summary.scanned).toBeGreaterThan(20);
+    expect(body.over.length).toBeLessThanOrEqual(5);
+    expect(body.contextHazards.some((h) => h.path === 'bun.lock' && h.hazard === 'danger')).toBe(
+      true,
+    );
+  });
+
+  test('reports a single file with read advice', async () => {
+    const { text } = await callTool('check_file_health', {
+      path: 'server/mcp/tools/file-health.ts',
+    });
+    const body = JSON.parse(text) as { found: boolean; file: { kind: string; advice: string } };
+    expect(body.found).toBe(true);
+    expect(body.file.kind).toBe('route');
+    expect(body.file.advice).toContain('Aman');
+  });
+});
 
 describeIf('tool: get_app_status', () => {
   test('reports env, port and memory numbers', async () => {

@@ -2,6 +2,7 @@ import { mcp } from 'elysia-mcp';
 import { env } from '../env';
 import { registerAppStatusTool } from './tools/app-status';
 import { registerDbTools } from './tools/db';
+import { registerFileHealthTool } from './tools/file-health';
 import { registerLogTools } from './tools/logs';
 
 /** Extracts the MCP admin token from either Bearer header or ?mcpAdminToken query param. */
@@ -40,5 +41,6 @@ export const mcpPlugin = mcp({
     registerAppStatusTool(server);
     registerLogTools(server);
     registerDbTools(server);
+    registerFileHealthTool(server);
   },
 });

@@ -8,6 +8,7 @@ import { mcpPlugin } from '../mcp';
 import { checkRateLimit, logRateLimit } from '../middleware/rate-limiter';
 import { adminApi } from './admin';
 import { analyticsApi } from './analytics';
+import { fileHealthApi } from './file-health';
 import { settingsApi } from './settings';
 
 /**
@@ -31,6 +32,8 @@ export const api = new Elysia({ prefix: '/api' })
   .use(mcpPlugin)
   // Analytics read endpoints (super-admin only).
   .use(analyticsApi)
+  // File health report (super-admin only).
+  .use(fileHealthApi)
   // App settings (GET public, PUT super-admin only).
   .use(settingsApi)
   // Derive the session for downstream handlers.
@@ -50,7 +53,11 @@ export const api = new Elysia({ prefix: '/api' })
     if (!url.pathname.startsWith('/api/auth/')) {
       const { limited } = checkRateLimit(ip);
       if (limited) {
-        void logRateLimit(ip === 'unknown' ? null : ip, url.pathname, (user as { id?: string } | null)?.id ?? null);
+        void logRateLimit(
+          ip === 'unknown' ? null : ip,
+          url.pathname,
+          (user as { id?: string } | null)?.id ?? null,
+        );
         return status(429, { error: 'Too many requests' });
       }
     }
