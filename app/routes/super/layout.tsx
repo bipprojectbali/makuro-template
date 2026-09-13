@@ -7,6 +7,7 @@ import { getSidebarCollapsed } from '@server/sidebar';
 import {
   FiDatabase,
   FiFileText,
+  FiGrid,
   FiHome,
   FiList,
   FiLogIn,
@@ -26,10 +27,15 @@ export function meta(_: Route.MetaArgs) {
 
 const NAV: NavGroup[] = [
   {
+    items: [
+      { to: '/dev', label: 'Overview', icon: FiGrid, description: 'Ringkasan kondisi aplikasi' },
+    ],
+  },
+  {
     label: 'Kelola',
     items: [
       {
-        to: '/dev',
+        to: '/dev/users',
         label: 'Users',
         icon: FiUsers,
         description: 'Daftar user, role, ban, impersonasi',

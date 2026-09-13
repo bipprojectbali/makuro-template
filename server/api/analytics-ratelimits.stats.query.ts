@@ -53,6 +53,7 @@ export async function getRateLimitStats() {
     topCountries: countries,
     devices,
     config: {
+      enabled: rateLimiter.config.enabled,
       limit: rateLimiter.config.limit,
       windowMs: rateLimiter.config.windowMs,
       excludePrefixes: rateLimiter.config.excludePrefixes,
