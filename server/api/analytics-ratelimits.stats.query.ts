@@ -60,3 +60,12 @@ export async function getRateLimitStats() {
     },
   };
 }
+
+/** Blocks in the last hour — powers the sidebar badge on "Rate Limits". */
+export async function countRateLimitLastHour(): Promise<number> {
+  const [row] = await db
+    .select({ count })
+    .from(rateLimitLog)
+    .where(sql`${rateLimitLog.createdAt} >= now() - interval '1 hour'`);
+  return row?.count ?? 0;
+}

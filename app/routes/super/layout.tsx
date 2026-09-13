@@ -1,3 +1,5 @@
+import { countRateLimitLastHour } from '@server/api/analytics-ratelimits.stats.query';
+import { frameInfo } from '@server/app-info';
 import { requireRole } from '@server/guard';
 import { ROLES } from '@server/permissions';
 import { getSidebarCollapsed } from '@server/sidebar';
@@ -12,7 +14,7 @@ import {
   FiUsers,
 } from 'react-icons/fi';
 import { Outlet } from 'react-router';
-import { AppFrame, type NavItem } from '~/components/AppFrame';
+import { AppFrame, type NavBadge, type NavGroup, type NavItem } from '~/components/AppFrame';
 import type { AppContext } from '~/lib/app-context';
 import type { Route } from './+types/layout';
 
@@ -20,13 +22,58 @@ export function meta(_: Route.MetaArgs) {
   return [{ title: 'Dev Console — Makuro' }];
 }
 
-const NAV: NavItem[] = [
-  { to: '/dev', label: 'Users', icon: FiUsers },
-  { to: '/dev/db-schema', label: 'DB Schema', icon: FiDatabase },
-  { to: '/dev/visits', label: 'Visits', icon: FiList },
-  { to: '/dev/login-logs', label: 'Login Logs', icon: FiLogIn },
-  { to: '/dev/rate-limit-logs', label: 'Rate Limits', icon: FiShield },
-  { to: '/dev/settings', label: 'Settings', icon: FiSettings },
+const NAV: NavGroup[] = [
+  {
+    label: 'Kelola',
+    items: [
+      {
+        to: '/dev',
+        label: 'Users',
+        icon: FiUsers,
+        description: 'Daftar user, role, ban, impersonasi',
+      },
+      {
+        to: '/dev/db-schema',
+        label: 'DB Schema',
+        icon: FiDatabase,
+        description: 'Diagram tabel dan relasi',
+      },
+    ],
+  },
+  {
+    label: 'Log & monitoring',
+    items: [
+      {
+        to: '/dev/visits',
+        label: 'Visitor Logs',
+        icon: FiList,
+        description: 'Kunjungan halaman, lokasi, perangkat',
+      },
+      {
+        to: '/dev/login-logs',
+        label: 'Login Logs',
+        icon: FiLogIn,
+        description: 'Siapa masuk, lewat apa, dari mana',
+      },
+      {
+        to: '/dev/rate-limit-logs',
+        label: 'Rate Limits',
+        icon: FiShield,
+        description: 'Request yang ditolak limiter',
+      },
+    ],
+  },
+  {
+    label: 'Konfigurasi',
+    items: [
+      {
+        to: '/dev/settings',
+        label: 'Settings',
+        icon: FiSettings,
+        description: 'Autentikasi, rate limit, runtime',
+      },
+    ],
+  },
 ];
 const OTHER: NavItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: FiHome },
@@ -35,7 +82,16 @@ const OTHER: NavItem[] = [
 
 export async function loader({ request }: Route.LoaderArgs) {
   const auth = await requireRole(request, ROLES.SUPER_ADMIN);
-  return { ...auth, collapsed: getSidebarCollapsed(request) };
+  // Sidebar counters — cheap aggregates, failures must not break navigation.
+  const blockedLastHour = await countRateLimitLastHour().catch(() => 0);
+  const navBadges: Record<string, NavBadge> = {
+    '/dev/rate-limit-logs': {
+      value: blockedLastHour,
+      color: 'red',
+      tooltip: `${blockedLastHour} request diblokir dalam 1 jam terakhir`,
+    },
+  };
+  return { ...auth, collapsed: getSidebarCollapsed(request), navBadges, ...frameInfo() };
 }
 
 export default function SuperLayout({ loaderData }: Route.ComponentProps) {
@@ -44,6 +100,10 @@ export default function SuperLayout({ loaderData }: Route.ComponentProps) {
     <AppFrame
       navItems={NAV}
       secondaryNav={OTHER}
+      navBadges={loaderData.navBadges}
+      consoleLabel="Dev Console"
+      env={loaderData.env}
+      version={loaderData.version}
       role={loaderData.role}
       user={loaderData.user}
       badgeColor="grape"

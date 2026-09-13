@@ -8,6 +8,7 @@ mock.module('../../server/guard', () => ({
 import { inArray } from 'drizzle-orm';
 import { analyticsApi } from '../../server/api/analytics';
 import { buildRateLimitWhere, toRateLimitCsv } from '../../server/api/analytics-ratelimits.query';
+import { countRateLimitLastHour } from '../../server/api/analytics-ratelimits.stats.query';
 import { db } from '../../server/db';
 import { rateLimitLog } from '../../server/db/schema';
 
@@ -110,6 +111,11 @@ describe('GET /analytics/rate-limit-logs', () => {
     expect(config.limit).toBeGreaterThan(0);
     expect(config.windowMs).toBeGreaterThan(0);
     expect(config.excludePrefixes).toContain('/api/auth/');
+  });
+
+  test('countRateLimitLastHour counts only fresh rows', async () => {
+    // Two seeded rows are fresh, the third is 10 days old.
+    expect(await countRateLimitLastHour()).toBeGreaterThanOrEqual(2);
   });
 
   test('export returns CSV with the filter applied', async () => {

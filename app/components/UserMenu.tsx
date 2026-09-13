@@ -16,7 +16,16 @@ import { authClient, signOut, useSession } from '~/lib/auth-client';
  * so the target account's role decides its home (strict isolation), never a
  * hardcoded area.
  */
-export function UserMenu({ user, collapsed = false }: { user: AppUser; collapsed?: boolean }) {
+export function UserMenu({
+  user,
+  collapsed = false,
+  roleBadge,
+}: {
+  user: AppUser;
+  collapsed?: boolean;
+  /** Role chip rendered next to the name (expanded) and in the menu header. */
+  roleBadge?: React.ReactNode;
+}) {
   const navigate = useNavigate();
   const { data } = useSession();
   const current = data?.user ?? user;
@@ -55,6 +64,7 @@ export function UserMenu({ user, collapsed = false }: { user: AppUser; collapsed
             padding: 8,
             borderRadius: 8,
           }}
+          aria-label="Menu akun"
         >
           <Group gap="sm" wrap="nowrap" w="100%">
             <Avatar
@@ -68,9 +78,12 @@ export function UserMenu({ user, collapsed = false }: { user: AppUser; collapsed
             {!collapsed && (
               <>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <Text size="sm" fw={500} truncate>
-                    {current.name}
-                  </Text>
+                  <Group gap={6} wrap="nowrap">
+                    <Text size="sm" fw={500} truncate style={{ minWidth: 0 }}>
+                      {current.name}
+                    </Text>
+                    {roleBadge}
+                  </Group>
                   <Text size="xs" c="dimmed" truncate>
                     {current.email}
                   </Text>
@@ -82,7 +95,16 @@ export function UserMenu({ user, collapsed = false }: { user: AppUser; collapsed
         </UnstyledButton>
       </Menu.Target>
       <Menu.Dropdown>
-        <Menu.Label>Accounts</Menu.Label>
+        <Menu.Label>
+          <Group gap={6} wrap="nowrap">
+            <Text size="xs" truncate style={{ minWidth: 0 }}>
+              {current.email}
+            </Text>
+            {roleBadge}
+          </Group>
+        </Menu.Label>
+        <Menu.Divider />
+        <Menu.Label>Akun</Menu.Label>
         {loading ? (
           <Group justify="center" py="xs">
             <Loader size="xs" />
@@ -117,7 +139,7 @@ export function UserMenu({ user, collapsed = false }: { user: AppUser; collapsed
           ))
         )}
         <Menu.Item leftSection={<FiPlus size={16} />} onClick={() => navigate('/login')}>
-          Add another account
+          Tambah akun lain
         </Menu.Item>
         <Menu.Divider />
         <Menu.Item
@@ -125,13 +147,11 @@ export function UserMenu({ user, collapsed = false }: { user: AppUser; collapsed
           leftSection={<FiLogOut size={16} />}
           onClick={() =>
             modals.openConfirmModal({
-              title: 'Sign out?',
+              title: 'Keluar dari akun ini?',
               children: (
-                <Text size="sm">
-                  Kamu akan keluar dari akun ini. Sesi aktif akan dihapus.
-                </Text>
+                <Text size="sm">Kamu akan keluar dari akun ini. Sesi aktif akan dihapus.</Text>
               ),
-              labels: { confirm: 'Sign out', cancel: 'Batal' },
+              labels: { confirm: 'Keluar', cancel: 'Batal' },
               confirmProps: { color: 'red' },
               onConfirm: async () => {
                 await signOut();
@@ -140,7 +160,7 @@ export function UserMenu({ user, collapsed = false }: { user: AppUser; collapsed
             })
           }
         >
-          Sign out
+          Keluar
         </Menu.Item>
       </Menu.Dropdown>
     </Menu>
