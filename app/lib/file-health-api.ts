@@ -58,6 +58,8 @@ export type FileHealthResponse = {
     cautionTokens: number;
     dangerTokens: number;
   };
+  /** Whole-repo hazard list (unfiltered), worst first. */
+  hazards: FileHealthRow[];
   rows: FileHealthRow[];
   total: number;
   page: number;
@@ -80,14 +82,18 @@ export const DEFAULT_FILE_FILTERS: FileHealthFilters = {
   sort: 'ratio',
 };
 
-/** Fetch every row at once — the repo has a few hundred files at most. */
-const PAGE_LIMIT = 500;
+export const FILE_PAGE_SIZE = 25;
 
 export async function fetchFileHealth(
   f: FileHealthFilters,
+  page: number,
   refresh = false,
 ): Promise<FileHealthResponse> {
-  const q = new URLSearchParams({ limit: String(PAGE_LIMIT), sort: f.sort });
+  const q = new URLSearchParams({
+    page: String(page),
+    limit: String(FILE_PAGE_SIZE),
+    sort: f.sort,
+  });
   if (f.search.trim()) q.set('search', f.search.trim());
   if (f.status !== 'all') q.set('status', f.status);
   if (f.kind) q.set('kind', f.kind);

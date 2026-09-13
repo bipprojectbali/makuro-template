@@ -19,6 +19,8 @@ import { ROLES } from '../permissions';
 
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 500;
+/** Hazard panel is always whole-repo, independent of table filters. */
+const MAX_HAZARDS = 50;
 
 export const fileHealthApi = new Elysia({ prefix: '/file-health' })
   .get(
@@ -50,6 +52,10 @@ export const fileHealthApi = new Elysia({ prefix: '/file-health' })
           cautionTokens: HAZARD_CAUTION_TOKENS,
           dangerTokens: HAZARD_DANGER_TOKENS,
         },
+        hazards: report.files
+          .filter((f) => f.hazard !== 'none')
+          .sort((a, b) => b.estTokens - a.estTokens)
+          .slice(0, MAX_HAZARDS),
         rows: rows.slice(offset, offset + limit),
         total: rows.length,
         page,

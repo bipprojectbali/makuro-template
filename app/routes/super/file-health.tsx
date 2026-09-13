@@ -1,4 +1,4 @@
-import { Alert, Button, Group, Stack, Text, ThemeIcon, Title } from '@mantine/core';
+import { Alert, Button, Group, Pagination, Stack, Text, ThemeIcon, Title } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -9,8 +9,10 @@ import { FileHealthStats } from '~/components/file-health/FileHealthStats';
 import { FileHealthTable } from '~/components/file-health/FileHealthTable';
 import {
   DEFAULT_FILE_FILTERS,
+  FILE_PAGE_SIZE,
   type FileHealthFilters as Filters,
   fetchFileHealth,
+  fmtNum,
 } from '~/lib/file-health-api';
 
 export function meta() {
@@ -18,21 +20,22 @@ export function meta() {
 }
 
 export default function FileHealthPage() {
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILE_FILTERS);
+  const [filters, setFiltersState] = useState<Filters>(DEFAULT_FILE_FILTERS);
+  const [page, setPage] = useState(1);
   const [debouncedSearch] = useDebouncedValue(filters.search, 300);
   const [refresh, setRefresh] = useState(0);
   const effective = { ...filters, search: debouncedSearch };
 
+  const setFilters = (patch: Partial<Filters>) => {
+    setFiltersState((f) => ({ ...f, ...patch }));
+    setPage(1);
+  };
+
   const q = useQuery({
-    queryKey: ['file-health', effective, refresh],
+    queryKey: ['file-health', effective, page, refresh],
     // refresh > 0 bypasses the server-side 30s cache (manual "Pindai ulang").
-    queryFn: () => fetchFileHealth(effective, refresh > 0),
+    queryFn: () => fetchFileHealth(effective, page, refresh > 0),
     placeholderData: keepPreviousData,
-  });
-  // Hazards must reflect the whole repo, not the current filter — fetch unfiltered once.
-  const all = useQuery({
-    queryKey: ['file-health-all', refresh],
-    queryFn: () => fetchFileHealth(DEFAULT_FILE_FILTERS, refresh > 0),
   });
 
   const data = q.data;
@@ -101,22 +104,40 @@ export default function FileHealthPage() {
 
       <FileHealthStats summary={data?.summary} />
 
-      {all.data?.available && (
+      {data?.available && (
         <FileHealthHazards
-          rows={all.data.rows}
-          cautionTokens={all.data.rules.cautionTokens}
-          dangerTokens={all.data.rules.dangerTokens}
+          rows={data.hazards}
+          cautionTokens={data.rules.cautionTokens}
+          dangerTokens={data.rules.dangerTokens}
         />
       )}
 
       <FileHealthFilters
         filters={filters}
-        onChange={(patch) => setFilters((f) => ({ ...f, ...patch }))}
-        summary={all.data?.summary}
+        onChange={setFilters}
+        summary={data?.summary}
         matchCount={data?.total}
       />
 
       <FileHealthTable rows={data?.rows ?? []} loading={q.isPending} empty={empty} />
+
+      {data && data.total > 0 && (
+        <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+          <Text size="xs" c="dimmed">
+            Menampilkan {fmtNum((page - 1) * FILE_PAGE_SIZE + 1)}–
+            {fmtNum(Math.min(page * FILE_PAGE_SIZE, data.total))} dari {fmtNum(data.total)} file
+          </Text>
+          {data.total > FILE_PAGE_SIZE && (
+            <Pagination
+              value={page}
+              total={Math.ceil(data.total / FILE_PAGE_SIZE)}
+              onChange={setPage}
+              size="sm"
+              siblings={1}
+            />
+          )}
+        </Group>
+      )}
 
       {data && (
         <Text size="xs" c="dimmed">

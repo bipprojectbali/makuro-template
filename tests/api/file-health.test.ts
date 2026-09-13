@@ -27,6 +27,20 @@ describe('GET /file-health', () => {
     expect((body.rows as unknown[]).length).toBe(5);
     expect(body.total as number).toBe(summary.scanned);
     expect((body.rules as { hardLimitLines: number }).hardLimitLines).toBe(500);
+    const hazards = body.hazards as Array<{ path: string; hazard: string }>;
+    expect(hazards.some((h) => h.path === 'bun.lock' && h.hazard === 'danger')).toBe(true);
+  });
+
+  test('pagination: pages are disjoint and hazards stay whole-repo under a filter', async () => {
+    const p1 = await get('/file-health', { limit: '3', page: '1', sort: 'path' });
+    const p2 = await get('/file-health', { limit: '3', page: '2', sort: 'path' });
+    const a = (p1.body.rows as Array<{ path: string }>).map((r) => r.path);
+    const b = (p2.body.rows as Array<{ path: string }>).map((r) => r.path);
+    expect(a.length).toBe(3);
+    expect(a.some((x) => b.includes(x))).toBe(false);
+    expect(p2.body.page).toBe(2);
+    const filtered = await get('/file-health', { kind: 'test', limit: '3' });
+    expect((filtered.body.hazards as unknown[]).length).toBeGreaterThan(0);
   });
 
   test('filters by kind and status, clamps limit', async () => {

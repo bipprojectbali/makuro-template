@@ -22,9 +22,18 @@ const MAX_UA_LENGTH = 512;
 
 // Skip all API calls and internal browser requests — visitor tracking should only
 // cover page navigations, not same-origin fetch requests from the SPA.
-const SKIP_PREFIXES = ['/api/', '/_vite/', '/assets/', '/favicon', '/manifest', '/__manifest'];
+const SKIP_PREFIXES = [
+  '/api/',
+  '/_vite/',
+  '/assets/',
+  '/favicon',
+  '/manifest',
+  '/__manifest',
+  '/.well-known/', // browser/devtools probes, see http-probes.ts
+];
 
-function shouldSkip(path: string): boolean {
+/** True for requests that are not page navigations (API, assets, loaders, probes). */
+export function shouldSkip(path: string): boolean {
   // React Router loader fetches end with .data (e.g. /posts.data) — not page navigations.
   if (path.endsWith('.data')) return true;
   return SKIP_PREFIXES.some((p) => path.startsWith(p));
