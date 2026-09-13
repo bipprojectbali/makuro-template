@@ -1,4 +1,4 @@
-import { Group, Paper, Skeleton, Stack, Text } from '@mantine/core';
+import { Box, Group, Paper, Skeleton, Stack, Text } from '@mantine/core';
 import { formatRelative } from '~/lib/visits-format';
 import { UserActionsMenu } from './UserActionsMenu';
 import { IdentityCell, RoleBadge, StatusBadge } from './UserCells';
@@ -46,7 +46,10 @@ export function UserCardList({ rows, loading, perms, actions, onOpen, empty }: U
                 </Text>
               </Group>
             </Stack>
-            <UserActionsMenu user={u} perms={perms} actions={actions} onOpen={onOpen} />
+            {/* Stop the card's open-drawer click from firing when using the menu. */}
+            <Box onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+              <UserActionsMenu user={u} perms={perms} actions={actions} onOpen={onOpen} />
+            </Box>
           </Group>
         </Paper>
       ))}

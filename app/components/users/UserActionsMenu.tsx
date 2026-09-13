@@ -1,4 +1,4 @@
-import { ActionIcon, Menu, Tooltip } from '@mantine/core';
+import { ActionIcon, Menu } from '@mantine/core';
 import {
   canActOnTarget,
   canImpersonate,
@@ -50,19 +50,18 @@ export function UserActionsMenu({ user, perms, actions, onOpen }: Props) {
   const target = normalizeRole(user.role);
   return (
     <Menu position="bottom-end" withArrow shadow="md" width={230}>
+      {/* No Tooltip here: Menu.Target and Tooltip both clone the child, and the
+          child's own onClick would override the menu toggle (button did nothing). */}
       <Menu.Target>
-        <Tooltip label="Aksi" withArrow>
-          <ActionIcon
-            variant="subtle"
-            color="gray"
-            size="sm"
-            loading={busy}
-            aria-label={`Aksi untuk ${user.name}`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <FiMoreVertical size={14} />
-          </ActionIcon>
-        </Tooltip>
+        <ActionIcon
+          variant="subtle"
+          color="gray"
+          size="sm"
+          loading={busy}
+          aria-label={`Aksi untuk ${user.name}`}
+        >
+          <FiMoreVertical size={14} />
+        </ActionIcon>
       </Menu.Target>
       <Menu.Dropdown onClick={(e) => e.stopPropagation()}>
         <Menu.Item leftSection={<FiEye size={14} />} onClick={() => onOpen(user)}>
