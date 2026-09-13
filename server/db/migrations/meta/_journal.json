@@ -50,6 +50,13 @@
       "when": 1789264355956,
       "tag": "0006_striped_living_tribunal",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789264905278,
+      "tag": "0007_nostalgic_tarantula",
+      "breakpoints": true
     }
   ]
 }

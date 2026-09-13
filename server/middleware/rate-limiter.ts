@@ -26,6 +26,8 @@ export type RateLimitConfig = {
   limit: number;
   /** Request paths starting with any of these are never limited. */
   excludePrefixes: string[];
+  /** Master switch — false makes the plugin a no-op (still sets no headers). */
+  enabled: boolean;
 };
 
 export type RateLimitResult = {
@@ -47,14 +49,24 @@ const UNKNOWN_KEY = 'unknown';
 
 export class RateLimiter {
   private hits = new Map<string, number[]>();
-  readonly config: RateLimitConfig;
+  private current: RateLimitConfig;
 
   constructor(config: Partial<RateLimitConfig> = {}) {
-    this.config = {
+    this.current = {
       windowMs: config.windowMs ?? env.RATE_LIMIT_WINDOW_MS,
       limit: config.limit ?? env.RATE_LIMIT_MAX,
       excludePrefixes: config.excludePrefixes ?? DEFAULT_EXCLUDE_PREFIXES,
+      enabled: config.enabled ?? true,
     };
+  }
+
+  get config(): Readonly<RateLimitConfig> {
+    return this.current;
+  }
+
+  /** Replace the active config at runtime (settings console). Existing hit history is kept. */
+  configure(config: Partial<RateLimitConfig>): void {
+    this.current = { ...this.current, ...config };
   }
 
   isExcluded(pathname: string): boolean {
@@ -135,6 +147,7 @@ export async function logRateLimit(input: {
  */
 export function rateLimitPlugin(limiter: RateLimiter = rateLimiter) {
   return new Elysia({ name: 'rate-limit' }).onBeforeHandle({ as: 'global' }, ({ request, set }) => {
+    if (!limiter.config.enabled) return;
     const pathname = new URL(request.url).pathname;
     if (limiter.isExcluded(pathname)) return;
 

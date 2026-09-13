@@ -50,6 +50,22 @@ describe('RateLimiter.check', () => {
     expect(rl.size).toBe(1);
   });
 
+  it('configure() swaps limits at runtime and enabled=false disables the plugin', async () => {
+    const rl = new RateLimiter({ windowMs: 60_000, limit: 1 });
+    rl.configure({ limit: 3 });
+    expect(rl.config.limit).toBe(3);
+    expect(rl.config.windowMs).toBe(60_000);
+    const app = new Elysia({ prefix: '/api' }).use(rateLimitPlugin(rl)).get('/x', () => 'ok');
+    const hit = () =>
+      app.handle(
+        new Request('http://localhost/api/x', { headers: { [CLIENT_IP_HEADER]: '10.9.9.9' } }),
+      );
+    for (let i = 0; i < 3; i++) expect((await hit()).status).toBe(200);
+    expect((await hit()).status).toBe(429);
+    rl.configure({ enabled: false });
+    expect((await hit()).status).toBe(200);
+  });
+
   it('excludes configured prefixes', () => {
     const rl = new RateLimiter();
     expect(rl.isExcluded('/api/auth/sign-in/email')).toBe(true);

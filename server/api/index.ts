@@ -6,6 +6,7 @@ import { post } from '../db/schema';
 import { logger } from '../logger';
 import { mcpPlugin } from '../mcp';
 import { rateLimitPlugin } from '../middleware/rate-limiter';
+import { applyRateLimitSettings } from '../settings';
 import { adminApi } from './admin';
 import { analyticsApi } from './analytics';
 import { settingsApi } from './settings';
@@ -17,6 +18,9 @@ import { settingsApi } from './settings';
 async function getSession(headers: Headers) {
   return auth.api.getSession({ headers });
 }
+
+// Load stored rate-limit overrides once per process (env defaults until then).
+void applyRateLimitSettings();
 
 /**
  * Main Elysia API. Everything here is served under `/api` (see mount in

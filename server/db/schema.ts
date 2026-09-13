@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm';
-import { boolean, index, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 
 // --- Better Auth core tables ---------------------------------------------
 // These match the Better Auth Drizzle adapter schema. You can regenerate
@@ -169,6 +169,13 @@ export const appSetting = pgTable('app_setting', {
   emailAuthEnabled: boolean('email_auth_enabled').default(false).notNull(),
   /** Allow new user registrations. Set false to close the app to new signups. */
   signupEnabled: boolean('signup_enabled').default(true).notNull(),
+  // API rate limiting. NULL = fall back to the env default (RATE_LIMIT_*), so
+  // the console can show "default" vs "overridden" and reset per field.
+  rateLimitEnabled: boolean('rate_limit_enabled').default(true).notNull(),
+  rateLimitMax: integer('rate_limit_max'),
+  rateLimitWindowMs: integer('rate_limit_window_ms'),
+  /** Newline-separated path prefixes that are never limited; NULL = default list. */
+  rateLimitExcludePrefixes: text('rate_limit_exclude_prefixes'),
   updatedAt: timestamp('updated_at')
     .$defaultFn(() => new Date())
     .notNull(),
