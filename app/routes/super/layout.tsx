@@ -1,10 +1,12 @@
 import { countRateLimitLastHour } from '@server/api/analytics-ratelimits.stats.query';
 import { frameInfo } from '@server/app-info';
+import { scanFileHealth } from '@server/file-health/file-health.scan';
 import { requireRole } from '@server/guard';
 import { ROLES } from '@server/permissions';
 import { getSidebarCollapsed } from '@server/sidebar';
 import {
   FiDatabase,
+  FiFileText,
   FiHome,
   FiList,
   FiLogIn,
@@ -61,6 +63,12 @@ const NAV: NavGroup[] = [
         icon: FiShield,
         description: 'Request yang ditolak limiter',
       },
+      {
+        to: '/dev/file-health',
+        label: 'File Health',
+        icon: FiFileText,
+        description: 'Ukuran file vs limit, risiko konteks agent',
+      },
     ],
   },
   {
@@ -83,12 +91,22 @@ const OTHER: NavItem[] = [
 export async function loader({ request }: Route.LoaderArgs) {
   const auth = await requireRole(request, ROLES.SUPER_ADMIN);
   // Sidebar counters — cheap aggregates, failures must not break navigation.
-  const blockedLastHour = await countRateLimitLastHour().catch(() => 0);
+  const [blockedLastHour, filesOver] = await Promise.all([
+    countRateLimitLastHour().catch(() => 0),
+    scanFileHealth()
+      .then((r) => r.summary.over)
+      .catch(() => 0),
+  ]);
   const navBadges: Record<string, NavBadge> = {
     '/dev/rate-limit-logs': {
       value: blockedLastHour,
       color: 'red',
       tooltip: `${blockedLastHour} request diblokir dalam 1 jam terakhir`,
+    },
+    '/dev/file-health': {
+      value: filesOver,
+      color: 'yellow',
+      tooltip: `${filesOver} file melewati limit baris`,
     },
   };
   return { ...auth, collapsed: getSidebarCollapsed(request), navBadges, ...frameInfo() };

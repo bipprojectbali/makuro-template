@@ -20,6 +20,7 @@ import { createRequestHandler, type ServerBuild } from 'react-router';
 import * as ssrBuild from '../build/server/index.js';
 import { api } from './api';
 import { env } from './env';
+import { isHttpProbe, probeResponse } from './http-probes';
 import { logger } from './logger';
 import { stampClientIp } from './middleware/client-ip';
 import { recordVisit } from './middleware/visitor';
@@ -45,6 +46,9 @@ const server = Bun.serve({
     if (url.pathname.startsWith('/api')) {
       return api.handle(request);
     }
+
+    // Browser/devtools probes — never SSR, never counted as a visit.
+    if (isHttpProbe(url.pathname)) return probeResponse();
 
     // Static client assets.
     const filePath = CLIENT_DIR + url.pathname.replace(/^\/+/, '');

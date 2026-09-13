@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { normalizeIp } from '../../server/middleware/visitor';
+import { normalizeIp, shouldSkip } from '../../server/middleware/visitor';
 
 // Test the bot classification logic in isolation by importing just the helpers.
 // We can't import recordVisit directly (it hits the DB), so we test the
@@ -59,5 +59,20 @@ describe('normalizeIp', () => {
     expect(normalizeIp(null)).toBeNull();
     expect(normalizeIp(undefined)).toBeNull();
     expect(normalizeIp('   ')).toBeNull();
+  });
+});
+
+describe('shouldSkip', () => {
+  it('skips API, assets, loader fetches and well-known probes', () => {
+    expect(shouldSkip('/api/analytics/visits')).toBe(true);
+    expect(shouldSkip('/assets/app.js')).toBe(true);
+    expect(shouldSkip('/posts.data')).toBe(true);
+    expect(shouldSkip('/.well-known/appspecific/com.chrome.devtools.json')).toBe(true);
+  });
+
+  it('records real page navigations', () => {
+    expect(shouldSkip('/')).toBe(false);
+    expect(shouldSkip('/login')).toBe(false);
+    expect(shouldSkip('/dev/visits')).toBe(false);
   });
 });

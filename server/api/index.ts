@@ -9,6 +9,7 @@ import { rateLimitPlugin } from '../middleware/rate-limiter';
 import { applyRateLimitSettings } from '../settings';
 import { adminApi } from './admin';
 import { analyticsApi } from './analytics';
+import { fileHealthApi } from './file-health';
 import { settingsApi } from './settings';
 
 /**
@@ -38,6 +39,8 @@ export const api = new Elysia({ prefix: '/api' })
   .use(mcpPlugin)
   // Analytics read endpoints (super-admin only).
   .use(analyticsApi)
+  // File health report (super-admin only).
+  .use(fileHealthApi)
   // App settings (GET public, PUT super-admin only).
   .use(settingsApi)
   // Derive the session for downstream handlers.

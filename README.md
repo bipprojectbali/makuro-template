@@ -164,7 +164,7 @@ Sistem role: `user` → `admin` → `super-admin`. Role tersimpan di tabel `user
 |---|---|---|
 | `user` | `/profile` | Profile, settings akun |
 | `admin` | `/dashboard` | Dashboard, manajemen user (ban, role change) |
-| `super-admin` | `/dev` | Users, DB schema, visit log, login log, rate limit, app settings |
+| `super-admin` | `/dev` | Users, DB schema, visit log, login log, rate limit, file health, app settings |
 
 Google OAuth: set `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`. Authorized redirect URI di Google Console: `${BETTER_AUTH_URL}/api/auth/callback/google`.
 
@@ -194,6 +194,15 @@ API (`/api/analytics/visits`, super-admin): `GET` list dengan query `page`, `lim
 Setiap request `/api/*` dibatasi per IP klien dengan jendela geser. Default 100 request / 60 detik dari env `RATE_LIMIT_MAX` dan `RATE_LIMIT_WINDOW_MS`; super-admin bisa menimpanya (batas, jendela, path yang dikecualikan, atau mematikan sementara) di `/dev/settings` tanpa restart — nilai tersimpan di `app_setting`, `NULL` berarti pakai default env. `/api/auth/*` (Better Auth) dan `/api/mcp` (token) dikecualikan. Setiap response membawa `X-RateLimit-Limit` / `X-RateLimit-Remaining`; request yang ditolak mendapat 429 + `Retry-After`, dan request yang ditolak tidak memperpanjang jendela. IP klien diambil dari `X-Forwarded-For` / `X-Real-IP`, lalu dari alamat socket yang distempel server (`server/middleware/client-ip.ts`), jadi tanpa proxy pun tiap klien punya bucket sendiri.
 
 Plugin `rateLimitPlugin()` harus didaftarkan **pertama** di `server/api/index.ts` — hook Elysia hanya berlaku untuk route yang didaftarkan setelahnya. Request yang ditolak dicatat ke `rate_limit_log` (method, IP, geo, perangkat) dan ditampilkan di `/dev/rate-limit-logs` dengan API `/api/analytics/rate-limit-logs` (`search`, `ip`, `path`, `method`, `country`, `device`, `days`, `/stats`, `/export`, `DELETE` massal). State limiter ada di memori proses; untuk multi-instance gunakan Redis.
+
+## File health & penyelamat konteks agent
+
+`/dev/file-health` (super-admin) memindai seluruh repo (kecuali `node_modules`, `build`, `.git`, cache) dan menilai setiap file teks:
+
+- **Limit baris per peran** — route/handler 150, service 300, repository/query 250, schema 200, types 300, utility 200, config 100, test 400, page/component 300; hard limit global 500 baris / 20.000 karakter. Migration, generated, seed, fixture, lockfile, dan skill vendor (`.agents/`) dikecualikan. Aturan ada di `server/file-health/file-health.rules.ts`.
+- **Risiko konteks agent** — estimasi token (≈ 4 karakter/token). ≥ 5.000 token = hati-hati, ≥ 15.000 = bahaya. Tujuannya mencegah AI agent membaca file seperti `bun.lock` secara utuh dan menghabiskan context window.
+
+Agent bisa mengecek sendiri lewat tool MCP `check_file_health` (server `makuro-debug`): tanpa argumen mengembalikan ringkasan, file lewat/hampir limit, dan daftar file berbahaya; dengan `path` mengembalikan metrik + saran cara membaca file itu. REST: `GET /api/file-health` (filter `status`, `kind`, `hazard`, `search`, `sort`, `page`, `limit`, `refresh=true` untuk melewati cache 30 detik) dan `GET /api/file-health/file?path=`.
 
 ## Testing
 

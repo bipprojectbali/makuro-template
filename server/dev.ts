@@ -14,6 +14,7 @@ import { createServer as createViteServer } from 'vite';
 import { api } from './api';
 import { env } from './env';
 import { nodeToWebRequest, writeWebResponse } from './http-bridge';
+import { isHttpProbe, probeResponse } from './http-probes';
 import { logger } from './logger';
 import { stampClientIp } from './middleware/client-ip';
 import { recordVisit } from './middleware/visitor';
@@ -40,6 +41,13 @@ const server = createServer((req, res) => {
         res.end('Internal Server Error');
       }
     })();
+    return;
+  }
+
+  // Browser/devtools probes (e.g. Chrome's com.chrome.devtools.json): plain 404,
+  // never SSR, never counted as a visit.
+  if (isHttpProbe(pathname)) {
+    void writeWebResponse(res, probeResponse());
     return;
   }
 
