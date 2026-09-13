@@ -1,4 +1,5 @@
 import { Elysia, t } from 'elysia';
+import { AUDIT_ACTIONS, audit } from '../audit';
 import { requireRole } from '../guard';
 import { ROLES } from '../permissions';
 import {
@@ -31,8 +32,18 @@ export const settingsApi = new Elysia({ prefix: '/settings' })
   .put(
     '/',
     async ({ request, body }) => {
-      await requireRole(request, ROLES.SUPER_ADMIN);
-      return upsertSettings(body);
+      const { user } = await requireRole(request, ROLES.SUPER_ADMIN);
+      const saved = await upsertSettings(body);
+      void audit({
+        actor: user,
+        headers: request.headers,
+        action: AUDIT_ACTIONS.SETTINGS_AUTH_UPDATE,
+        targetType: 'settings',
+        targetId: 'auth',
+        summary: `Autentikasi: login email ${body.emailAuthEnabled ? 'aktif' : 'nonaktif'}, pendaftaran ${body.signupEnabled ? 'dibuka' : 'ditutup'}`,
+        meta: body,
+      });
+      return saved;
     },
     { body: t.Object({ emailAuthEnabled: t.Boolean(), signupEnabled: t.Boolean() }) },
   )
@@ -41,7 +52,18 @@ export const settingsApi = new Elysia({ prefix: '/settings' })
   .put(
     '/rate-limit',
     async ({ request, body }) => {
-      await requireRole(request, ROLES.SUPER_ADMIN);
+      const { user } = await requireRole(request, ROLES.SUPER_ADMIN);
+      void audit({
+        actor: user,
+        headers: request.headers,
+        action: AUDIT_ACTIONS.SETTINGS_RATE_LIMIT_UPDATE,
+        targetType: 'settings',
+        targetId: 'rate-limit',
+        summary: body.rateLimitEnabled
+          ? `Rate limit diubah: ${body.rateLimitMax ?? 'default'} / ${body.rateLimitWindowMs ?? 'default'} ms`
+          : 'Rate limiting dimatikan',
+        meta: body,
+      });
       return upsertRateLimitSettings({
         rateLimitEnabled: body.rateLimitEnabled,
         rateLimitMax: body.rateLimitMax ?? null,
@@ -63,7 +85,15 @@ export const settingsApi = new Elysia({ prefix: '/settings' })
 
   /** Super-admin only: drop all rate-limit overrides (back to env defaults, enabled). */
   .delete('/rate-limit', async ({ request }) => {
-    await requireRole(request, ROLES.SUPER_ADMIN);
+    const { user } = await requireRole(request, ROLES.SUPER_ADMIN);
+    void audit({
+      actor: user,
+      headers: request.headers,
+      action: AUDIT_ACTIONS.SETTINGS_RATE_LIMIT_RESET,
+      targetType: 'settings',
+      targetId: 'rate-limit',
+      summary: 'Rate limit dikembalikan ke default',
+    });
     return upsertRateLimitSettings(RATE_LIMIT_SETTINGS_DEFAULTS);
   });
 

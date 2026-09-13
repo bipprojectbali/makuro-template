@@ -4,6 +4,7 @@
  */
 import { desc, eq, inArray } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
+import { AUDIT_ACTIONS, audit } from '../audit';
 import { db } from '../db';
 import { loginLog, user } from '../db/schema';
 import { requireRole } from '../guard';
@@ -61,11 +62,19 @@ export const loginsApi = new Elysia()
   .delete(
     '/login-logs',
     async ({ request, body }) => {
-      await requireRole(request, ROLES.SUPER_ADMIN);
+      const { user: actor } = await requireRole(request, ROLES.SUPER_ADMIN);
       const deleted = await db
         .delete(loginLog)
         .where(inArray(loginLog.id, body.ids))
         .returning({ id: loginLog.id });
+      void audit({
+        actor,
+        headers: request.headers,
+        action: AUDIT_ACTIONS.LOGS_DELETE,
+        targetType: 'logs',
+        summary: `${deleted.length} login log dihapus massal`,
+        meta: { kind: 'login', count: deleted.length },
+      });
       return { deleted: deleted.length };
     },
     { body: t.Object({ ids: t.Array(t.String(), { minItems: 1, maxItems: BULK_DELETE_MAX }) }) },

@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm';
-import { boolean, index, integer, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 
 // --- Better Auth core tables ---------------------------------------------
 // These match the Better Auth Drizzle adapter schema. You can regenerate
@@ -209,5 +209,34 @@ export const rateLimitLog = pgTable(
   (t) => [
     index('rate_limit_log_created_at_idx').on(t.createdAt),
     index('rate_limit_log_ip_idx').on(t.ip),
+  ],
+);
+
+// auditLog: one row per privileged action taken through the console (role
+// change, ban, delete, settings change, purge, impersonation). Actor fields
+// are snapshotted so the row stays meaningful if the account is deleted.
+export const auditLog = pgTable(
+  'audit_log',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    actorId: text('actor_id').references(() => user.id, { onDelete: 'set null' }),
+    actorEmail: text('actor_email'),
+    /** Dotted verb, e.g. 'user.role.set', 'settings.rate_limit.update', 'logs.purge'. */
+    action: text('action').notNull(),
+    targetType: text('target_type').notNull(),
+    targetId: text('target_id'),
+    /** Human sentence shown in the console. */
+    summary: text('summary').notNull(),
+    meta: jsonb('meta'),
+    ip: text('ip'),
+    userAgent: text('user_agent'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [
+    index('audit_log_created_at_idx').on(t.createdAt),
+    index('audit_log_actor_id_idx').on(t.actorId),
+    index('audit_log_action_idx').on(t.action),
   ],
 );

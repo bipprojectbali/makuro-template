@@ -6,6 +6,7 @@ import { requireRole } from '@server/guard';
 import { ROLES } from '@server/permissions';
 import { getSidebarCollapsed } from '@server/sidebar';
 import {
+  FiClipboard,
   FiDatabase,
   FiFileText,
   FiGrid,
@@ -76,6 +77,12 @@ const NAV: NavGroup[] = [
         label: 'Server Logs',
         icon: FiTerminal,
         description: 'Error dan warning proses server',
+      },
+      {
+        to: '/dev/audit',
+        label: 'Audit Log',
+        icon: FiClipboard,
+        description: 'Jejak aksi admin: role, ban, settings, purge',
       },
       {
         to: '/dev/file-health',

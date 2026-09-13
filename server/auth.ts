@@ -1,6 +1,7 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { admin, multiSession } from 'better-auth/plugins';
+import { AUDIT_ACTIONS, audit } from './audit';
 import { db } from './db';
 import * as schema from './db/schema';
 import { env, hasGoogleAuth } from './env';
@@ -40,13 +41,25 @@ export const auth = betterAuth({
           try {
             const headers = ctx?.request?.headers ?? ctx?.headers ?? null;
             const meta = describeClient(headers, session.userAgent ?? null);
+            const method = loginMethodFromPath(ctx?.path);
             await db.insert(schema.loginLog).values({
               userId: session.userId,
               ip: normalizeIp(session.ipAddress ?? null),
               userAgent: session.userAgent ?? null,
-              method: loginMethodFromPath(ctx?.path),
+              method,
               ...meta,
             });
+            const impersonatedBy = (session as { impersonatedBy?: string | null }).impersonatedBy;
+            if (method === 'impersonation' && impersonatedBy) {
+              void audit({
+                actor: { id: impersonatedBy },
+                headers: headers ? new Headers(headers) : null,
+                action: AUDIT_ACTIONS.USER_IMPERSONATE,
+                targetType: 'user',
+                targetId: session.userId,
+                summary: 'Admin masuk sebagai user ini',
+              });
+            }
           } catch (err) {
             logger.warn({ err, userId: session.userId }, 'failed to write login_log');
           }

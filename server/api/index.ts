@@ -9,6 +9,7 @@ import { rateLimitPlugin } from '../middleware/rate-limiter';
 import { applyRateLimitSettings } from '../settings';
 import { adminApi } from './admin';
 import { analyticsApi } from './analytics';
+import { auditApi } from './audit';
 import { fileHealthApi } from './file-health';
 import { logsApi } from './logs';
 import { meApi } from './me';
@@ -41,6 +42,8 @@ export const api = new Elysia({ prefix: '/api' })
   .use(mcpPlugin)
   // Analytics read endpoints (super-admin only).
   .use(analyticsApi)
+  // Audit trail of privileged actions (super-admin only).
+  .use(auditApi)
   // File health report (super-admin only).
   .use(fileHealthApi)
   // Server log ring buffer (super-admin only).
