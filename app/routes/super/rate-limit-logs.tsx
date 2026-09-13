@@ -1,294 +1,234 @@
+import { Alert, Box, Button, Collapse, Group, Pagination, Paper, Stack, Text } from '@mantine/core';
+import { useDebouncedValue, useLocalStorage } from '@mantine/hooks';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { FiAlertCircle, FiChevronDown, FiChevronUp, FiInfo } from 'react-icons/fi';
+import { LogPageHeader } from '~/components/logs/LogPageHeader';
+import { SelectionBar } from '~/components/logs/SelectionBar';
+import { RateLimitBreakdown } from '~/components/rate-limit-logs/RateLimitBreakdown';
+import { RateLimitCardList } from '~/components/rate-limit-logs/RateLimitCardList';
+import { RateLimitDetailDrawer } from '~/components/rate-limit-logs/RateLimitDetailDrawer';
+import { RateLimitFilters } from '~/components/rate-limit-logs/RateLimitFilters';
+import { RateLimitStatsCards } from '~/components/rate-limit-logs/RateLimitStatsCards';
+import { RateLimitTable } from '~/components/rate-limit-logs/RateLimitTable';
+import { useRateLimitActions } from '~/components/rate-limit-logs/useRateLimitActions';
+import { VisitEmptyState } from '~/components/visits/VisitEmptyState';
 import {
-  ActionIcon,
-  Badge,
-  Box,
-  Button,
-  Group,
-  Pagination,
-  Paper,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-  Title,
-  Tooltip,
-} from '@mantine/core';
-import { useDebouncedValue } from '@mantine/hooks';
-import { modals } from '@mantine/modals';
-import { useEffect, useState } from 'react';
-import { FiRefreshCw, FiSearch, FiTrash2 } from 'react-icons/fi';
-import { TbSortAscending, TbSortDescending } from 'react-icons/tb';
+  DEFAULT_RATE_LIMIT_FILTERS,
+  exportRateLimitsUrl,
+  type RateLimitFilters as Filters,
+  fetchRateLimitStats,
+  fetchRateLimits,
+  formatWindow,
+  hasActiveRateLimitFilters,
+  type RateLimitRow,
+} from '~/lib/rate-limit-logs-api';
 
 export function meta() {
   return [{ title: 'Rate Limit Logs — Makuro Dev' }];
 }
 
 const LIMIT = 25;
-
-type RateLimitRow = {
-  id: string;
-  ip: string | null;
-  path: string;
-  userId: string | null;
-  createdAt: string;
-};
+const nf = new Intl.NumberFormat('id-ID');
 
 export default function RateLimitLogsPage() {
-  const [rows, setRows] = useState<RateLimitRow[]>([]);
-  const [total, setTotal] = useState(0);
+  const [filters, setFiltersState] = useState<Filters>(DEFAULT_RATE_LIMIT_FILTERS);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<'asc' | 'desc'>('desc');
-  const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [deleting, setDeleting] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [debouncedSearch] = useDebouncedValue(search, 300);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [detail, setDetail] = useState<RateLimitRow | null>(null);
+  const [showSummary, setShowSummary] = useLocalStorage({
+    key: 'mk-ratelimits-summary',
+    defaultValue: true,
+  });
+  const [debouncedSearch] = useDebouncedValue(filters.search, 300);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
+  const params = { ...filters, search: debouncedSearch, page, limit: LIMIT, sort };
+  const list = useQuery({
+    queryKey: ['rate-limit-logs', params],
+    queryFn: () => fetchRateLimits(params),
+    placeholderData: keepPreviousData,
+  });
+  const stats = useQuery({ queryKey: ['rate-limit-logs-stats'], queryFn: fetchRateLimitStats });
 
-    const params = new URLSearchParams({ page: String(page), limit: String(LIMIT), sort });
-    if (debouncedSearch) params.set('search', debouncedSearch);
-
-    fetch(`/api/analytics/rate-limit-logs?${params}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (cancelled) return;
-        setRows(d.rows);
-        setTotal(d.total);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [page, sort, debouncedSearch, refreshKey]);
-
-  const applyFilter = (fn: () => void) => {
-    fn();
-    setPage(1);
-  };
-
-  const deleteRow = (id: string) => {
-    modals.openConfirmModal({
-      title: 'Hapus rate-limit log',
-      children: <Text size="sm">Hapus catatan rate-limit ini?</Text>,
-      labels: { confirm: 'Hapus', cancel: 'Batal' },
-      confirmProps: { color: 'red' },
-      onConfirm: async () => {
-        setDeleting(id);
-        await fetch(`/api/analytics/rate-limit-logs/${id}`, { method: 'DELETE' });
-        setDeleting(null);
-        setRefreshKey((k) => k + 1);
-      },
-    });
-  };
-
-  const purge = () => {
-    modals.openConfirmModal({
-      title: 'Purge rate-limit logs',
-      children: (
-        <Text size="sm">
-          Hapus semua rate-limit log yang lebih dari 30 hari? Tindakan ini tidak bisa dibatalkan.
-        </Text>
-      ),
-      labels: { confirm: 'Purge', cancel: 'Batal' },
-      confirmProps: { color: 'red' },
-      onConfirm: async () => {
-        await fetch('/api/analytics/purge?days=30', { method: 'DELETE' });
-        setRefreshKey((k) => k + 1);
-      },
-    });
-  };
-
-  const clearAll = () => {
-    modals.openConfirmModal({
-      title: 'Hapus semua rate-limit logs',
-      children: (
-        <Text size="sm">
-          Hapus <strong>semua</strong> rate-limit log termasuk yang baru? Tindakan ini tidak bisa
-          dibatalkan.
-        </Text>
-      ),
-      labels: { confirm: 'Hapus Semua', cancel: 'Batal' },
-      confirmProps: { color: 'red' },
-      onConfirm: async () => {
-        await fetch('/api/analytics/purge?days=0', { method: 'DELETE' });
-        setRefreshKey((k) => k + 1);
-      },
-    });
-  };
-
-  const fmt = (iso: string) => new Date(iso).toLocaleString();
+  const rows = list.data?.rows ?? [];
+  const total = list.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / LIMIT));
-  const SortIcon = sort === 'desc' ? TbSortDescending : TbSortAscending;
+  const filtered = hasActiveRateLimitFilters(filters);
+
+  const resetSelection = () => setSelected(new Set());
+  const setFilters = (patch: Partial<Filters>) => {
+    setFiltersState((f) => ({ ...f, ...patch }));
+    setPage(1);
+    resetSelection();
+  };
+  const resetFilters = () => setFilters(DEFAULT_RATE_LIMIT_FILTERS);
+  const actions = useRateLimitActions({
+    onDone: () => {
+      resetSelection();
+      setDetail(null);
+    },
+  });
+
+  const toggle = (id: string) =>
+    setSelected((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  const toggleAll = () =>
+    setSelected((s) =>
+      rows.every((r) => s.has(r.id)) ? new Set() : new Set(rows.map((r) => r.id)),
+    );
+  const listHandlers = {
+    selected,
+    onToggle: toggle,
+    onToggleAll: toggleAll,
+    onOpen: setDetail,
+    onDelete: actions.deleteOne,
+    deletingId: actions.deletingId,
+  };
+  const empty = <VisitEmptyState filtered={filtered} onReset={resetFilters} />;
+  const refresh = () => {
+    list.refetch();
+    stats.refetch();
+  };
+  const cfg = stats.data?.config;
 
   return (
-    <Stack gap="md" p="md">
-      <Group justify="space-between" align="flex-start" wrap="wrap">
-        <Title order={3}>Rate Limit Logs</Title>
-        <Group gap="xs" wrap="wrap" justify="flex-end">
-          <Tooltip
-            label="Hapus semua log (visit, login, rate-limit) termasuk yang terbaru. Tidak bisa dibatalkan."
-            withArrow
-            multiline
-            maw={260}
-          >
-            <Button size="xs" color="red" variant="outline" onClick={clearAll} disabled={total === 0}>
-              Clear All
-            </Button>
-          </Tooltip>
-          <Tooltip
-            label="Hapus semua log (visit, login, rate-limit) yang lebih dari 30 hari. Aman untuk maintenance rutin."
-            withArrow
-            multiline
-            maw={260}
-          >
-            <Button size="xs" color="red" variant="light" onClick={purge} disabled={total === 0}>
-              Purge 30d+
-            </Button>
-          </Tooltip>
-          <Tooltip label="Muat ulang data terbaru" withArrow>
-            <Button
-              size="xs"
-              variant="light"
-              leftSection={<FiRefreshCw size={12} />}
-              loading={loading}
-              onClick={() => setRefreshKey((k) => k + 1)}
-            >
-              Refresh
-            </Button>
-          </Tooltip>
-        </Group>
-      </Group>
+    <Stack gap="md" p={{ base: 'sm', md: 'md' }}>
+      <LogPageHeader
+        title="Rate Limit Logs"
+        description="Setiap request API yang ditolak karena melampaui batas: siapa, endpoint mana, dari mana, dan perangkat apa."
+        exportHref={exportRateLimitsUrl(filters)}
+        exportMaxRows={10_000}
+        canExport={total > 0}
+        refreshing={list.isFetching}
+        onRefresh={refresh}
+        hasData={(stats.data?.total ?? 0) > 0}
+        onPurgeOld={actions.purgeOld}
+        onClearAll={actions.clearAll}
+      />
 
-      <Group gap="xs">
-        <TextInput
-          placeholder="Cari IP atau path…"
-          leftSection={<FiSearch size={14} />}
-          value={search}
-          onChange={(e) => applyFilter(() => setSearch(e.currentTarget.value))}
-          size="xs"
-          style={{ flex: 1, maxWidth: 320 }}
+      <RateLimitStatsCards stats={stats.data} />
+
+      {cfg && (
+        <Alert
+          color="blue"
+          variant="light"
+          icon={<FiInfo size={16} />}
+          title={`Batas aktif: ${nf.format(cfg.limit)} request per ${formatWindow(cfg.windowMs)} per IP`}
+        >
+          <Text size="sm">
+            Jendela geser per IP klien. Request yang ditolak tidak memperpanjang jendela, jadi klien
+            yang menunggu sesuai header <code>Retry-After</code> pasti diterima kembali.
+            Dikecualikan: <code>{cfg.excludePrefixes.join(', ')}</code>. Ubah lewat{' '}
+            <code>RATE_LIMIT_MAX</code> dan <code>RATE_LIMIT_WINDOW_MS</code> di env.
+          </Text>
+        </Alert>
+      )}
+
+      {stats.data && stats.data.total > 0 && (
+        <Stack gap="xs">
+          <Button
+            variant="subtle"
+            color="gray"
+            size="compact-sm"
+            rightSection={showSummary ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />}
+            onClick={() => setShowSummary((v) => !v)}
+            style={{ alignSelf: 'flex-start' }}
+          >
+            {showSummary ? 'Sembunyikan ringkasan' : 'Tampilkan ringkasan'}
+          </Button>
+          <Collapse expanded={showSummary}>
+            <RateLimitBreakdown
+              stats={stats.data}
+              onIp={(ip) => setFilters({ ip })}
+              onPath={(path) => setFilters({ path })}
+              onMethod={(method) => setFilters({ method })}
+              onCountry={(country) => setFilters({ country })}
+              onDevice={(device) => setFilters({ device })}
+            />
+          </Collapse>
+        </Stack>
+      )}
+
+      <RateLimitFilters
+        filters={filters}
+        onChange={setFilters}
+        onReset={resetFilters}
+        stats={stats.data}
+        matchCount={list.data?.total}
+      />
+
+      {list.isError && (
+        <Alert color="red" icon={<FiAlertCircle size={16} />} title="Gagal memuat rate limit logs">
+          <Group justify="space-between" wrap="wrap" gap="xs">
+            <Text size="sm">{(list.error as Error).message}</Text>
+            <Button size="xs" variant="light" color="red" onClick={() => list.refetch()}>
+              Coba lagi
+            </Button>
+          </Group>
+        </Alert>
+      )}
+
+      <SelectionBar
+        count={selected.size}
+        noun="catatan"
+        deleting={actions.bulkDeleting}
+        onClear={resetSelection}
+        onDelete={() => actions.deleteMany([...selected])}
+      />
+
+      <Paper withBorder radius="md" visibleFrom="sm" style={{ overflow: 'hidden' }}>
+        <RateLimitTable
+          rows={rows}
+          loading={list.isPending}
+          fetching={list.isFetching}
+          sort={sort}
+          onToggleSort={() => {
+            setSort((s) => (s === 'desc' ? 'asc' : 'desc'));
+            setPage(1);
+          }}
+          empty={empty}
+          {...listHandlers}
         />
-      </Group>
-
-      {/* Desktop table */}
-      <Box style={{ overflowX: 'auto' }} visibleFrom="sm">
-        <Table striped highlightOnHover withTableBorder withColumnBorders fz="xs">
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th
-                style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
-                onClick={() => applyFilter(() => setSort((s) => (s === 'desc' ? 'asc' : 'desc')))}
-              >
-                <Group gap={4}>
-                  Waktu <SortIcon size={13} />
-                </Group>
-              </Table.Th>
-              <Table.Th>IP</Table.Th>
-              <Table.Th>Path</Table.Th>
-              <Table.Th visibleFrom="sm">User</Table.Th>
-              <Table.Th style={{ width: 36 }} />
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {rows.map((r) => (
-              <Table.Tr key={r.id}>
-                <Table.Td style={{ whiteSpace: 'nowrap' }}>{fmt(r.createdAt)}</Table.Td>
-                <Table.Td>
-                  <Badge color="orange" size="xs" ff="monospace">
-                    {r.ip ?? '—'}
-                  </Badge>
-                </Table.Td>
-                <Table.Td>
-                  <Text ff="monospace" size="xs" truncate maw={240}>
-                    {r.path}
-                  </Text>
-                </Table.Td>
-                <Table.Td visibleFrom="sm">
-                  <Text ff="monospace" size="xs" c="dimmed" truncate maw={130}>
-                    {r.userId ?? '—'}
-                  </Text>
-                </Table.Td>
-                <Table.Td>
-                  <ActionIcon
-                    size="xs"
-                    color="red"
-                    variant="subtle"
-                    loading={deleting === r.id}
-                    onClick={() => deleteRow(r.id)}
-                    aria-label="Hapus"
-                  >
-                    <FiTrash2 size={12} />
-                  </ActionIcon>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-            {rows.length === 0 && !loading && (
-              <Table.Tr>
-                <Table.Td colSpan={5}>
-                  <Text ta="center" c="dimmed" size="sm" py="md">
-                    Belum ada request yang di-rate-limit.
-                  </Text>
-                </Table.Td>
-              </Table.Tr>
-            )}
-          </Table.Tbody>
-        </Table>
+      </Paper>
+      <Box hiddenFrom="sm">
+        <RateLimitCardList rows={rows} loading={list.isPending} empty={empty} {...listHandlers} />
       </Box>
 
-      {/* Mobile card list */}
-      <Stack gap="xs" hiddenFrom="sm">
-        {rows.map((r) => (
-          <Paper key={r.id} withBorder p="sm" radius="md">
-            <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
-              <Stack gap={4} style={{ minWidth: 0, flex: 1 }}>
-                <Group gap="xs" wrap="nowrap" align="center">
-                  <Badge color="orange" size="xs" ff="monospace" style={{ flexShrink: 0 }}>
-                    {r.ip ?? '—'}
-                  </Badge>
-                  <Text ff="monospace" size="xs" fw={500} truncate style={{ minWidth: 0 }}>
-                    {r.path}
-                  </Text>
-                </Group>
-                <Text size="xs" c="dimmed">{fmt(r.createdAt)}</Text>
-                {r.userId && (
-                  <Text ff="monospace" size="xs" c="dimmed" truncate>{r.userId}</Text>
-                )}
-              </Stack>
-              <ActionIcon
-                size="sm"
-                color="red"
-                variant="subtle"
-                loading={deleting === r.id}
-                onClick={() => deleteRow(r.id)}
-                aria-label="Hapus"
-                style={{ flexShrink: 0 }}
-              >
-                <FiTrash2 size={14} />
-              </ActionIcon>
-            </Group>
-          </Paper>
-        ))}
-        {rows.length === 0 && !loading && (
-          <Text ta="center" c="dimmed" size="sm" py="md">Belum ada request yang di-rate-limit.</Text>
-        )}
-      </Stack>
-
-      <Group justify="space-between" align="center">
+      <Group justify="space-between" align="center" wrap="wrap" gap="xs">
         <Text size="xs" c="dimmed">
           {total > 0
-            ? `${(page - 1) * LIMIT + 1}–${Math.min(page * LIMIT, total)} of ${total}`
-            : '0 hasil'}
+            ? `Menampilkan ${nf.format((page - 1) * LIMIT + 1)}–${nf.format(Math.min(page * LIMIT, total))} dari ${nf.format(total)}`
+            : 'Tidak ada hasil'}
         </Text>
         {totalPages > 1 && (
-          <Pagination value={page} total={totalPages} onChange={setPage} size="xs" />
+          <Pagination
+            value={page}
+            total={totalPages}
+            onChange={(p) => {
+              setPage(p);
+              resetSelection();
+            }}
+            size="sm"
+            siblings={1}
+          />
         )}
       </Group>
+
+      <RateLimitDetailDrawer
+        row={detail}
+        onClose={() => setDetail(null)}
+        onDelete={actions.deleteOne}
+        onFilterIp={(ip) => {
+          setDetail(null);
+          setFilters({ ip });
+        }}
+        deleting={detail !== null && actions.deletingId === detail.id}
+      />
     </Stack>
   );
 }
