@@ -1,8 +1,7 @@
-import { Anchor, Button, Code, Divider, Drawer, Group, Stack, Text } from '@mantine/core';
-import { FiExternalLink, FiTrash2 } from 'react-icons/fi';
-import type { VisitRow } from '~/lib/visits-api';
+import { Badge, Button, Code, Divider, Drawer, Group, Stack, Text } from '@mantine/core';
+import { FiFilter, FiTrash2 } from 'react-icons/fi';
+import type { LoginRow } from '~/lib/login-logs-api';
 import {
-  botKindLabel,
   countryFlag,
   deviceLabel,
   formatDateTime,
@@ -10,36 +9,71 @@ import {
   locationLabel,
 } from '~/lib/visits-format';
 import { Copyable, Field, Section } from '../logs/DetailParts';
-import { DeviceIcon, TypeBadge, UserCell } from './VisitCells';
+import { DeviceIcon, UserCell } from '../logs/LogCells';
+import { MethodBadge } from './LoginCells';
 
 type Props = {
-  row: VisitRow | null;
+  row: LoginRow | null;
   onClose: () => void;
-  onDelete: (row: VisitRow) => void;
+  onDelete: (row: LoginRow) => void;
+  onFilterUser: (userId: string) => void;
   deleting: boolean;
 };
 
 const dash = (v: string | null | undefined) => v || '—';
 
-/** Full record view for one visit — everything the middleware captured, plus a delete action. */
-export function VisitDetailDrawer({ row, onClose, onDelete, deleting }: Props) {
+/** Full record for one login, with "show this user's logins" and delete actions. */
+export function LoginDetailDrawer({ row, onClose, onDelete, onFilterUser, deleting }: Props) {
   return (
     <Drawer
       opened={row !== null}
       onClose={onClose}
       position="right"
       size="md"
-      title="Detail kunjungan"
+      title="Detail login"
       padding="md"
     >
       {row && (
         <Stack gap="lg">
           <Group justify="space-between" wrap="nowrap">
-            <TypeBadge row={row} />
+            <MethodBadge method={row.method} />
             <Text size="sm" c="dimmed">
               {formatRelative(row.createdAt)}
             </Text>
           </Group>
+
+          <Section title="User">
+            <Group justify="space-between" wrap="nowrap">
+              <UserCell row={row} subtitle={row.userEmail} />
+              {row.userRole && (
+                <Badge
+                  variant="light"
+                  color={
+                    row.userRole === 'super-admin'
+                      ? 'grape'
+                      : row.userRole === 'admin'
+                        ? 'blue'
+                        : 'gray'
+                  }
+                >
+                  {row.userRole}
+                </Badge>
+              )}
+            </Group>
+            <Field label="User ID">
+              <Copyable value={row.userId} />
+            </Field>
+            <Button
+              variant="light"
+              size="xs"
+              leftSection={<FiFilter size={12} />}
+              onClick={() => onFilterUser(row.userId)}
+              style={{ alignSelf: 'flex-end' }}
+            >
+              Lihat semua login user ini
+            </Button>
+          </Section>
+          <Divider />
 
           <Section title="Waktu">
             <Field label="Tercatat">
@@ -48,7 +82,7 @@ export function VisitDetailDrawer({ row, onClose, onDelete, deleting }: Props) {
           </Section>
           <Divider />
 
-          <Section title="Pengunjung">
+          <Section title="Asal">
             <Field label="IP">
               {row.ip ? <Copyable value={row.ip} /> : <Text size="sm">—</Text>}
             </Field>
@@ -65,33 +99,6 @@ export function VisitDetailDrawer({ row, onClose, onDelete, deleting }: Props) {
             <Field label="Bahasa">
               <Text size="sm">{dash(row.language)}</Text>
             </Field>
-            <Field label="User">
-              <Group justify="flex-end">
-                <UserCell row={row} />
-              </Group>
-            </Field>
-          </Section>
-          <Divider />
-
-          <Section title="Halaman">
-            <Field label="Path">
-              <Copyable value={row.path} />
-            </Field>
-            <Field label="Referer">
-              {row.referer ? (
-                <Anchor
-                  href={row.referer}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  size="sm"
-                  style={{ wordBreak: 'break-all' }}
-                >
-                  {row.referer} <FiExternalLink size={11} />
-                </Anchor>
-              ) : (
-                <Text size="sm">Langsung / tidak ada</Text>
-              )}
-            </Field>
           </Section>
           <Divider />
 
@@ -99,9 +106,7 @@ export function VisitDetailDrawer({ row, onClose, onDelete, deleting }: Props) {
             <Field label="Jenis">
               <Group gap="xs" justify="flex-end" wrap="nowrap">
                 <DeviceIcon type={row.deviceType} size={12} />
-                <Text size="sm">
-                  {row.isBot ? botKindLabel(row.botKind) : deviceLabel(row.deviceType)}
-                </Text>
+                <Text size="sm">{deviceLabel(row.deviceType)}</Text>
               </Group>
             </Field>
             <Field label="Browser">
@@ -127,7 +132,7 @@ export function VisitDetailDrawer({ row, onClose, onDelete, deleting }: Props) {
           </Section>
           <Divider />
 
-          <Field label="ID">
+          <Field label="Log ID">
             <Copyable value={row.id} />
           </Field>
 
@@ -139,7 +144,7 @@ export function VisitDetailDrawer({ row, onClose, onDelete, deleting }: Props) {
             onClick={() => onDelete(row)}
             fullWidth
           >
-            Hapus kunjungan ini
+            Hapus login log ini
           </Button>
         </Stack>
       )}

@@ -1,30 +1,10 @@
-import {
-  ActionIcon,
-  Alert,
-  Box,
-  Button,
-  Collapse,
-  Group,
-  Menu,
-  Pagination,
-  Paper,
-  Stack,
-  Text,
-  Title,
-  Tooltip,
-} from '@mantine/core';
+import { Alert, Box, Button, Collapse, Group, Pagination, Paper, Stack, Text } from '@mantine/core';
 import { useDebouncedValue, useLocalStorage } from '@mantine/hooks';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import {
-  FiAlertCircle,
-  FiChevronDown,
-  FiChevronUp,
-  FiDownload,
-  FiMoreVertical,
-  FiRefreshCw,
-  FiTrash2,
-} from 'react-icons/fi';
+import { FiAlertCircle, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { LogPageHeader } from '~/components/logs/LogPageHeader';
+import { SelectionBar } from '~/components/logs/SelectionBar';
 import { useVisitActions } from '~/components/visits/useVisitActions';
 import { VisitBreakdown } from '~/components/visits/VisitBreakdown';
 import { VisitCardList } from '~/components/visits/VisitCardList';
@@ -118,70 +98,18 @@ export default function VisitsPage() {
 
   return (
     <Stack gap="md" p={{ base: 'sm', md: 'md' }}>
-      <Group justify="space-between" align="flex-start" wrap="wrap">
-        <div>
-          <Title order={3}>Visitor Logs</Title>
-          <Text size="sm" c="dimmed">
-            Setiap kunjungan halaman beserta lokasi, perangkat, sumber, dan user yang login.
-          </Text>
-        </div>
-        <Group gap="xs" wrap="wrap" justify="flex-end">
-          <Tooltip
-            label={`Unduh CSV sesuai filter aktif (maks. ${nf.format(10_000)} baris)`}
-            withArrow
-          >
-            <Button
-              component="a"
-              href={exportVisitsUrl(filters)}
-              download
-              size="sm"
-              variant="default"
-              leftSection={<FiDownload size={14} />}
-              disabled={total === 0}
-              onClick={(e) => {
-                // Anchors ignore `disabled`; block navigation when there is nothing to export.
-                if (total === 0) e.preventDefault();
-              }}
-            >
-              Export CSV
-            </Button>
-          </Tooltip>
-          <Button
-            size="sm"
-            variant="light"
-            leftSection={<FiRefreshCw size={14} />}
-            loading={list.isFetching}
-            onClick={refresh}
-          >
-            Refresh
-          </Button>
-          <Menu position="bottom-end" withArrow shadow="md">
-            <Menu.Target>
-              <ActionIcon variant="default" size="lg" aria-label="Aksi lainnya">
-                <FiMoreVertical size={16} />
-              </ActionIcon>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Label>Pembersihan log</Menu.Label>
-              <Menu.Item
-                leftSection={<FiTrash2 size={14} />}
-                onClick={actions.purgeOld}
-                disabled={stats.data?.total === 0}
-              >
-                Purge log lebih dari 30 hari
-              </Menu.Item>
-              <Menu.Item
-                color="red"
-                leftSection={<FiTrash2 size={14} />}
-                onClick={actions.clearAll}
-                disabled={stats.data?.total === 0}
-              >
-                Hapus semua log
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-        </Group>
-      </Group>
+      <LogPageHeader
+        title="Visitor Logs"
+        description="Setiap kunjungan halaman beserta lokasi, perangkat, sumber, dan user yang login."
+        exportHref={exportVisitsUrl(filters)}
+        exportMaxRows={10_000}
+        canExport={total > 0}
+        refreshing={list.isFetching}
+        onRefresh={refresh}
+        hasData={(stats.data?.total ?? 0) > 0}
+        onPurgeOld={actions.purgeOld}
+        onClearAll={actions.clearAll}
+      />
 
       <VisitStatsCards stats={stats.data} />
 
@@ -226,29 +154,13 @@ export default function VisitsPage() {
         </Alert>
       )}
 
-      {selected.size > 0 && (
-        <Paper withBorder radius="md" p="sm" bg="var(--mantine-primary-color-light)">
-          <Group justify="space-between" wrap="wrap" gap="xs">
-            <Text size="sm" fw={500}>
-              {nf.format(selected.size)} kunjungan dipilih
-            </Text>
-            <Group gap="xs">
-              <Button size="xs" variant="subtle" color="gray" onClick={resetSelection}>
-                Batal pilih
-              </Button>
-              <Button
-                size="xs"
-                color="red"
-                leftSection={<FiTrash2 size={13} />}
-                loading={actions.bulkDeleting}
-                onClick={() => actions.deleteMany([...selected])}
-              >
-                Hapus terpilih
-              </Button>
-            </Group>
-          </Group>
-        </Paper>
-      )}
+      <SelectionBar
+        count={selected.size}
+        noun="kunjungan"
+        deleting={actions.bulkDeleting}
+        onClear={resetSelection}
+        onDelete={() => actions.deleteMany([...selected])}
+      />
 
       <Paper withBorder radius="md" visibleFrom="sm" style={{ overflow: 'hidden' }}>
         <VisitTable

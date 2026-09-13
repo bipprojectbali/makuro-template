@@ -14,7 +14,7 @@ import { eq } from 'drizzle-orm';
 import { redirect } from 'react-router';
 import { api } from '../server/api';
 import { db } from '../server/db';
-import { user } from '../server/db/schema';
+import { loginLog, user } from '../server/db/schema';
 import { redirectToHome } from '../server/guard';
 
 const TEST_EMAIL = `auth-flow-${crypto.randomUUID()}@test.local`;
@@ -62,7 +62,10 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await db.delete(user).where(eq(user.email, TEST_EMAIL)).catch(() => {});
+  await db
+    .delete(user)
+    .where(eq(user.email, TEST_EMAIL))
+    .catch(() => {});
 });
 
 // ─── Sign-up ─────────────────────────────────────────────────────────────────
@@ -71,7 +74,11 @@ describe('POST /api/auth/sign-up/email', () => {
   let anotherEmail = '';
 
   afterAll(async () => {
-    if (anotherEmail) await db.delete(user).where(eq(user.email, anotherEmail)).catch(() => {});
+    if (anotherEmail)
+      await db
+        .delete(user)
+        .where(eq(user.email, anotherEmail))
+        .catch(() => {});
   });
 
   test('creates an account and returns Set-Cookie with session token', async () => {
@@ -117,6 +124,36 @@ describe('POST /api/auth/sign-in/email', () => {
     for (const cookie of cookies) {
       expect(cookie.length).toBeGreaterThan(0);
     }
+  });
+
+  test('writes an enriched login_log row (method, geo, device) via the session hook', async () => {
+    const res = await api.handle(
+      new Request('http://localhost/api/auth/sign-in/email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'CF-IPCountry': 'ID',
+          'CF-IPCity': 'Surabaya',
+          'Accept-Language': 'id-ID,id;q=0.9',
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) Gecko/20100101 Firefox/126.0',
+        },
+        body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASS }),
+      }),
+    );
+    expect(res.status).toBe(200);
+    const [u] = await db.select({ id: user.id }).from(user).where(eq(user.email, TEST_EMAIL));
+    const rows = await db.select().from(loginLog).where(eq(loginLog.userId, u.id));
+    const row = rows.find((r) => r.city === 'Surabaya');
+    expect(row).toBeDefined();
+    expect(row).toMatchObject({
+      method: 'email',
+      country: 'ID',
+      browser: 'Firefox',
+      os: 'Windows',
+      deviceType: 'desktop',
+      language: 'id-ID',
+    });
   });
 
   test('wrong password returns 4xx', async () => {
