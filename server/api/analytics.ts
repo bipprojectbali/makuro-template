@@ -5,9 +5,10 @@
 import { eq, ilike, lt, or, sql } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 import { db } from '../db';
-import { loginLog, rateLimitLog, user, visitLog } from '../db/schema';
+import { loginLog, rateLimitLog, visitLog } from '../db/schema';
 import { requireRole } from '../guard';
 import { ROLES } from '../permissions';
+import { loginsApi } from './analytics-logins';
 import { ListQuery, pageParams } from './analytics-paging';
 import { visitsApi } from './analytics-visits';
 
@@ -17,60 +18,8 @@ export const analyticsApi = new Elysia({ prefix: '/analytics' })
   // Visitor logs live in analytics-visits.ts (list, stats, export, delete).
   .use(visitsApi)
 
-  // ── Login logs ────────────────────────────────────────────────────────────
-
-  .get(
-    '/login-logs',
-    async ({ request, query }) => {
-      await requireRole(request, ROLES.SUPER_ADMIN);
-      const { page, limit, offset, order } = pageParams(query);
-
-      const where = query.search
-        ? or(
-            ilike(loginLog.userId, `%${query.search}%`),
-            ilike(loginLog.ip, `%${query.search}%`),
-            ilike(user.name, `%${query.search}%`),
-          )
-        : undefined;
-
-      const [rows, [totals]] = await Promise.all([
-        db
-          .select({
-            id: loginLog.id,
-            userId: loginLog.userId,
-            userName: user.name,
-            userImage: user.image,
-            ip: loginLog.ip,
-            userAgent: loginLog.userAgent,
-            createdAt: loginLog.createdAt,
-          })
-          .from(loginLog)
-          .leftJoin(user, eq(loginLog.userId, user.id))
-          .where(where)
-          .orderBy(order(loginLog.createdAt))
-          .limit(limit)
-          .offset(offset),
-        db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(loginLog)
-          .leftJoin(user, eq(loginLog.userId, user.id))
-          .where(where),
-      ]);
-
-      return { rows, total: totals?.count ?? 0, page, limit };
-    },
-    { query: ListQuery },
-  )
-
-  .delete('/login-logs/:id', async ({ request, params, status }) => {
-    await requireRole(request, ROLES.SUPER_ADMIN);
-    const [d] = await db
-      .delete(loginLog)
-      .where(eq(loginLog.id, params.id))
-      .returning({ id: loginLog.id });
-    if (!d) return status(404, { error: 'Not found' });
-    return { ok: true };
-  })
+  // Login logs live in analytics-logins.ts (list, stats, export, delete).
+  .use(loginsApi)
 
   // ── Rate limit logs ───────────────────────────────────────────────────────
 

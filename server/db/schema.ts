@@ -142,9 +142,24 @@ export const loginLog = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
     ip: text('ip'),
     userAgent: text('user_agent'),
+    /** 'email' | provider id (e.g. 'google') | 'impersonation' | 'switch' — from the auth endpoint path. */
+    method: text('method'),
+    /** Geo + device enrichment, same sources as visit_log (see server/middleware/request-meta.ts). */
+    country: text('country'),
+    region: text('region'),
+    city: text('city'),
+    browser: text('browser'),
+    browserVersion: text('browser_version'),
+    os: text('os'),
+    osVersion: text('os_version'),
+    deviceType: text('device_type'),
+    language: text('language'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
-  (t) => [index('login_log_user_id_idx').on(t.userId), index('login_log_created_at_idx').on(t.createdAt)],
+  (t) => [
+    index('login_log_user_id_idx').on(t.userId),
+    index('login_log_created_at_idx').on(t.createdAt),
+  ],
 );
 
 // appSetting: singleton row (id='singleton') for runtime app configuration.
@@ -171,5 +186,8 @@ export const rateLimitLog = pgTable(
     userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
-  (t) => [index('rate_limit_log_created_at_idx').on(t.createdAt), index('rate_limit_log_ip_idx').on(t.ip)],
+  (t) => [
+    index('rate_limit_log_created_at_idx').on(t.createdAt),
+    index('rate_limit_log_ip_idx').on(t.ip),
+  ],
 );
