@@ -36,6 +36,8 @@ export type { NavBadge, NavGroup, NavItem } from './frame/nav';
 const COOKIE = 'mk-sidebar-collapsed';
 const WIDTH_EXPANDED = 248;
 const WIDTH_COLLAPSED = 72;
+/** Footer badge must never eat the name — short labels, full role in the tooltip. */
+const ROLE_SHORT: Record<string, string> = { 'super-admin': 'Super', admin: 'Admin', user: 'User' };
 
 type Props = {
   /** Flat list or labeled groups. */
@@ -147,6 +149,7 @@ export function AppFrame(props: Props) {
             consoleLabel={consoleLabel}
             env={env}
             version={version}
+            extra={<ThemeToggle collapsed />}
           />
         </AppShell.Section>
 
@@ -196,19 +199,17 @@ export function AppFrame(props: Props) {
           </AppShell.Section>
         )}
 
-        <AppShell.Section mb="xs">
-          <ThemeToggle collapsed={collapsed} />
-        </AppShell.Section>
-
         <AppShell.Section>
           <Divider mb={4} />
           <UserMenu
             user={user}
             collapsed={collapsed}
             roleBadge={
-              <Badge size="xs" variant="light" color={badgeColor}>
-                {role}
-              </Badge>
+              <Tooltip label={`Role: ${role}`} withArrow>
+                <Badge size="xs" variant="light" color={badgeColor} style={{ flexShrink: 0 }}>
+                  {ROLE_SHORT[role] ?? role}
+                </Badge>
+              </Tooltip>
             }
           />
         </AppShell.Section>

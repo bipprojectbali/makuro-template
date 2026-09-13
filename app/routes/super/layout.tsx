@@ -1,4 +1,5 @@
 import { countRateLimitLastHour } from '@server/api/analytics-ratelimits.stats.query';
+import { errorsLastHour } from '@server/api/logs';
 import { frameInfo } from '@server/app-info';
 import { scanFileHealth } from '@server/file-health/file-health.scan';
 import { requireRole } from '@server/guard';
@@ -13,6 +14,7 @@ import {
   FiLogIn,
   FiSettings,
   FiShield,
+  FiTerminal,
   FiUser,
   FiUsers,
 } from 'react-icons/fi';
@@ -70,6 +72,12 @@ const NAV: NavGroup[] = [
         description: 'Request yang ditolak limiter',
       },
       {
+        to: '/dev/server-logs',
+        label: 'Server Logs',
+        icon: FiTerminal,
+        description: 'Error dan warning proses server',
+      },
+      {
         to: '/dev/file-health',
         label: 'File Health',
         icon: FiFileText,
@@ -103,7 +111,13 @@ export async function loader({ request }: Route.LoaderArgs) {
       .then((r) => r.summary.over)
       .catch(() => 0),
   ]);
+  const errors = errorsLastHour();
   const navBadges: Record<string, NavBadge> = {
+    '/dev/server-logs': {
+      value: errors,
+      color: 'red',
+      tooltip: `${errors} error dalam 1 jam terakhir`,
+    },
     '/dev/rate-limit-logs': {
       value: blockedLastHour,
       color: 'red',

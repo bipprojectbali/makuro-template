@@ -10,6 +10,7 @@ import { applyRateLimitSettings } from '../settings';
 import { adminApi } from './admin';
 import { analyticsApi } from './analytics';
 import { fileHealthApi } from './file-health';
+import { logsApi } from './logs';
 import { meApi } from './me';
 import { settingsApi } from './settings';
 
@@ -42,6 +43,8 @@ export const api = new Elysia({ prefix: '/api' })
   .use(analyticsApi)
   // File health report (super-admin only).
   .use(fileHealthApi)
+  // Server log ring buffer (super-admin only).
+  .use(logsApi)
   // App settings (GET public, PUT super-admin only).
   .use(settingsApi)
   // Current-user endpoints (profile page).

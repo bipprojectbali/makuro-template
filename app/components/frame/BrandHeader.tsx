@@ -12,6 +12,8 @@ type Props = {
   /** Runtime environment; "production" is highlighted so nobody edits prod by accident. */
   env?: string;
   version?: string;
+  /** Extra icon control (theme toggle) shown beside the collapse button. */
+  extra?: React.ReactNode;
 };
 
 const ENV_COLOR: Record<string, string> = {
@@ -21,7 +23,15 @@ const ENV_COLOR: Record<string, string> = {
 };
 
 /** Brand + area label + environment chip, with the collapse toggle. */
-export function BrandHeader({ collapsed, onToggle, homePath, consoleLabel, env, version }: Props) {
+export function BrandHeader({
+  collapsed,
+  onToggle,
+  homePath,
+  consoleLabel,
+  env,
+  version,
+  extra,
+}: Props) {
   const toggle = (
     <Tooltip label={collapsed ? 'Perlebar sidebar' : 'Ciutkan sidebar'} position="right" withArrow>
       <ActionIcon
@@ -59,6 +69,7 @@ export function BrandHeader({ collapsed, onToggle, homePath, consoleLabel, env, 
             <FiZap size={20} />
           </ActionIcon>
         </Tooltip>
+        {extra}
         {toggle}
       </Stack>
     );
@@ -89,7 +100,10 @@ export function BrandHeader({ collapsed, onToggle, homePath, consoleLabel, env, 
           </div>
         </Group>
       </Link>
-      {toggle}
+      <Group gap={2} wrap="nowrap">
+        {extra}
+        {toggle}
+      </Group>
     </Group>
   );
 }

@@ -6,9 +6,10 @@ import { logBuffer } from './mcp/log-buffer';
 // In binary mode we avoid pino-pretty's worker threads and file-based logging.
 const isStandalone = Bun.isStandaloneExecutable;
 
-// In-memory ring buffer feeding the MCP log tools. Layered into every mode
-// (dev, prod, binary) at warn+ so an agent can read recent errors via /api/mcp.
-const bufferStream = { stream: logBuffer.asWritable(), level: 'warn' as const };
+// In-memory ring buffer feeding the MCP log tools and /dev/server-logs. Layered
+// into every mode (dev, prod, binary) at info+ so operators and agents can read
+// recent lifecycle lines and errors without shell access.
+const bufferStream = { stream: logBuffer.asWritable(), level: 'info' as const };
 
 async function createLogger() {
   if (isStandalone) {

@@ -22,14 +22,12 @@ export function ThemeToggle({ collapsed = false }: { collapsed?: boolean }) {
       <>
         {/* mk-cs-dark: visible when dark mode is active → offer switch to light */}
         <span className="mk-cs-dark" style={{ display: 'block' }}>
-          <Tooltip label="Light mode" position="right" withArrow>
+          <Tooltip label="Mode terang" withArrow>
             <ActionIcon
-              variant="default"
-              size="lg"
-              mx="auto"
-              display="block"
+              variant="subtle"
+              color="gray"
               onClick={toggle}
-              aria-label="Switch to light mode"
+              aria-label="Ganti ke mode terang"
             >
               <FiSun size={16} />
             </ActionIcon>
@@ -37,14 +35,12 @@ export function ThemeToggle({ collapsed = false }: { collapsed?: boolean }) {
         </span>
         {/* mk-cs-light: visible when light mode is active → offer switch to dark */}
         <span className="mk-cs-light" style={{ display: 'block' }}>
-          <Tooltip label="Dark mode" position="right" withArrow>
+          <Tooltip label="Mode gelap" withArrow>
             <ActionIcon
-              variant="default"
-              size="lg"
-              mx="auto"
-              display="block"
+              variant="subtle"
+              color="gray"
               onClick={toggle}
-              aria-label="Switch to dark mode"
+              aria-label="Ganti ke mode gelap"
             >
               <FiMoon size={16} />
             </ActionIcon>
