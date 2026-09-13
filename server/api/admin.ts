@@ -13,6 +13,7 @@ import {
   type Role,
 } from '../permissions';
 import { resolveUserRole } from '../roles';
+import { adminUserStats, listAdminUsers, UserListQuery } from './admin-users.query';
 
 async function targetRole(id: string): Promise<Role | null> {
   const [row] = await db
@@ -38,37 +39,8 @@ export const adminApi = new Elysia({ prefix: '/admin' })
   .onBeforeHandle(({ actorRole, status }) => {
     if (!actorRole || !isAdminRole(actorRole)) return status(403, { error: 'Forbidden' });
   })
-  .get(
-    '/users',
-    async ({ query, headers }) => {
-      const limit = query.limit ?? 20;
-      const offset = query.offset ?? 0;
-      const search = query.search?.trim();
-      return auth.api.listUsers({
-        headers,
-        query: {
-          limit,
-          offset,
-          sortBy: 'createdAt',
-          sortDirection: 'desc',
-          ...(search
-            ? {
-                searchField: 'email' as const,
-                searchOperator: 'contains' as const,
-                searchValue: search,
-              }
-            : {}),
-        },
-      });
-    },
-    {
-      query: t.Object({
-        limit: t.Optional(t.Number({ minimum: 1, maximum: 100 })),
-        offset: t.Optional(t.Number({ minimum: 0 })),
-        search: t.Optional(t.String()),
-      }),
-    },
-  )
+  .get('/users', ({ query }) => listAdminUsers(query), { query: UserListQuery })
+  .get('/users/stats', () => adminUserStats())
   .post(
     '/users/:id/role',
     async ({ actor, actorRole, params, body, headers, status }) => {
