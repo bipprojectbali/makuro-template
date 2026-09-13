@@ -13,6 +13,7 @@ import {
   FiHome,
   FiList,
   FiLogIn,
+  FiMonitor,
   FiSettings,
   FiShield,
   FiTerminal,
@@ -42,6 +43,12 @@ const NAV: NavGroup[] = [
         label: 'Users',
         icon: FiUsers,
         description: 'Daftar user, role, ban, impersonasi',
+      },
+      {
+        to: '/dev/sessions',
+        label: 'Sessions',
+        icon: FiMonitor,
+        description: 'Perangkat yang sedang masuk, cabut sesi',
       },
       {
         to: '/dev/db-schema',

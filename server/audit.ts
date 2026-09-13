@@ -38,20 +38,39 @@ export type AuditInput = {
 
 const MAX_UA = 512;
 
+const FK_VIOLATION = '23503';
+
+function isFkViolation(err: unknown): boolean {
+  const cause = (err as { cause?: { code?: string }; code?: string }) ?? {};
+  return cause.code === FK_VIOLATION || cause.cause?.code === FK_VIOLATION;
+}
+
 export async function audit(input: AuditInput): Promise<void> {
+  const row = {
+    actorId: input.actor?.id ?? null,
+    actorEmail: input.actor?.email ?? null,
+    action: input.action,
+    targetType: input.targetType,
+    targetId: input.targetId ?? null,
+    summary: input.summary,
+    meta: input.meta ?? null,
+    ip: input.headers ? resolveClientIp(input.headers) : null,
+    userAgent: input.headers?.get('user-agent')?.slice(0, MAX_UA) ?? null,
+  };
   try {
-    await db.insert(auditLog).values({
-      actorId: input.actor?.id ?? null,
-      actorEmail: input.actor?.email ?? null,
-      action: input.action,
-      targetType: input.targetType,
-      targetId: input.targetId ?? null,
-      summary: input.summary,
-      meta: input.meta ?? null,
-      ip: input.headers ? resolveClientIp(input.headers) : null,
-      userAgent: input.headers?.get('user-agent')?.slice(0, MAX_UA) ?? null,
-    });
+    await db.insert(auditLog).values(row);
   } catch (err) {
+    // Actor row already gone (deleted between action and write) or an
+    // unknown id: keep the entry with the email snapshot instead of dropping it.
+    if (isFkViolation(err) && row.actorId) {
+      try {
+        await db.insert(auditLog).values({ ...row, actorId: null });
+        return;
+      } catch (retryErr) {
+        logger.warn({ err: retryErr, action: input.action }, 'failed to write audit_log');
+        return;
+      }
+    }
     logger.warn({ err, action: input.action }, 'failed to write audit_log');
   }
 }

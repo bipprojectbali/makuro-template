@@ -13,6 +13,7 @@ import { auditApi } from './audit';
 import { fileHealthApi } from './file-health';
 import { logsApi } from './logs';
 import { meApi } from './me';
+import { sessionsApi } from './sessions';
 import { settingsApi } from './settings';
 
 /**
@@ -44,6 +45,8 @@ export const api = new Elysia({ prefix: '/api' })
   .use(analyticsApi)
   // Audit trail of privileged actions (super-admin only).
   .use(auditApi)
+  // Cross-user session management (super-admin only).
+  .use(sessionsApi)
   // File health report (super-admin only).
   .use(fileHealthApi)
   // Server log ring buffer (super-admin only).

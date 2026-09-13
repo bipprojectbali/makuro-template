@@ -27,16 +27,14 @@ async function getJson(path: string, params: Record<string, string> = {}) {
 }
 
 beforeAll(async () => {
-  await db
-    .insert(user)
-    .values({
-      id: actorId,
-      name: `Auditor ${TAG}`,
-      email: `${actorId}@test.local`,
-      emailVerified: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+  await db.insert(user).values({
+    id: actorId,
+    name: `Auditor ${TAG}`,
+    email: `${actorId}@test.local`,
+    emailVerified: false,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
   await audit({
     actor: { id: actorId, email: `${actorId}@test.local` },
     action: AUDIT_ACTIONS.USER_BAN,
@@ -100,6 +98,26 @@ describe('audit()', () => {
     });
     expect(row.meta).toEqual({ reason: 'spam' });
     expect(row.actorName).toBe(`Auditor ${TAG}`);
+  });
+});
+
+describe('audit() with an actor that has no user row', () => {
+  test('keeps the entry with the email snapshot instead of dropping it', async () => {
+    await audit({
+      actor: { id: `${TAG}-ghost`, email: 'ghost@test.local' },
+      action: AUDIT_ACTIONS.USER_UNBAN,
+      targetType: 'user',
+      targetId: `${TAG}-ghost-target`,
+      summary: `${TAG} ghost`,
+    });
+    const rows = await db
+      .select()
+      .from(auditLog)
+      .where(eq(auditLog.targetId, `${TAG}-ghost-target`));
+    expect(rows.length).toBe(1);
+    expect(rows[0].actorId).toBeNull();
+    expect(rows[0].actorEmail).toBe('ghost@test.local');
+    await db.delete(auditLog).where(eq(auditLog.targetId, `${TAG}-ghost-target`));
   });
 });
 

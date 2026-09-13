@@ -11,6 +11,7 @@ export default [
   layout('routes/super/layout.tsx', [
     route('dev', 'routes/super/overview.tsx'),
     route('dev/users', 'routes/super/users.tsx'),
+    route('dev/sessions', 'routes/super/sessions.tsx'),
     route('dev/db-schema', 'routes/super/db-schema.tsx'),
     route('dev/visits', 'routes/super/visits.tsx'),
     route('dev/login-logs', 'routes/super/login-logs.tsx'),
