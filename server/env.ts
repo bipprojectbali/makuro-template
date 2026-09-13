@@ -16,6 +16,9 @@ const EnvSchema = z.object({
   // MCP debug server — if not set, /api/mcp returns 503.
   // Generate: openssl rand -hex 32
   MCP_ADMIN_TOKEN: z.string().min(32).optional(),
+  // API rate limit per client IP (sliding window). Auth + MCP routes are excluded.
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
 });
 
 const parsed = EnvSchema.safeParse(process.env);

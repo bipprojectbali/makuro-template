@@ -7,7 +7,7 @@ mock.module('../../server/guard', () => ({
 
 import { inArray } from 'drizzle-orm';
 import { analyticsApi } from '../../server/api/analytics';
-import { buildVisitWhere, toCsv } from '../../server/api/analytics-visits.query';
+import { buildVisitWhere, listVisits, toCsv } from '../../server/api/analytics-visits.query';
 import { db } from '../../server/db';
 import { visitLog } from '../../server/db/schema';
 
@@ -185,6 +185,16 @@ describe('GET /analytics/visits — enriched filters', () => {
       }),
     );
     expect(res.status).toBe(422);
+  });
+});
+
+describe('listVisits (shared by API + SSR loader)', () => {
+  test('returns the same shape as GET /visits', async () => {
+    const r = await listVisits({ search: TAG, limit: '2', sort: 'asc' });
+    expect(r.rows.length).toBeLessThanOrEqual(2);
+    expect(typeof r.total).toBe('number');
+    expect(r.page).toBe(1);
+    expect(r.limit).toBe(2);
   });
 });
 

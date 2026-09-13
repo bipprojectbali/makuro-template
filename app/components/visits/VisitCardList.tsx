@@ -1,4 +1,4 @@
-import { ActionIcon, Checkbox, Group, Paper, Skeleton, Stack, Text } from '@mantine/core';
+import { ActionIcon, Checkbox, Group, Paper, Skeleton, Stack } from '@mantine/core';
 import { FiTrash2 } from 'react-icons/fi';
 import type { VisitRow } from '~/lib/visits-api';
 import {
@@ -8,6 +8,7 @@ import {
   locationLabel,
   refererHost,
 } from '~/lib/visits-format';
+import { TruncatedText } from '../logs/TruncatedText';
 import { TypeBadge, UserCell } from './VisitCells';
 import type { VisitListHandlers } from './VisitTable';
 
@@ -65,18 +66,16 @@ export function VisitCardList({ rows, loading, empty, selected, deletingId, ...h
               <Stack gap={4} style={{ minWidth: 0, flex: 1 }}>
                 <Group gap="xs" wrap="nowrap" align="center">
                   <TypeBadge row={r} size="xs" />
-                  <Text ff="monospace" size="sm" fw={500} truncate style={{ minWidth: 0 }}>
+                  <TruncatedText ff="monospace" size="sm" fw={500} style={{ minWidth: 0 }}>
                     {r.path}
-                  </Text>
+                  </TruncatedText>
                 </Group>
-                <Text size="xs" c="dimmed" truncate>
-                  {formatRelative(r.createdAt)} · {r.ip ?? '—'}
-                  {flag ? ` · ${flag}` : ' ·'} {locationLabel(r)}
-                </Text>
-                <Text size="xs" c="dimmed" truncate>
-                  {deviceSummary(r)}
-                  {ref ? ` · dari ${ref}` : ''}
-                </Text>
+                <TruncatedText size="xs" c="dimmed">
+                  {`${formatRelative(r.createdAt)} · ${r.ip ?? '—'}${flag ? ` · ${flag}` : ' ·'} ${locationLabel(r)}`}
+                </TruncatedText>
+                <TruncatedText size="xs" c="dimmed">
+                  {`${deviceSummary(r)}${ref ? ` · dari ${ref}` : ''}`}
+                </TruncatedText>
                 {r.userId && <UserCell row={r} compact />}
               </Stack>
               <ActionIcon

@@ -1,3 +1,4 @@
+import { frameInfo } from '@server/app-info';
 import { requireAnyRole } from '@server/guard';
 import { ROLES } from '@server/permissions';
 import { getSidebarCollapsed } from '@server/sidebar';
@@ -29,7 +30,7 @@ const BADGE_COLOR: Record<string, string> = {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const auth = await requireAnyRole(request, [ROLES.USER, ROLES.ADMIN, ROLES.SUPER_ADMIN]);
-  return { ...auth, collapsed: getSidebarCollapsed(request) };
+  return { ...auth, collapsed: getSidebarCollapsed(request), ...frameInfo() };
 }
 
 export default function UserLayout({ loaderData }: Route.ComponentProps) {
@@ -41,6 +42,9 @@ export default function UserLayout({ loaderData }: Route.ComponentProps) {
       role={loaderData.role}
       user={loaderData.user}
       badgeColor={BADGE_COLOR[loaderData.role] ?? 'gray'}
+      consoleLabel="Akun"
+      env={loaderData.env}
+      version={loaderData.version}
       initialCollapsed={loaderData.collapsed}
     >
       <Outlet context={ctx} />

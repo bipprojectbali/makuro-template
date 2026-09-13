@@ -14,6 +14,7 @@ import { isbot, isbotMatch } from 'isbot';
 import { auth } from '../auth';
 import { db } from '../db';
 import { visitLog } from '../db/schema';
+import { resolveClientIp } from './client-ip';
 import { primaryLanguage, resolveGeo, sanitizeReferer } from './visitor-geo';
 import { parseUserAgent } from './visitor-ua';
 
@@ -30,15 +31,8 @@ function shouldSkip(path: string): boolean {
   return SKIP_PREFIXES.some((p) => path.startsWith(p));
 }
 
-// Normalize an IP into a human-readable, canonical form. Keeps visit_log IPs
-// consistent with login_log (Better Auth stores 127.0.0.1 for localhost).
-export function normalizeIp(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  let ip = raw.trim();
-  if (ip.startsWith('::ffff:')) ip = ip.slice(7); // IPv4-mapped IPv6 → IPv4
-  if (ip === '::1') ip = '127.0.0.1'; // IPv6 loopback → readable IPv4
-  return ip || null;
-}
+// Kept as a re-export so existing imports/tests keep working.
+export { normalizeIp } from './client-ip';
 
 function classifyBot(ua: string): string | null {
   const match = isbotMatch(ua);
@@ -73,15 +67,8 @@ export async function recordVisit(request: Request, explicitIp?: string | null):
       userId = null;
     }
 
-    // Derive the client IP the same way Better Auth does for login_log, so both
-    // logs agree. Prefer proxy headers (real client behind a load balancer),
-    // then the socket IP passed by the server. Normalize loopback/IPv4-mapped
-    // forms so localhost reads 127.0.0.1 instead of ::1.
-    const forwarded =
-      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-      request.headers.get('x-real-ip') ||
-      null;
-    const ip = normalizeIp(forwarded ?? explicitIp ?? null);
+    // Proxy headers first, then the socket IP stamped by dev.ts/prod.ts (or passed explicitly).
+    const ip = resolveClientIp(request.headers, explicitIp);
 
     const device = parseUserAgent(ua, request.headers, bot);
     const geo = resolveGeo(request.headers);

@@ -5,6 +5,8 @@ import { db } from './db';
 import * as schema from './db/schema';
 import { env, hasGoogleAuth } from './env';
 import { logger } from './logger';
+import { describeClient, loginMethodFromPath } from './middleware/request-meta';
+import { normalizeIp } from './middleware/visitor';
 import { ac, ROLES, roles } from './permissions';
 
 export const auth = betterAuth({
@@ -34,12 +36,16 @@ export const auth = betterAuth({
   databaseHooks: {
     session: {
       create: {
-        after: async (session) => {
+        after: async (session, ctx) => {
           try {
+            const headers = ctx?.request?.headers ?? ctx?.headers ?? null;
+            const meta = describeClient(headers, session.userAgent ?? null);
             await db.insert(schema.loginLog).values({
               userId: session.userId,
-              ip: session.ipAddress ?? null,
+              ip: normalizeIp(session.ipAddress ?? null),
               userAgent: session.userAgent ?? null,
+              method: loginMethodFromPath(ctx?.path),
+              ...meta,
             });
           } catch (err) {
             logger.warn({ err, userId: session.userId }, 'failed to write login_log');

@@ -24,12 +24,12 @@ import * as rolesMod from '../../server/roles';
 
 const asyncEmpty = (async () => ({})) as unknown as () => Promise<unknown>;
 const spies = [
-  spyOn(auth.api, 'getSession').mockImplementation(
-    (async () => (ctx.actor ? { user: ctx.actor } : null)) as unknown as typeof auth.api.getSession,
-  ),
-  spyOn(auth.api, 'listUsers').mockImplementation(
-    (async () => ({ users: [], total: 0 })) as unknown as typeof auth.api.listUsers,
-  ),
+  spyOn(auth.api, 'getSession').mockImplementation((async () =>
+    ctx.actor ? { user: ctx.actor } : null) as unknown as typeof auth.api.getSession),
+  spyOn(auth.api, 'listUsers').mockImplementation((async () => ({
+    users: [],
+    total: 0,
+  })) as unknown as typeof auth.api.listUsers),
   spyOn(auth.api, 'setRole').mockImplementation(asyncEmpty as typeof auth.api.setRole),
   spyOn(auth.api, 'banUser').mockImplementation(asyncEmpty as typeof auth.api.banUser),
   spyOn(auth.api, 'unbanUser').mockImplementation(asyncEmpty as typeof auth.api.unbanUser),
@@ -39,9 +39,9 @@ const spies = [
 
 import { eq } from 'drizzle-orm';
 import Elysia from 'elysia';
+import { adminApi } from '../../server/api/admin';
 import { db } from '../../server/db';
 import { user } from '../../server/db/schema';
-import { adminApi } from '../../server/api/admin';
 
 const app = new Elysia().use(adminApi);
 
@@ -62,7 +62,10 @@ async function req(method: string, path: string, body?: unknown) {
       body: body ? JSON.stringify(body) : undefined,
     }),
   );
-  return { status: res.status, body: (await res.json().catch(() => null)) as Record<string, unknown> };
+  return {
+    status: res.status,
+    body: (await res.json().catch(() => null)) as Record<string, unknown>,
+  };
 }
 
 // ─── Seed target users with fixed roles ───────────────────────────────────────
@@ -92,7 +95,11 @@ beforeAll(async () => {
 
 afterAll(async () => {
   for (const s of spies) s.mockRestore();
-  for (const s of seeded) await db.delete(user).where(eq(user.id, s.id)).catch(() => {});
+  for (const s of seeded)
+    await db
+      .delete(user)
+      .where(eq(user.id, s.id))
+      .catch(() => {});
 });
 
 // ─── Guard (onBeforeHandle) ───────────────────────────────────────────────────

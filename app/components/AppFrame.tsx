@@ -6,7 +6,6 @@ import {
   Button,
   Divider,
   Group,
-  NavLink,
   ScrollArea,
   Text,
   Tooltip,
@@ -14,28 +13,45 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import type { Role } from '@server/permissions';
 import { type ReactNode, useState } from 'react';
-import type { IconType } from 'react-icons';
 import { FiCornerUpLeft, FiZap } from 'react-icons/fi';
-import { TbLayoutSidebarLeftCollapse, TbLayoutSidebarLeftExpand } from 'react-icons/tb';
-import { Link, useLocation } from 'react-router';
+import { Link } from 'react-router';
 import type { AppUser } from '~/lib/app-context';
 import { authClient, useSession } from '~/lib/auth-client';
+import { BrandHeader } from './frame/BrandHeader';
+import { NavList } from './frame/NavList';
+import {
+  homePath,
+  type NavBadge,
+  type NavGroup,
+  type NavItem,
+  normalizeNav,
+  withBadges,
+} from './frame/nav';
 import { ThemeToggle } from './ThemeToggle';
 import { UserMenu } from './UserMenu';
 
-export type NavItem = { to: string; label: string; icon: IconType };
+export type { NavBadge, NavGroup, NavItem } from './frame/nav';
 
 // Written to cookie so the server can read it on next request (no SSR flash).
 const COOKIE = 'mk-sidebar-collapsed';
+const WIDTH_EXPANDED = 248;
+const WIDTH_COLLAPSED = 72;
 
 type Props = {
-  navItems: NavItem[];
+  /** Flat list or labeled groups. */
+  navItems: NavItem[] | NavGroup[];
   role: Role;
   user: AppUser;
   badgeColor: string;
   children: ReactNode;
   /** Cross-area links ("other apps"), pinned below primary nav. */
   secondaryNav?: NavItem[];
+  /** Area name shown under the brand and in the mobile header (e.g. "Dev Console"). */
+  consoleLabel?: string;
+  /** Live counters keyed by route path, resolved in the layout loader. */
+  navBadges?: Record<string, NavBadge>;
+  env?: string;
+  version?: string;
   /**
    * Server-resolved initial collapsed state (read from cookie in the layout
    * loader). Lets the server render the correct sidebar width immediately,
@@ -45,31 +61,32 @@ type Props = {
 };
 
 /**
- * Sidebar-only shell shared by every per-role area layout. No top header. Two
- * nav layers: the page's primary menus scroll in the grow section; cross-area
- * links sit pinned above the footer. Collapse state is stored in a cookie so
- * the server knows the preference and renders the correct width server-side.
+ * Sidebar-only shell shared by every per-role area layout. Primary nav scrolls
+ * in the grow section; cross-area links, theme toggle and the account switcher
+ * are pinned to the bottom. Collapse state lives in a cookie so the server
+ * renders the right width on hard reload.
  */
-export function AppFrame({
-  navItems,
-  role,
-  user,
-  badgeColor,
-  children,
-  secondaryNav,
-  initialCollapsed = false,
-}: Props) {
+export function AppFrame(props: Props) {
+  const {
+    role,
+    user,
+    badgeColor,
+    children,
+    consoleLabel,
+    env,
+    version,
+    initialCollapsed = false,
+  } = props;
   const [mobileOpened, { toggle: toggleMobile, close: closeMobile }] = useDisclosure();
   // Initialized from server-resolved value — no useEffect needed, no flash.
   const [collapsed, setCollapsed] = useState(initialCollapsed);
-  const { pathname } = useLocation();
   const { data } = useSession();
   const impersonating = Boolean(
     (data?.session as { impersonatedBy?: string } | undefined)?.impersonatedBy,
   );
-  const secondary = secondaryNav ?? [];
-  const homePath = navItems[0]?.to ?? '/';
-  const isActive = (to: string) => pathname === to;
+  const groups = withBadges(normalizeNav(props.navItems), props.navBadges);
+  const secondary = normalizeNav(props.secondaryNav);
+  const home = homePath(groups);
 
   function toggleCollapsed() {
     setCollapsed((c) => {
@@ -86,41 +103,11 @@ export function AppFrame({
     window.location.assign('/go');
   }
 
-  const renderItem = (item: NavItem) =>
-    collapsed ? (
-      <Tooltip key={item.to} label={item.label} position="right" withArrow>
-        <ActionIcon
-          component={Link}
-          to={item.to}
-          onClick={closeMobile}
-          variant={isActive(item.to) ? 'light' : 'subtle'}
-          color={isActive(item.to) ? undefined : 'gray'}
-          size="lg"
-          mx="auto"
-          display="block"
-          mb={6}
-          aria-label={item.label}
-        >
-          <item.icon size={18} />
-        </ActionIcon>
-      </Tooltip>
-    ) : (
-      <NavLink
-        key={item.to}
-        component={Link}
-        to={item.to}
-        label={item.label}
-        leftSection={<item.icon size={18} />}
-        active={isActive(item.to)}
-        onClick={closeMobile}
-      />
-    );
-
   return (
     <AppShell
       header={{ height: { base: 52, sm: 0 } }}
       navbar={{
-        width: collapsed ? 72 : 240,
+        width: collapsed ? WIDTH_COLLAPSED : WIDTH_EXPANDED,
         breakpoint: 'sm',
         collapsed: { mobile: !mobileOpened },
       }}
@@ -128,17 +115,24 @@ export function AppFrame({
     >
       {/* Mobile-only top header — provides space + burger so content never overlaps */}
       <AppShell.Header withBorder={false} hiddenFrom="sm">
-        <Group h="100%" px="md" gap="sm">
+        <Group h="100%" px="md" gap="sm" wrap="nowrap">
           <Burger
             opened={mobileOpened}
             onClick={toggleMobile}
             size="sm"
-            aria-label="Toggle navigation"
+            aria-label="Buka navigasi"
           />
-          <Link to={homePath} style={{ textDecoration: 'none', color: 'inherit', minWidth: 0 }}>
+          <Link to={home} style={{ textDecoration: 'none', color: 'inherit', minWidth: 0 }}>
             <Group gap={6} wrap="nowrap">
               <FiZap size={18} />
-              <Text fw={700} truncate>Makuro</Text>
+              <Text fw={700} truncate>
+                Makuro
+              </Text>
+              {consoleLabel && (
+                <Text size="xs" c="dimmed" truncate>
+                  · {consoleLabel}
+                </Text>
+              )}
             </Group>
           </Link>
         </Group>
@@ -146,42 +140,20 @@ export function AppFrame({
 
       <AppShell.Navbar p="sm">
         <AppShell.Section>
-          <Group justify={collapsed ? 'center' : 'space-between'} wrap="nowrap" gap="xs">
-            {!collapsed && (
-              <Link to={homePath} style={{ textDecoration: 'none', color: 'inherit', minWidth: 0 }}>
-                <Group gap={8} wrap="nowrap">
-                  <FiZap size={20} />
-                  <Text fw={700} size="lg">
-                    Makuro
-                  </Text>
-                </Group>
-              </Link>
-            )}
-            <Tooltip
-              label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              position="right"
-              withArrow
-            >
-              <ActionIcon
-                variant="subtle"
-                color="gray"
-                onClick={toggleCollapsed}
-                aria-label="Toggle sidebar"
-              >
-                {collapsed ? (
-                  <TbLayoutSidebarLeftExpand size={20} />
-                ) : (
-                  <TbLayoutSidebarLeftCollapse size={20} />
-                )}
-              </ActionIcon>
-            </Tooltip>
-          </Group>
+          <BrandHeader
+            collapsed={collapsed}
+            onToggle={toggleCollapsed}
+            homePath={home}
+            consoleLabel={consoleLabel}
+            env={env}
+            version={version}
+          />
         </AppShell.Section>
 
         {impersonating && (
-          <AppShell.Section mt="xs">
+          <AppShell.Section mt="sm">
             {collapsed ? (
-              <Tooltip label="Stop impersonating" position="right" withArrow>
+              <Tooltip label="Berhenti impersonasi" position="right" withArrow>
                 <ActionIcon
                   variant="light"
                   color="orange"
@@ -189,7 +161,7 @@ export function AppFrame({
                   mx="auto"
                   display="block"
                   onClick={stopImpersonating}
-                  aria-label="Stop impersonating"
+                  aria-label="Berhenti impersonasi"
                 >
                   <FiCornerUpLeft size={18} />
                 </ActionIcon>
@@ -203,39 +175,42 @@ export function AppFrame({
                 leftSection={<FiCornerUpLeft size={16} />}
                 onClick={stopImpersonating}
               >
-                Stop impersonating
+                Berhenti impersonasi
               </Button>
             )}
           </AppShell.Section>
         )}
 
-        <AppShell.Section grow my="md" component={ScrollArea}>
-          {navItems.map(renderItem)}
-          {!collapsed && (
-            <Badge mt="md" variant="light" color={badgeColor}>
-              {role}
-            </Badge>
-          )}
+        <AppShell.Section grow my="md" component={ScrollArea} type="auto" offsetScrollbars={false}>
+          <NavList groups={groups} collapsed={collapsed} onNavigate={closeMobile} />
         </AppShell.Section>
 
         {secondary.length > 0 && (
           <AppShell.Section mb="sm">
-            <Divider mb="xs" />
-            {!collapsed && (
-              <Text size="xs" c="dimmed" fw={500} mb={4} px="xs">
-                Other apps
-              </Text>
-            )}
-            {secondary.map(renderItem)}
+            <Divider mb="sm" />
+            <NavList
+              groups={[{ label: collapsed ? undefined : 'Area lain', items: secondary[0].items }]}
+              collapsed={collapsed}
+              onNavigate={closeMobile}
+            />
           </AppShell.Section>
         )}
 
-        <AppShell.Section mb="sm">
+        <AppShell.Section mb="xs">
           <ThemeToggle collapsed={collapsed} />
         </AppShell.Section>
 
         <AppShell.Section>
-          <UserMenu user={user} collapsed={collapsed} />
+          <Divider mb={4} />
+          <UserMenu
+            user={user}
+            collapsed={collapsed}
+            roleBadge={
+              <Badge size="xs" variant="light" color={badgeColor}>
+                {role}
+              </Badge>
+            }
+          />
         </AppShell.Section>
       </AppShell.Navbar>
 

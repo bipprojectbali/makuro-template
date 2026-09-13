@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm';
-import { boolean, index, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 
 // --- Better Auth core tables ---------------------------------------------
 // These match the Better Auth Drizzle adapter schema. You can regenerate
@@ -142,9 +142,24 @@ export const loginLog = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
     ip: text('ip'),
     userAgent: text('user_agent'),
+    /** 'email' | provider id (e.g. 'google') | 'impersonation' | 'switch' — from the auth endpoint path. */
+    method: text('method'),
+    /** Geo + device enrichment, same sources as visit_log (see server/middleware/request-meta.ts). */
+    country: text('country'),
+    region: text('region'),
+    city: text('city'),
+    browser: text('browser'),
+    browserVersion: text('browser_version'),
+    os: text('os'),
+    osVersion: text('os_version'),
+    deviceType: text('device_type'),
+    language: text('language'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
-  (t) => [index('login_log_user_id_idx').on(t.userId), index('login_log_created_at_idx').on(t.createdAt)],
+  (t) => [
+    index('login_log_user_id_idx').on(t.userId),
+    index('login_log_created_at_idx').on(t.createdAt),
+  ],
 );
 
 // appSetting: singleton row (id='singleton') for runtime app configuration.
@@ -154,6 +169,13 @@ export const appSetting = pgTable('app_setting', {
   emailAuthEnabled: boolean('email_auth_enabled').default(false).notNull(),
   /** Allow new user registrations. Set false to close the app to new signups. */
   signupEnabled: boolean('signup_enabled').default(true).notNull(),
+  // API rate limiting. NULL = fall back to the env default (RATE_LIMIT_*), so
+  // the console can show "default" vs "overridden" and reset per field.
+  rateLimitEnabled: boolean('rate_limit_enabled').default(true).notNull(),
+  rateLimitMax: integer('rate_limit_max'),
+  rateLimitWindowMs: integer('rate_limit_window_ms'),
+  /** Newline-separated path prefixes that are never limited; NULL = default list. */
+  rateLimitExcludePrefixes: text('rate_limit_exclude_prefixes'),
   updatedAt: timestamp('updated_at')
     .$defaultFn(() => new Date())
     .notNull(),
@@ -168,8 +190,24 @@ export const rateLimitLog = pgTable(
       .$defaultFn(() => crypto.randomUUID()),
     ip: text('ip'),
     path: text('path').notNull(),
+    /** HTTP method of the blocked request. */
+    method: text('method'),
+    userAgent: text('user_agent'),
+    /** Geo + device enrichment, same sources as visit_log (see server/middleware/request-meta.ts). */
+    country: text('country'),
+    region: text('region'),
+    city: text('city'),
+    browser: text('browser'),
+    browserVersion: text('browser_version'),
+    os: text('os'),
+    osVersion: text('os_version'),
+    deviceType: text('device_type'),
+    language: text('language'),
     userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
-  (t) => [index('rate_limit_log_created_at_idx').on(t.createdAt), index('rate_limit_log_ip_idx').on(t.ip)],
+  (t) => [
+    index('rate_limit_log_created_at_idx').on(t.createdAt),
+    index('rate_limit_log_ip_idx').on(t.ip),
+  ],
 );

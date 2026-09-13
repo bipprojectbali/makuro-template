@@ -15,6 +15,7 @@ import { api } from './api';
 import { env } from './env';
 import { nodeToWebRequest, writeWebResponse } from './http-bridge';
 import { logger } from './logger';
+import { stampClientIp } from './middleware/client-ip';
 import { recordVisit } from './middleware/visitor';
 
 const vite = await createViteServer({
@@ -30,6 +31,7 @@ const server = createServer((req, res) => {
     (async () => {
       try {
         const request = await nodeToWebRequest(req);
+        stampClientIp(request, req.socket.remoteAddress);
         const response = await api.handle(request);
         await writeWebResponse(res, response);
       } catch (err) {
@@ -47,10 +49,8 @@ const server = createServer((req, res) => {
       const build = await vite.ssrLoadModule('virtual:react-router/server-build');
       const handler = createRequestHandler(build as never, 'development');
       const request = await nodeToWebRequest(req);
-      // Extract IP from Node socket; normalize IPv6-mapped IPv4 (::ffff:x.x.x.x → x.x.x.x).
-      const rawIp = req.socket.remoteAddress ?? null;
-      const ip = rawIp?.startsWith('::ffff:') ? rawIp.slice(7) : rawIp;
-      void recordVisit(request, ip);
+      stampClientIp(request, req.socket.remoteAddress);
+      void recordVisit(request);
       const response = await handler(request);
       await writeWebResponse(res, response);
     } catch (err) {

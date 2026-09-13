@@ -6,7 +6,7 @@ build
 *.log
 .DS_Store
 .vite
-logs/
+/logs/
 # compiled binaries (bun build --compile)
 makuro
 makuro-linux-x64

@@ -1,3 +1,4 @@
+import { frameInfo } from '@server/app-info';
 import { requireAnyRole } from '@server/guard';
 import { ROLES } from '@server/permissions';
 import { getSidebarCollapsed } from '@server/sidebar';
@@ -21,7 +22,7 @@ const SECONDARY: Record<string, NavItem[]> = {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const auth = await requireAnyRole(request, [ROLES.ADMIN, ROLES.SUPER_ADMIN]);
-  return { ...auth, collapsed: getSidebarCollapsed(request) };
+  return { ...auth, collapsed: getSidebarCollapsed(request), ...frameInfo() };
 }
 
 export default function AdminLayout({ loaderData }: Route.ComponentProps) {
@@ -33,6 +34,9 @@ export default function AdminLayout({ loaderData }: Route.ComponentProps) {
       role={loaderData.role}
       user={loaderData.user}
       badgeColor="blue"
+      consoleLabel="Admin"
+      env={loaderData.env}
+      version={loaderData.version}
       initialCollapsed={loaderData.collapsed}
     >
       <Outlet context={ctx} />
