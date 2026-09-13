@@ -43,6 +43,13 @@
       "when": 1789263653565,
       "tag": "0005_fair_mother_askani",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789264355956,
+      "tag": "0006_striped_living_tribunal",
+      "breakpoints": true
     }
   ]
 }

@@ -5,7 +5,7 @@ import { db } from '../db';
 import { post } from '../db/schema';
 import { logger } from '../logger';
 import { mcpPlugin } from '../mcp';
-import { checkRateLimit, logRateLimit } from '../middleware/rate-limiter';
+import { rateLimitPlugin } from '../middleware/rate-limiter';
 import { adminApi } from './admin';
 import { analyticsApi } from './analytics';
 import { settingsApi } from './settings';
@@ -23,6 +23,9 @@ async function getSession(headers: Headers) {
  * server/app.ts). Better Auth owns `/api/auth/*`.
  */
 export const api = new Elysia({ prefix: '/api' })
+  // Rate limiting first: Elysia hooks only cover routes registered after them,
+  // so this must precede every plugin (auth + mcp are excluded inside the plugin).
+  .use(rateLimitPlugin())
   // Mount Better Auth handler for all /api/auth/* routes.
   .mount(auth.handler)
   // Admin console endpoints (self-guarded by role).
@@ -37,23 +40,6 @@ export const api = new Elysia({ prefix: '/api' })
   .derive(async ({ request }) => {
     const s = await getSession(request.headers);
     return { user: s?.user ?? null, session: s?.session ?? null };
-  })
-  // Rate limiting + visitor tracking (fire-and-forget — must not block).
-  .onBeforeHandle(async ({ request, user, status }) => {
-    const url = new URL(request.url);
-    const ip =
-      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-      request.headers.get('x-real-ip') ??
-      'unknown';
-
-    // Skip auth routes (Better Auth handles its own protection).
-    if (!url.pathname.startsWith('/api/auth/')) {
-      const { limited } = checkRateLimit(ip);
-      if (limited) {
-        void logRateLimit(ip === 'unknown' ? null : ip, url.pathname, (user as { id?: string } | null)?.id ?? null);
-        return status(429, { error: 'Too many requests' });
-      }
-    }
   })
   .get('/hello', () => ({
     message: 'Hello from Elysia + Bun \u26a1',
