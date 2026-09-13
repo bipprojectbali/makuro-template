@@ -1,69 +1,88 @@
-import { Avatar, Badge, Card, Group, Stack, Text, Title } from '@mantine/core';
-import { FiCalendar, FiCheckCircle, FiMail, FiXCircle } from 'react-icons/fi';
+import { Stack, Text, Title } from '@mantine/core';
+import { listLogins } from '@server/api/analytics-logins.query';
+import { hasGoogleAuth } from '@server/env';
+import { requireAnyRole } from '@server/guard';
+import { ROLES } from '@server/permissions';
+import { useQuery } from '@tanstack/react-query';
+import { DangerZoneCard } from '~/components/profile/DangerZoneCard';
+import { LinkedAccountsCard } from '~/components/profile/LinkedAccountsCard';
+import { LoginHistoryCard } from '~/components/profile/LoginHistoryCard';
+import { PasswordCard } from '~/components/profile/PasswordCard';
+import { ProfileForm } from '~/components/profile/ProfileForm';
+import { ProfileHeader } from '~/components/profile/ProfileHeader';
+import { SessionsCard } from '~/components/profile/SessionsCard';
 import { useApp } from '~/lib/app-context';
-import { useSession } from '~/lib/auth-client';
+import { authClient, useSession } from '~/lib/auth-client';
+import { toJson } from '~/lib/loader-json';
+import type { LoginRow } from '~/lib/login-logs-api';
+import { type DeviceSession, hasPasswordAccount, type LinkedAccount } from '~/lib/profile-api';
 import type { Route } from './+types/profile';
 
 export function meta(_: Route.MetaArgs) {
   return [{ title: 'Profile — Makuro' }];
 }
 
-export default function Profile() {
+const HISTORY = 8;
+
+/** Own login history is server-rendered; sessions/accounts come from Better Auth on the client. */
+export async function loader({ request }: Route.LoaderArgs) {
+  const { user } = await requireAnyRole(request, [ROLES.USER, ROLES.ADMIN, ROLES.SUPER_ADMIN]);
+  const logins = await listLogins({ userId: user.id, limit: String(HISTORY) });
+  return {
+    logins: toJson<{ rows: LoginRow[]; total: number }>(logins),
+    googleEnabled: hasGoogleAuth,
+  };
+}
+
+export default function Profile({ loaderData }: Route.ComponentProps) {
   const { user: ctxUser, role } = useApp();
-  const { data } = useSession();
+  const { data, refetch: refetchSession } = useSession();
   const user = data?.user ?? ctxUser;
-  const verified = Boolean(user.emailVerified);
+  const currentToken = (data?.session as { token?: string } | undefined)?.token;
+
+  const sessions = useQuery({
+    queryKey: ['me-sessions'],
+    queryFn: async () => {
+      const { data: rows, error } = await authClient.listSessions();
+      if (error) throw new Error(error.message ?? 'Gagal memuat sesi');
+      return (rows ?? []) as unknown as DeviceSession[];
+    },
+  });
+  const accounts = useQuery({
+    queryKey: ['me-accounts'],
+    queryFn: async () => {
+      const { data: rows, error } = await authClient.listAccounts();
+      if (error) throw new Error(error.message ?? 'Gagal memuat akun tertaut');
+      return (rows ?? []) as unknown as LinkedAccount[];
+    },
+  });
+  const hasPassword = hasPasswordAccount(accounts.data ?? []);
 
   return (
-    <Stack maw={520}>
-      <Title order={2}>Profile</Title>
-      <Card withBorder radius="md" padding="lg">
-        <Group wrap="nowrap" mb="md">
-          <Avatar
-            src={user.image}
-            radius="xl"
-            size={64}
-            name={user.name}
-            color="initials"
-            imageProps={{ referrerPolicy: 'no-referrer' }}
-          />
-          <div style={{ minWidth: 0 }}>
-            <Text fw={600} size="lg" truncate>
-              {user.name}
-            </Text>
-            <Badge variant="light" color="gray" mt={4}>
-              {role}
-            </Badge>
-          </div>
-        </Group>
-
-        <Stack gap="xs">
-          <Group gap="xs" wrap="nowrap">
-            <FiMail size={16} />
-            <Text size="sm">{user.email}</Text>
-            {verified ? (
-              <Badge
-                size="xs"
-                variant="light"
-                color="green"
-                leftSection={<FiCheckCircle size={12} />}
-              >
-                verified
-              </Badge>
-            ) : (
-              <Badge size="xs" variant="light" color="yellow" leftSection={<FiXCircle size={12} />}>
-                unverified
-              </Badge>
-            )}
-          </Group>
-          <Group gap="xs" wrap="nowrap">
-            <FiCalendar size={16} />
-            <Text size="sm" c="dimmed">
-              Member since {new Date(user.createdAt).toLocaleDateString()}
-            </Text>
-          </Group>
-        </Stack>
-      </Card>
+    <Stack gap="md" p={{ base: 'sm', md: 'md' }} maw={880}>
+      <div>
+        <Title order={3}>Profil & keamanan</Title>
+        <Text size="sm" c="dimmed">
+          Kelola identitas, cara masuk, dan perangkat yang terhubung ke akun Anda.
+        </Text>
+      </div>
+      <ProfileHeader user={user} role={role} />
+      <ProfileForm user={user} onSaved={() => refetchSession()} />
+      <PasswordCard hasPassword={hasPassword} onChanged={() => sessions.refetch()} />
+      <LinkedAccountsCard
+        accounts={accounts.data ?? []}
+        googleEnabled={loaderData.googleEnabled}
+        loading={accounts.isPending}
+        onChanged={() => accounts.refetch()}
+      />
+      <SessionsCard
+        sessions={sessions.data ?? []}
+        currentToken={currentToken}
+        loading={sessions.isPending}
+        onChanged={() => sessions.refetch()}
+      />
+      <LoginHistoryCard rows={loaderData.logins.rows} total={loaderData.logins.total} />
+      <DangerZoneCard email={user.email} hasPassword={hasPassword} />
     </Stack>
   );
 }
