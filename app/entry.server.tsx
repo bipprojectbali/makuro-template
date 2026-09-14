@@ -1,6 +1,6 @@
 import { PassThrough } from 'node:stream';
 import { createReadableStreamFromReadable } from '@react-router/node';
-import { logger } from '@server/logger';
+import { processLog } from '@server/ssr-log';
 import { isbot } from 'isbot';
 import type { RenderToPipeableStreamOptions } from 'react-dom/server';
 // Import the Node build explicitly: under Bun, bare `react-dom/server`
@@ -25,10 +25,10 @@ export const handleError: HandleErrorFunction = (error, { request }) => {
   if (isRouteErrorResponse(error) && error.status === 404) return;
   const path = new URL(request.url).pathname;
   if (isRouteErrorResponse(error)) {
-    logger.warn({ status: error.status, path }, 'route error response');
+    processLog('warn', { status: error.status, path }, 'route error response');
     return;
   }
-  logger.error({ err: error, path, method: request.method }, 'SSR route error');
+  processLog('error', { err: error, path, method: request.method }, 'SSR route error');
 };
 
 export default function handleRequest(
@@ -65,7 +65,11 @@ export default function handleRequest(
           status = 500;
           // Shell already streamed: the boundary renders inline; keep the log line.
           if (shellRendered)
-            logger.error({ err: error, path: new URL(request.url).pathname }, 'SSR stream error');
+            processLog(
+              'error',
+              { err: error, path: new URL(request.url).pathname },
+              'SSR stream error',
+            );
         },
       },
     );

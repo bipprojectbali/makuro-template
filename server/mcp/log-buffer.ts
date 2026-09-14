@@ -106,4 +106,8 @@ export class LogBuffer {
 }
 
 /** Singleton ring buffer — shared between logger.ts, the MCP log tools and /dev/server-logs. */
-export const logBuffer = new LogBuffer(1000);
+// Process-wide singleton: the Vite-built SSR bundle carries its own copy of this
+// module, and both copies must feed the same buffer that /dev/server-logs reads.
+const g = globalThis as typeof globalThis & { __makuroLogBuffer?: LogBuffer };
+g.__makuroLogBuffer ??= new LogBuffer(1000);
+export const logBuffer: LogBuffer = g.__makuroLogBuffer;
