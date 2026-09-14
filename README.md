@@ -32,6 +32,11 @@ Ketiga URL dokumentasi dilayani sebelum SSR, ber-ETag (`304` bila tidak berubah)
 | **SSR tanpa waterfall** | React Router v8 loader berjalan server-side, session tersedia di loader |
 | **ORM type-safe** | Drizzle ORM + PostgreSQL, schema-as-code, migration files, Drizzle Studio |
 | **UI kit terkonfigurasi** | Mantine v9, TanStack Query, Zustand, Biome — semua sudah terhubung |
+| **Dev console `/dev`** | 14 halaman operasional: users, sessions, posts, API keys, DB schema, log pengunjung/login/rate-limit/server/audit, file health, tools, settings — badge hidup di sidebar |
+| **API keys** | Kunci `mk_live_…` ber-scope, kedaluwarsa, rotasi dengan masa tenggang, IP allow-list, rate limit per kunci, jejak pemakaian + rollup harian, kunci pribadi per user |
+| **Observability** | Visitor/login/rate-limit log dengan geo & perangkat, audit trail semua aksi admin, buffer log server, retensi otomatis, mode maintenance, feature flags |
+| **Error yang konsisten** | Halaman 404/401/403/5xx bermerek (sidebar tetap tampil di konsol), error API selalu `{ error, code, status, requestId }`, fallback HTML bila SSR gagal |
+| **Ramah AI agent** | `/README.md` + `/llms.txt` teks polos, server MCP ber-API-key, tool file health agar konteks agent tidak meledak |
 
 ## Stack
 
@@ -126,38 +131,45 @@ Seperti Go binary: copy satu file ke server, langsung jalan. Tidak perlu `build/
 ## Struktur project
 
 ```
-app/                   React Router app (SSR)
-  root.tsx             Provider: Mantine, TanStack Query, ModalsProvider
-  routes.ts            Konfigurasi route (per-role layout guards)
+app/                    React Router app (SSR)
+  root.tsx              Provider (Mantine, TanStack Query, Modals) + ErrorBoundary root
+  entry.server.tsx      Streaming SSR + handleError (404 senyap, sisanya ke pino)
+  routes.ts             Konfigurasi route (per-role layout guards)
   routes/
-    home.tsx           Landing page
-    login.tsx          Login / signup (Google OAuth + email)
-    go.tsx             Post-auth resolver (arahkan ke home role)
-    user/              Area user: /profile
-    admin/             Area admin: /dashboard
-    super/             Area super-admin: /dev, /dev/settings, dll
+    home.tsx            Landing page (angka hidup dari server/landing-stats.ts)
+    login.tsx  go.tsx   Login/signup, post-auth resolver ke home role
+    user/  admin/       Area /profile dan /dashboard (layout + ErrorBoundary ber-sidebar)
+    super/              Area /dev: 14 halaman konsol super-admin
   components/
-    AppFrame.tsx       Shell sidebar yang dipakai semua layout
-    UserMenu.tsx       Avatar + account switcher + sign out
-  lib/
-    eden.ts            Eden Treaty client (type-safe ke Elysia API)
-    auth-client.ts     Better Auth client
+    AppFrame.tsx frame/ Shell sidebar (nav model, badge, brand header)
+    errors/             ErrorPage (standalone), ErrorPanel, AreaErrorBoundary
+    logs/               Komponen bersama halaman log: StatTile, BreakdownPanel, LogCells, DetailParts
+    api-keys/ users/ sessions/ posts/ settings/ profile/ … komponen per halaman
+  lib/                  Klien API bertipe per domain (*-api.ts), error-page.ts, theme, query
 server/
-  env.ts               Env vars divalidasi Zod
-  auth.ts              Better Auth config (Drizzle adapter, plugins)
-  guard.ts             requireRole / requireAnyRole
-  permissions.ts       ROLES, homeFor(role), canBan(actor, target)
+  env.ts                Env vars divalidasi Zod
+  auth.ts               Better Auth (Drizzle adapter, admin + apiKey plugin)
+  guard.ts              requireRole / requireAnyRole / resolveActor (sesi atau API key)
+  permissions.ts roles  ROLES, homeFor(role), rekonsiliasi super-admin dari env
   api/
-    index.ts           Elysia app, mount semua sub-router
-    admin.ts           Admin API (list users, ban, role change)
-    settings.ts        App settings API (GET public, PUT super-admin)
+    index.ts            Elysia app: error plugin → rate limit → maintenance → api key → router
+    *.ts  *.query.ts    Route handler (≤150 baris) dan query per domain
+  api-keys/             scopes, plugin (onRequest), service/query, usage + rollup harian
+  api-error.ts          Bentuk JSON error seragam + requestId
+  error-page.ts         HTML fallback 500/503 tanpa React
+  readme.ts             /README.md, /llms.txt, /llms-full.txt dari satu sumber
+  http-probes.ts        favicon.ico, .well-known, apple-touch-icon sebelum SSR
+  sidebar-badges.ts     Counter badge sidebar /dev (cache 15 dtk)
+  settings*.ts          app_setting: auth, rate limit, retensi, maintenance, flags, branding
+  middleware/           client-ip, visitor (+geo, UA), rate-limiter, maintenance
+  mcp/                  Server MCP + tool (status, log, DB, file health)
+  file-health/          Pemindai ukuran file / risiko konteks agent
   db/
-    schema.ts          Drizzle schema (user, session, account, app_setting, ...)
-    migrations/        SQL migration files
-  settings.ts          getSettings / upsertSettings
-  http-bridge.ts       Node ↔ Fetch Request/Response bridge
-  dev.ts               Dev server (Elysia + Vite middleware mode)
-  prod.ts              Production server (Bun.serve)
+    schema.*.ts         Drizzle schema per concern (auth, app, logs, keys)
+    migrations/         SQL migration idempotent (0001…0012)
+  http-bridge.ts        Node ↔ Fetch Request/Response bridge
+  dev.ts  prod.ts       Dev server (Vite middleware) dan Bun.serve produksi
+tests/                  bun:test, mirror struktur server/ (DATABASE_URL_TEST)
 ```
 
 ## Cara single-port bekerja
@@ -174,8 +186,8 @@ Sistem role: `user` → `admin` → `super-admin`. Role tersimpan di tabel `user
 
 | Role | Home | Area |
 |---|---|---|
-| `user` | `/profile` | Profile, settings akun |
-| `admin` | `/dashboard` | Dashboard, manajemen user (ban, role change) |
+| `user` | `/profile` | Profil, keamanan akun, sesi perangkat, API key pribadi |
+| `admin` | `/dashboard` | Dashboard, manajemen user (ban, role change), API key pribadi |
 | `super-admin` | `/dev` | Overview, users, sessions, posts, DB schema, visitor/login/rate-limit/server/audit logs, file health, tools & MCP, settings |
 
 Google OAuth: set `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`. Authorized redirect URI di Google Console: `${BETTER_AUTH_URL}/api/auth/callback/google`.
@@ -205,13 +217,16 @@ API (`/api/analytics/visits`, super-admin): `GET` list dengan query `page`, `lim
 
 Konsol super-admin dengan pola yang sama di tiap halaman: loader SSR (data lengkap di paint pertama), KPI, filter, tabel + kartu mobile, drawer detail, konfirmasi aksi destruktif, notifikasi, dan audit.
 
-- **Overview** — angka utama, peringatan (maintenance, retensi belum diatur, user banned, file berbahaya), aktivitas terbaru.
+- **Overview** — angka utama, peringatan (maintenance, retensi belum diatur, user banned, API key hampir kedaluwarsa, file berbahaya), aktivitas terbaru.
+- **Sidebar** — tiap menu punya badge hidup dari `server/sidebar-badges.ts` (cache 15 detik, gagal lunak): nada *perhatian* berwarna (user diblokir, impersonasi aktif, migrasi tertunda, request diblokir, error server, kunci hampir habis, masalah konfigurasi) atau nada *informasi* abu-abu (jumlah user, sesi aktif, kunjungan/login/aksi 24 jam). Hover menampilkan fungsi menu dan arti angkanya.
 - **Kelola**: Users (role, ban dengan alasan/durasi, impersonasi, hapus), Sessions (cabut sesi lintas user), Posts (konten contoh; pemilik atau admin), API Keys (lihat bagian di bawah), DB Schema (ERD + statistik nyata + status migrasi).
 - **Log & monitoring**: Visitor Logs, Login Logs, Rate Limits, Server Logs (buffer pino di memori, `GET /api/logs`), Audit Log (`audit_log`: semua aksi berhak istimewa, read-only, `GET /api/audit`), File Health.
-- **Tools & MCP**: status proses, katalog tool MCP + contoh `.mcp.json`, ringkasan API, reset cache/limiter (`POST /api/ops/reset/:target`, teraudit).
+- **Tools & MCP**: status proses, katalog tool MCP + contoh `.mcp.json` (auth lewat API key ber-scope `mcp`, tombol "Buat kunci MCP"), ringkasan API, reset cache/limiter (`POST /api/ops/reset/:target`, teraudit).
 - **Settings** (`app_setting`, semua perubahan teraudit): autentikasi, rate limit, **retensi log** (usia maksimum per tabel, job harian + jalankan manual), **mode maintenance** (503 untuk semua kecuali role yang diizinkan; login tetap terbuka), **feature flags** (`isFeatureEnabled(key)` di server, `GET /api/settings` → `features` di client), **branding** (nama, tagline, URL dukungan → sidebar, meta, login).
 
-Migrasi yang dibutuhkan fitur-fitur ini: 0008 (audit_log), 0009 (settings), 0010 (post.updated_at), 0011 (apikey, api_key_usage) — semuanya idempotent.
+Migrasi yang dibutuhkan fitur-fitur ini: 0008 (audit_log), 0009 (settings), 0010 (post.updated_at), 0011 (apikey, api_key_usage), 0012 (api_key_usage_daily) — semuanya idempotent.
+
+Menambah halaman `/dev` baru berarti menyentuh lima tempat sekaligus: `app/routes.ts`, `NAV` di `app/routes/super/layout.tsx`, `QuickLinks` overview, `CONSOLE_PAGES` di landing (test menjaga jumlahnya sama dengan route), dan badge di `server/sidebar-badges.ts`.
 
 ## Halaman & respons error
 
@@ -260,7 +275,9 @@ Agent bisa mengecek sendiri lewat tool MCP `check_file_health` (server `makuro-d
 bun run test
 ```
 
-Semua test ada di root `tests/` (mirror struktur `server/`). Gunakan `bun run test` — script inilah yang men-set `NODE_ENV=test`; menjalankan `bun test tests` langsung tidak akan memakai test database. Test database dipisah dari dev/prod (`DATABASE_URL_TEST`). Guard bisa di-bypass di integration test dengan `mock.module('../../server/guard', ...)` — bun:test otomatis hoist mock di atas static import.
+Semua test ada di root `tests/` (mirror struktur `server/`). Gunakan `bun run test` — script inilah yang men-set `NODE_ENV=test`; menjalankan `bun test tests` langsung tidak akan memakai test database. Test database dipisah dari dev/prod (`DATABASE_URL_TEST`); migrasi baru harus dijalankan ke keduanya.
+
+Pola autentikasi di integration test: stub `auth.api.getSession` dan `resolveUserRole` dengan `spyOn` lalu pakai guard asli (lihat `tests/api/posts.test.ts`, `tests/api/me-api-keys.test.ts`). `mock.module('../../server/guard', …)` hanya aman untuk route yang cuma memakai `requireRole`; mock yang mengganti `resolveActor` bocor ke file test lain dalam satu run. Identitas API key bisa disimulasikan dengan `setApiKeyIdentity(request, …)`. Hook `onAfterResponse` (log pemakaian) berjalan setelah `app.handle()` selesai — tunggu sejenak sebelum `flushUsage()`.
 
 ## Catatan teknis
 
@@ -268,6 +285,11 @@ Semua test ada di root `tests/` (mirror struktur `server/`). Gunakan `bun run te
 - **No FOUC**: `ColorSchemeScript` + inline `<style>` blocking di `<head>` di `root.tsx` — background warna yang benar dirender sebelum Mantine CSS dimuat.
 - **Multiple Set-Cookie**: `http-bridge.ts` pakai `Headers.getSetCookie()` (WinterCG) untuk kumpulkan semua Set-Cookie header, lalu set sekaligus sebagai array ke Node.js response. Ini kritis untuk multi-session Better Auth.
 - **Sidebar collapsed state**: disimpan di cookie `mk-sidebar-collapsed`, dibaca server-side di layout loader — tidak ada flash saat hard reload.
+- **Urutan hook Elysia**: `derive` di route berjalan pada fase transform, *sebelum* `onBeforeHandle` global mana pun. Plugin yang menyuntik identitas untuk route ber-`derive` (auth API key) harus memakai `onRequest`; hook lain hanya berlaku untuk route yang didaftarkan setelahnya.
+- **Mount Better Auth = catch-all**: `.mount(handler)` menangkap semua path `/api/*` yang tidak cocok, jadi `server/api/index.ts` hanya meneruskan `/api/auth/*` ke Better Auth dan mengembalikan JSON 404 untuk sisanya.
+- **Better Auth apiKey**: panggilan server-side (`createApiKey`, `updateApiKey`) tidak boleh membawa `headers` (dianggap request klien → `SERVER_ONLY_PROPERTY`); scope kurang dilaporkan sebagai `KEY_NOT_FOUND`, sehingga scope dicek sendiri di `server/api-keys/plugin.ts`; `requestCount` hanya counter jendela rate limit, total pemakaian ada di `api_key_usage`.
+- **Tanggal di fragmen `sql` mentah**: fragmen raw tidak mendapat pemetaan tipe kolom — kirim `${d.toISOString()}::timestamp`, bukan objek `Date`.
+- **Dev server `--hot`**: plugin Elysia atau hook baru tidak selalu ikut dimuat ulang; restart `bun run dev` setelah menambah plugin. Untuk smoke test jalankan instance kedua dengan `PORT=<lain> bun run server/dev.ts` agar tidak mengganggu server yang sedang berjalan.
 
 ## Lisensi
 
