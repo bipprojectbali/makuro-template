@@ -11,6 +11,7 @@ import { auditApi } from './audit';
 import { fileHealthApi } from './file-health';
 import { logsApi } from './logs';
 import { meApi } from './me';
+import { opsApi } from './ops';
 import { postsApi } from './posts';
 import { sessionsApi } from './sessions';
 import { settingsApi } from './settings';
@@ -58,6 +59,8 @@ export const api = new Elysia({ prefix: '/api' })
   // App settings (GET public, PUT super-admin only).
   .use(settingsApi)
   .use(settingsOpsApi)
+  // Operational tools (status, MCP catalog, cache resets) — super-admin only.
+  .use(opsApi)
   // Current-user endpoints (profile page).
   .use(meApi)
   // Derive the session for downstream handlers.

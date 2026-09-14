@@ -164,7 +164,7 @@ Sistem role: `user` → `admin` → `super-admin`. Role tersimpan di tabel `user
 |---|---|---|
 | `user` | `/profile` | Profile, settings akun |
 | `admin` | `/dashboard` | Dashboard, manajemen user (ban, role change) |
-| `super-admin` | `/dev` | Overview, users (`/dev/users`), DB schema, visit log, login log, rate limit, file health, app settings |
+| `super-admin` | `/dev` | Overview, users, sessions, posts, DB schema, visitor/login/rate-limit/server/audit logs, file health, tools & MCP, settings |
 
 Google OAuth: set `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`. Authorized redirect URI di Google Console: `${BETTER_AUTH_URL}/api/auth/callback/google`.
 
@@ -188,6 +188,18 @@ Tanpa header tersebut kolom geo bernilai `null`; UI menampilkan "Lokal" untuk IP
 Login log (`/dev/login-logs`) memakai enrichment yang sama plus kolom `method` (email / provider OAuth / impersonation / switch) dari endpoint Better Auth yang membuat sesi; API `/api/analytics/login-logs` punya bentuk yang sama (`search`, `country`, `device`, `method`, `userId`, `days`, `/stats`, `/export`, `DELETE` massal).
 
 API (`/api/analytics/visits`, super-admin): `GET` list dengan query `page`, `limit`, `sort`, `search`, `type=human|bot`, `country`, `device`, `browser`, `os`, `days`; `GET /stats`; `GET /export` (CSV, maks. 10.000 baris, filter sama); `DELETE /:id`; `DELETE` body `{ ids: string[] }` (maks. 100).
+
+## Dev console (`/dev`)
+
+Konsol super-admin dengan pola yang sama di tiap halaman: loader SSR (data lengkap di paint pertama), KPI, filter, tabel + kartu mobile, drawer detail, konfirmasi aksi destruktif, notifikasi, dan audit.
+
+- **Overview** — angka utama, peringatan (maintenance, retensi belum diatur, user banned, file berbahaya), aktivitas terbaru.
+- **Kelola**: Users (role, ban dengan alasan/durasi, impersonasi, hapus), Sessions (cabut sesi lintas user), Posts (konten contoh; pemilik atau admin), DB Schema (ERD + statistik nyata + status migrasi).
+- **Log & monitoring**: Visitor Logs, Login Logs, Rate Limits, Server Logs (buffer pino di memori, `GET /api/logs`), Audit Log (`audit_log`: semua aksi berhak istimewa, read-only, `GET /api/audit`), File Health.
+- **Tools & MCP**: status proses, katalog tool MCP + contoh `.mcp.json`, ringkasan API, reset cache/limiter (`POST /api/ops/reset/:target`, teraudit).
+- **Settings** (`app_setting`, semua perubahan teraudit): autentikasi, rate limit, **retensi log** (usia maksimum per tabel, job harian + jalankan manual), **mode maintenance** (503 untuk semua kecuali role yang diizinkan; login tetap terbuka), **feature flags** (`isFeatureEnabled(key)` di server, `GET /api/settings` → `features` di client), **branding** (nama, tagline, URL dukungan → sidebar, meta, login).
+
+Migrasi yang dibutuhkan fitur-fitur ini: 0008 (audit_log), 0009 (settings), 0010 (post.updated_at) — semuanya idempotent.
 
 ## Rate limiting
 

@@ -18,6 +18,7 @@ import {
   FiSettings,
   FiShield,
   FiTerminal,
+  FiTool,
   FiUser,
   FiUsers,
 } from 'react-icons/fi';
@@ -103,6 +104,17 @@ const NAV: NavGroup[] = [
         label: 'File Health',
         icon: FiFileText,
         description: 'Ukuran file vs limit, risiko konteks agent',
+      },
+    ],
+  },
+  {
+    label: 'Tools',
+    items: [
+      {
+        to: '/dev/tools',
+        label: 'Tools & MCP',
+        icon: FiTool,
+        description: 'Akses agent, status proses, reset cache',
       },
     ],
   },
