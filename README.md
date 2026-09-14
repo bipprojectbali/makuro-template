@@ -10,6 +10,18 @@ Browser  →  Bun/Node :3005
               /*           →  React Router v8 SSR
 ```
 
+## Untuk AI agent
+
+Dokumentasi ini adalah satu-satunya sumber dan bisa dibaca tanpa JavaScript:
+
+- `GET /README.md` — file ini apa adanya (`text/markdown`), juga `/llms-full.txt` (`text/plain`).
+- `GET /llms.txt` — indeks singkat (judul, ringkasan, daftar bagian, endpoint untuk agent), dibangkitkan dari heading README.
+- `GET /api/version` — `{ name, version, env, bun }`, publik.
+- API dipakai dengan header `X-API-Key: mk_live_…` atau `Authorization: Bearer mk_live_…`; scope per route ada di bagian **API keys**. Semua error API berbentuk JSON `{ error, code, status, requestId }`.
+- Server MCP di `/api/mcp` (Streamable HTTP) menerima API key ber-scope `mcp`; katalog tool ada di bagian **Dev console → Tools & MCP**.
+
+Ketiga URL dokumentasi dilayani sebelum SSR, ber-ETag (`304` bila tidak berubah), tidak dihitung sebagai kunjungan, dan tetap tersedia saat mode maintenance.
+
 ## Apa yang sudah ada
 
 | Fitur | Detail |
