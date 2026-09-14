@@ -44,6 +44,12 @@ const ROWS: Array<{
     description: 'Jejak aksi admin. Sebaiknya dipertahankan minimal 1 tahun.',
     suggested: 365,
   },
+  {
+    key: 'apiUsageDays',
+    label: 'Pemakaian API key',
+    description: 'Log request per kunci. Ringkasan 30 hari cukup untuk kebanyakan tim.',
+    suggested: 90,
+  },
 ];
 const nf = new Intl.NumberFormat('id-ID');
 
@@ -53,6 +59,7 @@ function pick(s: RetentionState): RetentionSettings {
     loginDays: s.loginDays,
     rateLimitDays: s.rateLimitDays,
     auditDays: s.auditDays,
+    apiUsageDays: s.apiUsageDays,
   };
 }
 
@@ -144,7 +151,8 @@ export function RetentionCard({ state }: { state: RetentionState }) {
           <Text size="xs" c="dimmed">
             Dihapus: visit {nf.format(last.deleted.visitDays)} · login{' '}
             {nf.format(last.deleted.loginDays)} · rate-limit {nf.format(last.deleted.rateLimitDays)}{' '}
-            · audit {nf.format(last.deleted.auditDays)}
+            · audit {nf.format(last.deleted.auditDays)} · API key{' '}
+            {nf.format(last.deleted.apiUsageDays ?? 0)}
           </Text>
         )}
       </Stack>

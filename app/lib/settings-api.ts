@@ -75,6 +75,7 @@ export type RetentionSettings = {
   loginDays: number | null;
   rateLimitDays: number | null;
   auditDays: number | null;
+  apiUsageDays: number | null;
 };
 export type RetentionResult = {
   ranAt: string;
@@ -124,6 +125,7 @@ export function sameRetention(a: RetentionSettings, b: RetentionSettings): boole
     a.visitDays === b.visitDays &&
     a.loginDays === b.loginDays &&
     a.rateLimitDays === b.rateLimitDays &&
-    a.auditDays === b.auditDays
+    a.auditDays === b.auditDays &&
+    a.apiUsageDays === b.apiUsageDays
   );
 }
