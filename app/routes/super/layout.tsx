@@ -1,17 +1,22 @@
 import { countRateLimitLastHour } from '@server/api/analytics-ratelimits.stats.query';
+import { errorsLastHour } from '@server/api/logs';
 import { frameInfo } from '@server/app-info';
 import { scanFileHealth } from '@server/file-health/file-health.scan';
 import { requireRole } from '@server/guard';
 import { ROLES } from '@server/permissions';
 import { getSidebarCollapsed } from '@server/sidebar';
 import {
+  FiClipboard,
   FiDatabase,
   FiFileText,
+  FiGrid,
   FiHome,
   FiList,
   FiLogIn,
+  FiMonitor,
   FiSettings,
   FiShield,
+  FiTerminal,
   FiUser,
   FiUsers,
 } from 'react-icons/fi';
@@ -26,13 +31,24 @@ export function meta(_: Route.MetaArgs) {
 
 const NAV: NavGroup[] = [
   {
+    items: [
+      { to: '/dev', label: 'Overview', icon: FiGrid, description: 'Ringkasan kondisi aplikasi' },
+    ],
+  },
+  {
     label: 'Kelola',
     items: [
       {
-        to: '/dev',
+        to: '/dev/users',
         label: 'Users',
         icon: FiUsers,
         description: 'Daftar user, role, ban, impersonasi',
+      },
+      {
+        to: '/dev/sessions',
+        label: 'Sessions',
+        icon: FiMonitor,
+        description: 'Perangkat yang sedang masuk, cabut sesi',
       },
       {
         to: '/dev/db-schema',
@@ -62,6 +78,18 @@ const NAV: NavGroup[] = [
         label: 'Rate Limits',
         icon: FiShield,
         description: 'Request yang ditolak limiter',
+      },
+      {
+        to: '/dev/server-logs',
+        label: 'Server Logs',
+        icon: FiTerminal,
+        description: 'Error dan warning proses server',
+      },
+      {
+        to: '/dev/audit',
+        label: 'Audit Log',
+        icon: FiClipboard,
+        description: 'Jejak aksi admin: role, ban, settings, purge',
       },
       {
         to: '/dev/file-health',
@@ -97,7 +125,13 @@ export async function loader({ request }: Route.LoaderArgs) {
       .then((r) => r.summary.over)
       .catch(() => 0),
   ]);
+  const errors = errorsLastHour();
   const navBadges: Record<string, NavBadge> = {
+    '/dev/server-logs': {
+      value: errors,
+      color: 'red',
+      tooltip: `${errors} error dalam 1 jam terakhir`,
+    },
     '/dev/rate-limit-logs': {
       value: blockedLastHour,
       color: 'red',

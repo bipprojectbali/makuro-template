@@ -63,3 +63,37 @@ describe('introspectDrizzleSchema', () => {
     expect(authorCol?.fkColumn).toBe('id');
   });
 });
+
+describe('introspection enrichment', () => {
+  const g = introspectDrizzleSchema();
+  const user = g.tables.find((t) => t.id === 'user');
+  const visit = g.tables.find((t) => t.id === 'visit_log');
+  const post = g.tables.find((t) => t.id === 'post');
+
+  test('exposes unique columns, defaults and their kind', () => {
+    const email = user?.columns.find((c) => c.dbName === 'email');
+    expect(email?.unique).toBe(true);
+    const banned = user?.columns.find((c) => c.dbName === 'banned');
+    expect(banned).toMatchObject({ defaultKind: 'literal', defaultText: 'false' });
+    const createdAt = user?.columns.find((c) => c.dbName === 'created_at');
+    expect(createdAt?.defaultKind).toBe('fn');
+    const visitCreated = visit?.columns.find((c) => c.dbName === 'created_at');
+    expect(visitCreated?.defaultKind).toBe('sql');
+    expect(visitCreated?.defaultText).toContain('now()');
+  });
+
+  test('lists indexes with columns and uniqueness', () => {
+    expect(visit?.indexes.map((i) => i.name)).toContain('visit_log_country_idx');
+    expect(visit?.indexes.find((i) => i.name === 'visit_log_ip_idx')?.columns).toEqual(['ip']);
+    expect(visit?.indexes.every((i) => i.unique === false)).toBe(true);
+  });
+
+  test('foreign keys carry onDelete on both column and edge', () => {
+    const author = post?.columns.find((c) => c.dbName === 'author_id');
+    expect(author?.onDelete).toBe('cascade');
+    const edge = g.edges.find((e) => e.source === 'post' && e.sourceColumn === 'author_id');
+    expect(edge?.onDelete).toBe('cascade');
+    const visitUser = g.edges.find((e) => e.source === 'visit_log');
+    expect(visitUser?.onDelete).toBe('set null');
+  });
+});

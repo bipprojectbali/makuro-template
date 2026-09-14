@@ -9,12 +9,16 @@ export default [
   layout('routes/user/layout.tsx', [route('profile', 'routes/user/profile.tsx')]),
   layout('routes/admin/layout.tsx', [route('dashboard', 'routes/admin/dashboard.tsx')]),
   layout('routes/super/layout.tsx', [
-    route('dev', 'routes/super/dev.tsx'),
+    route('dev', 'routes/super/overview.tsx'),
+    route('dev/users', 'routes/super/users.tsx'),
+    route('dev/sessions', 'routes/super/sessions.tsx'),
     route('dev/db-schema', 'routes/super/db-schema.tsx'),
     route('dev/visits', 'routes/super/visits.tsx'),
     route('dev/login-logs', 'routes/super/login-logs.tsx'),
     route('dev/rate-limit-logs', 'routes/super/rate-limit-logs.tsx'),
     route('dev/settings', 'routes/super/settings.tsx'),
     route('dev/file-health', 'routes/super/file-health.tsx'),
+    route('dev/server-logs', 'routes/super/server-logs.tsx'),
+    route('dev/audit', 'routes/super/audit.tsx'),
   ]),
 ] satisfies RouteConfig;

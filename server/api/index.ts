@@ -9,7 +9,11 @@ import { rateLimitPlugin } from '../middleware/rate-limiter';
 import { applyRateLimitSettings } from '../settings';
 import { adminApi } from './admin';
 import { analyticsApi } from './analytics';
+import { auditApi } from './audit';
 import { fileHealthApi } from './file-health';
+import { logsApi } from './logs';
+import { meApi } from './me';
+import { sessionsApi } from './sessions';
 import { settingsApi } from './settings';
 
 /**
@@ -39,10 +43,18 @@ export const api = new Elysia({ prefix: '/api' })
   .use(mcpPlugin)
   // Analytics read endpoints (super-admin only).
   .use(analyticsApi)
+  // Audit trail of privileged actions (super-admin only).
+  .use(auditApi)
+  // Cross-user session management (super-admin only).
+  .use(sessionsApi)
   // File health report (super-admin only).
   .use(fileHealthApi)
+  // Server log ring buffer (super-admin only).
+  .use(logsApi)
   // App settings (GET public, PUT super-admin only).
   .use(settingsApi)
+  // Current-user endpoints (profile page).
+  .use(meApi)
   // Derive the session for downstream handlers.
   .derive(async ({ request }) => {
     const s = await getSession(request.headers);

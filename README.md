@@ -164,7 +164,7 @@ Sistem role: `user` → `admin` → `super-admin`. Role tersimpan di tabel `user
 |---|---|---|
 | `user` | `/profile` | Profile, settings akun |
 | `admin` | `/dashboard` | Dashboard, manajemen user (ban, role change) |
-| `super-admin` | `/dev` | Users, DB schema, visit log, login log, rate limit, file health, app settings |
+| `super-admin` | `/dev` | Overview, users (`/dev/users`), DB schema, visit log, login log, rate limit, file health, app settings |
 
 Google OAuth: set `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`. Authorized redirect URI di Google Console: `${BETTER_AUTH_URL}/api/auth/callback/google`.
 

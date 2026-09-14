@@ -246,8 +246,8 @@ export default function Home() {
           <Stack gap="xs" ta="center">
             <Title order={2}>Apa yang sudah ada di dalamnya</Title>
             <Text c="dimmed" maw={500} mx="auto" size="sm">
-              Bukan boilerplate yang butuh banyak konfigurasi — semua bagian ini sudah terhubung
-              dan berjalan bersama.
+              Bukan boilerplate yang butuh banyak konfigurasi — semua bagian ini sudah terhubung dan
+              berjalan bersama.
             </Text>
           </Stack>
 

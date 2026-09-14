@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
+import { AUDIT_ACTIONS, audit } from '../audit';
 import { auth } from '../auth';
 import { db } from '../db';
 import { user as userTable } from '../db/schema';
@@ -13,6 +14,7 @@ import {
   type Role,
 } from '../permissions';
 import { resolveUserRole } from '../roles';
+import { adminUserStats, listAdminUsers, UserListQuery } from './admin-users.query';
 
 async function targetRole(id: string): Promise<Role | null> {
   const [row] = await db
@@ -38,37 +40,8 @@ export const adminApi = new Elysia({ prefix: '/admin' })
   .onBeforeHandle(({ actorRole, status }) => {
     if (!actorRole || !isAdminRole(actorRole)) return status(403, { error: 'Forbidden' });
   })
-  .get(
-    '/users',
-    async ({ query, headers }) => {
-      const limit = query.limit ?? 20;
-      const offset = query.offset ?? 0;
-      const search = query.search?.trim();
-      return auth.api.listUsers({
-        headers,
-        query: {
-          limit,
-          offset,
-          sortBy: 'createdAt',
-          sortDirection: 'desc',
-          ...(search
-            ? {
-                searchField: 'email' as const,
-                searchOperator: 'contains' as const,
-                searchValue: search,
-              }
-            : {}),
-        },
-      });
-    },
-    {
-      query: t.Object({
-        limit: t.Optional(t.Number({ minimum: 1, maximum: 100 })),
-        offset: t.Optional(t.Number({ minimum: 0 })),
-        search: t.Optional(t.String()),
-      }),
-    },
-  )
+  .get('/users', ({ query }) => listAdminUsers(query), { query: UserListQuery })
+  .get('/users/stats', () => adminUserStats())
   .post(
     '/users/:id/role',
     async ({ actor, actorRole, params, body, headers, status }) => {
@@ -81,6 +54,15 @@ export const adminApi = new Elysia({ prefix: '/admin' })
       if (current === ROLES.SUPER_ADMIN)
         return status(400, { error: 'super-admin is managed via SUPER_ADMIN_EMAILS' });
       await auth.api.setRole({ headers, body: { userId: params.id, role: body.role } });
+      void audit({
+        actor,
+        headers,
+        action: AUDIT_ACTIONS.USER_ROLE_SET,
+        targetType: 'user',
+        targetId: params.id,
+        summary: `Role user diubah dari ${current} ke ${body.role}`,
+        meta: { from: current, to: body.role },
+      });
       return { ok: true };
     },
     { params: t.Object({ id: t.String() }), body: t.Object({ role: t.String() }) },
@@ -98,6 +80,15 @@ export const adminApi = new Elysia({ prefix: '/admin' })
         headers,
         body: { userId: params.id, banReason: body.reason, banExpiresIn: body.expiresIn },
       });
+      void audit({
+        actor,
+        headers,
+        action: AUDIT_ACTIONS.USER_BAN,
+        targetType: 'user',
+        targetId: params.id,
+        summary: `User diblokir${body.expiresIn ? ` selama ${Math.round(body.expiresIn / 86_400)} hari` : ' permanen'}${body.reason ? `: ${body.reason}` : ''}`,
+        meta: { reason: body.reason ?? null, expiresIn: body.expiresIn ?? null },
+      });
       return { ok: true };
     },
     {
@@ -110,12 +101,20 @@ export const adminApi = new Elysia({ prefix: '/admin' })
   )
   .post(
     '/users/:id/unban',
-    async ({ actorRole, params, headers, status }) => {
+    async ({ actor, actorRole, params, headers, status }) => {
       const current = await targetRole(params.id);
       if (current === null) return status(404, { error: 'User not found' });
       if (!canActOnTarget(actorRole, current))
         return status(403, { error: 'Not allowed to act on this user' });
       await auth.api.unbanUser({ headers, body: { userId: params.id } });
+      void audit({
+        actor,
+        headers,
+        action: AUDIT_ACTIONS.USER_UNBAN,
+        targetType: 'user',
+        targetId: params.id,
+        summary: 'Ban user dibuka',
+      });
       return { ok: true };
     },
     { params: t.Object({ id: t.String() }) },
@@ -131,6 +130,15 @@ export const adminApi = new Elysia({ prefix: '/admin' })
       if (current === ROLES.SUPER_ADMIN)
         return status(400, { error: 'Cannot delete a super-admin' });
       await auth.api.removeUser({ headers, body: { userId: params.id } });
+      void audit({
+        actor,
+        headers,
+        action: AUDIT_ACTIONS.USER_DELETE,
+        targetType: 'user',
+        targetId: params.id,
+        summary: 'User dihapus permanen',
+        meta: { role: current },
+      });
       return { ok: true };
     },
     { params: t.Object({ id: t.String() }) },
