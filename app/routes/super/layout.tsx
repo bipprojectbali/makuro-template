@@ -8,6 +8,7 @@ import { getSidebarCollapsed } from '@server/sidebar';
 import {
   FiClipboard,
   FiDatabase,
+  FiEdit3,
   FiFileText,
   FiGrid,
   FiHome,
@@ -49,6 +50,12 @@ const NAV: NavGroup[] = [
         label: 'Sessions',
         icon: FiMonitor,
         description: 'Perangkat yang sedang masuk, cabut sesi',
+      },
+      {
+        to: '/dev/posts',
+        label: 'Posts',
+        icon: FiEdit3,
+        description: 'Konten contoh: buat, edit, moderasi',
       },
       {
         to: '/dev/db-schema',

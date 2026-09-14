@@ -82,6 +82,9 @@ export const post = pgTable('post', {
   createdAt: timestamp('created_at')
     .$defaultFn(() => new Date())
     .notNull(),
+  updatedAt: timestamp('updated_at')
+    .$defaultFn(() => new Date())
+    .notNull(),
 });
 
 export const postRelations = relations(post, ({ one }) => ({

@@ -1,9 +1,5 @@
-import { desc, eq } from 'drizzle-orm';
-import { Elysia, t } from 'elysia';
+import { Elysia } from 'elysia';
 import { auth } from '../auth';
-import { db } from '../db';
-import { post } from '../db/schema';
-import { logger } from '../logger';
 import { mcpPlugin } from '../mcp';
 import { maintenancePlugin } from '../middleware/maintenance';
 import { rateLimitPlugin } from '../middleware/rate-limiter';
@@ -15,6 +11,7 @@ import { auditApi } from './audit';
 import { fileHealthApi } from './file-health';
 import { logsApi } from './logs';
 import { meApi } from './me';
+import { postsApi } from './posts';
 import { sessionsApi } from './sessions';
 import { settingsApi } from './settings';
 import { settingsOpsApi } from './settings-ops';
@@ -73,32 +70,7 @@ export const api = new Elysia({ prefix: '/api' })
     time: new Date().toISOString(),
   }))
   .get('/me', ({ user }) => ({ user }))
-  .get('/posts', async () => {
-    return db.select().from(post).orderBy(desc(post.createdAt)).limit(50);
-  })
-  .post(
-    '/posts',
-    async ({ user, body, status }) => {
-      if (!user) return status(401, { error: 'Unauthorized' });
-      const [created] = await db
-        .insert(post)
-        .values({ title: body.title, content: body.content ?? null, authorId: user.id })
-        .returning();
-      logger.info({ postId: created.id }, 'post created');
-      return created;
-    },
-    {
-      body: t.Object({
-        title: t.String({ minLength: 1, maxLength: 200 }),
-        content: t.Optional(t.String()),
-      }),
-    },
-  )
-  .delete('/posts/:id', async ({ user, params, status }) => {
-    if (!user) return status(401, { error: 'Unauthorized' });
-    const [deleted] = await db.delete(post).where(eq(post.id, params.id)).returning();
-    if (!deleted) return status(404, { error: 'Not found' });
-    return { ok: true };
-  });
+  // Posts (public reads, session writes, admin moderation) live in posts.ts.
+  .use(postsApi);
 
 export type Api = typeof api;
