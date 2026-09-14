@@ -5,6 +5,8 @@ export default [
   route('login', 'routes/login.tsx'),
   // Post-auth resolver: sends a logged-in user to their role's home.
   route('go', 'routes/go.tsx'),
+  // Signed-in but banned users land here (see server/guard.ts).
+  route('banned', 'routes/banned.tsx'),
   // Strict per-role areas. Each layout guards its role; children inherit it.
   layout('routes/user/layout.tsx', [route('profile', 'routes/user/profile.tsx')]),
   layout('routes/admin/layout.tsx', [route('dashboard', 'routes/admin/dashboard.tsx')]),

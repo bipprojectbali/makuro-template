@@ -16,12 +16,14 @@ import { getSettings } from '@server/settings';
 import { getBranding } from '@server/settings-branding';
 import { useState } from 'react';
 import { FcGoogle } from 'react-icons/fc';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
+import { LoginNotice } from '~/components/login/LoginNotices';
 import { signIn, signUp } from '~/lib/auth-client';
+import { type AuthNotice, describeAuthError, loginNotice } from '~/lib/auth-errors';
 import type { Route } from './+types/login';
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  return [{ title: `Sign in — ${loaderData?.branding.appName ?? 'Makuro'}` }];
+  return [{ title: `Masuk — ${loaderData?.branding.appName ?? 'Makuro'}` }];
 }
 
 export async function loader() {
@@ -32,11 +34,15 @@ export async function loader() {
   return { googleEnabled: hasGoogleAuth, emailAuthEnabled, signupEnabled, branding };
 }
 
+const MIN_PASSWORD = 8;
+
 export default function Login({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { googleEnabled, emailAuthEnabled, signupEnabled, branding } = loaderData;
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
-  const [error, setError] = useState<string | null>(null);
+  // Starts from the URL (guard redirect, OAuth callback), replaced by form results.
+  const [notice, setNotice] = useState<AuthNotice | null>(() => loginNotice(searchParams));
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -44,14 +50,14 @@ export default function Login({ loaderData }: Route.ComponentProps) {
     mode: 'uncontrolled',
     initialValues: { name: '', email: '', password: '' },
     validate: {
-      name: (value) => (mode === 'signup' ? isNotEmpty('Name is required')(value) : null),
-      email: isEmail('Invalid email'),
-      password: hasLength({ min: 8 }, 'Min 8 characters'),
+      name: (value) => (mode === 'signup' ? isNotEmpty('Nama wajib diisi')(value) : null),
+      email: isEmail('Email tidak valid'),
+      password: hasLength({ min: MIN_PASSWORD }, `Minimal ${MIN_PASSWORD} karakter`),
     },
   });
 
   const submit = form.onSubmit(async (values) => {
-    setError(null);
+    setNotice(null);
     setLoading(true);
     try {
       const res =
@@ -63,34 +69,36 @@ export default function Login({ loaderData }: Route.ComponentProps) {
             })
           : await signIn.email({ email: values.email, password: values.password });
       if (res.error) {
-        setError(res.error.message ?? 'Authentication failed');
+        setNotice(describeAuthError(res.error));
         return;
       }
       // /go resolves the role server-side and lands on the right area.
       navigate('/go');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unexpected error');
+      setNotice(describeAuthError({ message: err instanceof Error ? err.message : null }));
     } finally {
       setLoading(false);
     }
   });
 
   async function continueWithGoogle() {
-    setError(null);
+    setNotice(null);
     setGoogleLoading(true);
     try {
-      // Redirects to Google, then to /go which routes to the role's home.
-      await signIn.social({ provider: 'google', callbackURL: '/go' });
+      // Success → /go (role-aware home). Failure (e.g. banned) → back here with ?error=<code>.
+      await signIn.social({ provider: 'google', callbackURL: '/go', errorCallbackURL: '/login' });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Google sign-in failed');
+      setNotice(describeAuthError({ message: err instanceof Error ? err.message : null }));
       setGoogleLoading(false);
     }
   }
 
+  const banned = notice?.kind === 'banned';
+
   return (
     <Container size="xs" py={64}>
       <Title order={2} mb="lg" ta="center">
-        Welcome to {branding.appName}
+        Selamat datang di {branding.appName}
       </Title>
 
       {emailAuthEnabled && signupEnabled && (
@@ -100,14 +108,16 @@ export default function Login({ loaderData }: Route.ComponentProps) {
           value={mode}
           onChange={(v) => setMode(v as 'signin' | 'signup')}
           data={[
-            { label: 'Sign in', value: 'signin' },
-            { label: 'Sign up', value: 'signup' },
+            { label: 'Masuk', value: 'signin' },
+            { label: 'Daftar', value: 'signup' },
           ]}
         />
       )}
 
-      <Paper withBorder p="lg" shadow="sm">
+      <Paper withBorder p="lg" shadow="sm" radius="md">
         <Stack>
+          <LoginNotice notice={notice} supportUrl={branding.supportUrl} />
+
           {googleEnabled && (
             <>
               <Button
@@ -115,11 +125,12 @@ export default function Login({ loaderData }: Route.ComponentProps) {
                 fullWidth
                 leftSection={<FcGoogle size={18} />}
                 loading={googleLoading}
+                disabled={banned}
                 onClick={continueWithGoogle}
               >
-                Continue with Google
+                Lanjutkan dengan Google
               </Button>
-              {emailAuthEnabled && <Divider label="or" labelPosition="center" />}
+              {emailAuthEnabled && <Divider label="atau" labelPosition="center" />}
             </>
           )}
 
@@ -128,31 +139,29 @@ export default function Login({ loaderData }: Route.ComponentProps) {
               <Stack>
                 {mode === 'signup' && signupEnabled && (
                   <TextInput
-                    label="Name"
-                    placeholder="Your name"
+                    label="Nama"
+                    placeholder="Nama Anda"
                     key={form.key('name')}
                     {...form.getInputProps('name')}
                   />
                 )}
                 <TextInput
                   label="Email"
-                  placeholder="you@example.com"
+                  placeholder="anda@contoh.com"
+                  inputMode="email"
+                  autoComplete="email"
                   key={form.key('email')}
                   {...form.getInputProps('email')}
                 />
                 <PasswordInput
-                  label="Password"
-                  placeholder="At least 8 characters"
+                  label="Kata sandi"
+                  placeholder={`Minimal ${MIN_PASSWORD} karakter`}
+                  autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                   key={form.key('password')}
                   {...form.getInputProps('password')}
                 />
-                {error && (
-                  <Text c="red" size="sm">
-                    {error}
-                  </Text>
-                )}
                 <Button type="submit" loading={loading} fullWidth>
-                  {mode === 'signup' && signupEnabled ? 'Create account' : 'Sign in'}
+                  {mode === 'signup' && signupEnabled ? 'Buat akun' : 'Masuk'}
                 </Button>
               </Stack>
             </form>

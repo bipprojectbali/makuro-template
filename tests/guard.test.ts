@@ -7,7 +7,12 @@
  */
 import { afterAll, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 
-type SessionUser = { id: string; email: string } | null;
+type SessionUser = {
+  id: string;
+  email: string;
+  banned?: boolean;
+  banExpires?: Date | null;
+} | null;
 const ctx: { user: SessionUser; role: string } = { user: null, role: 'user' };
 
 // spyOn (not mock.module) so every override is reverted in afterAll. bun's
@@ -18,20 +23,20 @@ const ctx: { user: SessionUser; role: string } = { user: null, role: 'user' };
 import { auth } from '../server/auth';
 import * as rolesMod from '../server/roles';
 
-const sessionSpy = spyOn(auth.api, 'getSession').mockImplementation(
-  (async () => (ctx.user ? { user: ctx.user } : null)) as unknown as typeof auth.api.getSession,
-);
+const sessionSpy = spyOn(auth.api, 'getSession').mockImplementation((async () =>
+  ctx.user ? { user: ctx.user } : null) as unknown as typeof auth.api.getSession);
 const roleSpy = spyOn(rolesMod, 'resolveUserRole').mockImplementation(async () => ctx.role);
 
-import { ROLES } from '../server/permissions';
 import { requireAnyRole, requireRole } from '../server/guard';
+import { ROLES } from '../server/permissions';
 
 afterAll(() => {
   sessionSpy.mockRestore();
   roleSpy.mockRestore();
 });
 
-const request = () => new Request('http://localhost/whatever');
+const request = (headers?: Record<string, string>) =>
+  new Request('http://localhost/whatever', { headers });
 
 /** Invoke `fn` and return the redirect Response it throws, or null if it returned. */
 async function catchRedirect(fn: () => Promise<unknown>): Promise<Response | null> {
@@ -57,6 +62,29 @@ describe('requireRole', () => {
     expect(res?.headers.get('Location')).toBe('/login');
   });
 
+  test('stale session cookie without a session → /login with a notice', async () => {
+    ctx.user = null;
+    const res = await catchRedirect(() =>
+      requireRole(request({ cookie: 'better-auth.session_token=abc; other=1' }), ROLES.USER),
+    );
+    expect(res?.headers.get('Location')).toBe('/login?notice=session');
+  });
+
+  test('banned user with a live session → /banned; expired ban passes', async () => {
+    ctx.user = { id: 'b1', email: 'b1@test.local', banned: true, banExpires: null };
+    ctx.role = ROLES.USER;
+    const res = await catchRedirect(() => requireRole(request(), ROLES.USER));
+    expect(res?.headers.get('Location')).toBe('/banned');
+    ctx.user = {
+      id: 'b2',
+      email: 'b2@test.local',
+      banned: true,
+      banExpires: new Date(Date.now() - 1),
+    };
+    const ok = await catchRedirect(() => requireRole(request(), ROLES.USER));
+    expect(ok).toBeNull();
+  });
+
   test('wrong role → redirect to the caller’s own home', async () => {
     ctx.user = { id: 'u1', email: 'u1@test.local' };
     ctx.role = ROLES.USER; // a user hitting an admin-only area
@@ -68,7 +96,10 @@ describe('requireRole', () => {
   test('matching role → returns user and role', async () => {
     ctx.user = { id: 'u2', email: 'u2@test.local' };
     ctx.role = ROLES.ADMIN;
-    const out = (await requireRole(request(), ROLES.ADMIN)) as { user: { id: string }; role: string };
+    const out = (await requireRole(request(), ROLES.ADMIN)) as {
+      user: { id: string };
+      role: string;
+    };
     expect(out.user.id).toBe('u2');
     expect(out.role).toBe(ROLES.ADMIN);
   });

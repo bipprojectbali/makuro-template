@@ -41,7 +41,7 @@ import { eq } from 'drizzle-orm';
 import Elysia from 'elysia';
 import { adminApi } from '../../server/api/admin';
 import { db } from '../../server/db';
-import { user } from '../../server/db/schema';
+import { session, user } from '../../server/db/schema';
 
 const app = new Elysia().use(adminApi);
 
@@ -196,11 +196,25 @@ describe('POST /admin/users/:id/ban', () => {
     expect(status).toBe(403);
   });
 
-  test('admin bans a regular user → ok', async () => {
+  test('admin bans a regular user → ok, and every live session of that user is revoked', async () => {
     asActor('actor-admin', 'admin');
+    await db.insert(session).values({
+      id: `adm-sess-${runId}`,
+      token: `adm-tok-${runId}`,
+      userId: regularId,
+      expiresAt: new Date(Date.now() + 86_400_000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
     const { status, body } = await req('POST', `/admin/users/${regularId}/ban`, { reason: 'spam' });
     expect(status).toBe(200);
     expect(body.ok).toBe(true);
+    expect(body.revokedSessions).toBe(1);
+    const left = await db
+      .select({ id: session.id })
+      .from(session)
+      .where(eq(session.userId, regularId));
+    expect(left.length).toBe(0);
   });
 });
 
