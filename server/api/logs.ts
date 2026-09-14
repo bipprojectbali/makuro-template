@@ -54,3 +54,11 @@ export const logsApi = new Elysia({ prefix: '/logs' })
 export function errorsLastHour(now = Date.now()): number {
   return logBuffer.countSince(LEVEL_NUMBERS.error, now - HOUR_MS);
 }
+
+/** Warnings (excluding errors) in the last hour — sidebar badge when there are no errors. */
+export function warningsLastHour(now = Date.now()): number {
+  return (
+    logBuffer.countSince(LEVEL_NUMBERS.warn, now - HOUR_MS) -
+    logBuffer.countSince(LEVEL_NUMBERS.error, now - HOUR_MS)
+  );
+}

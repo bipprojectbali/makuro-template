@@ -195,7 +195,14 @@ export function AppFrame(props: Props) {
           </AppShell.Section>
         )}
 
-        <AppShell.Section grow my="md" component={ScrollArea} type="auto" offsetScrollbars={false}>
+        <AppShell.Section
+          grow
+          my="md"
+          component={ScrollArea}
+          type="hover"
+          scrollbarSize={6}
+          offsetScrollbars={false}
+        >
           <NavList groups={groups} collapsed={collapsed} onNavigate={closeMobile} />
         </AppShell.Section>
 

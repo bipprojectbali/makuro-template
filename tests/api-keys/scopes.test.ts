@@ -30,6 +30,7 @@ describe('requiredScope', () => {
     expect(requiredScope('GET', '/api/posts')).toBeNull();
     expect(isPublicRead('GET', '/api/posts')).toBe(true);
     expect(isPublicRead('POST', '/api/posts')).toBe(false);
+    expect(isPublicRead('GET', '/api/version')).toBe(true);
   });
 });
 

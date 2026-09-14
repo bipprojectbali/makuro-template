@@ -1,7 +1,13 @@
 /** Sidebar navigation model — pure helpers, no React (unit-tested in tests/frame-nav.test.ts). */
 import type { IconType } from 'react-icons';
 
-export type NavBadge = { value: number; color?: string; tooltip?: string };
+export type NavBadge = {
+  value: number;
+  color?: string;
+  tooltip?: string;
+  /** alert = needs attention (filled, pulsing when collapsed); info = scale only (gray, quiet). */
+  tone?: 'alert' | 'info';
+};
 
 export type NavItem = {
   to: string;

@@ -29,7 +29,8 @@ async function tableStats(table: string): Promise<TableStats> {
   return { table, rows: Number(row?.rows ?? 0), bytes: Number(row?.bytes ?? 0) };
 }
 
-async function migrationStatus(): Promise<MigrationStatus> {
+/** Journal entries vs rows in drizzle.__drizzle_migrations (also feeds the sidebar badge). */
+export async function migrationStatus(): Promise<MigrationStatus> {
   const entries = journal.entries as Array<{ tag: string }>;
   const latestTag = entries.at(-1)?.tag ?? null;
   try {

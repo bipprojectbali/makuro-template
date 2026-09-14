@@ -155,11 +155,11 @@ export function requiredScope(method: string, pathname: string): Scope | null {
   return null;
 }
 
-/** Public reads (e.g. GET /api/posts, /api/hello) need no scope but may still carry a key for tracking. */
+/** Public reads (e.g. GET /api/posts, /api/hello, /api/version) need no scope but may still carry a key for tracking. */
 export function isPublicRead(method: string, pathname: string): boolean {
   return (
     READ.has(method.toUpperCase()) &&
-    (pathname.startsWith('/api/posts') || pathname === '/api/hello')
+    (pathname.startsWith('/api/posts') || pathname === '/api/hello' || pathname === '/api/version')
   );
 }
 
