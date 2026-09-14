@@ -15,6 +15,7 @@ import {
   type Role,
 } from '../permissions';
 import { adminUserStats, listAdminUsers, UserListQuery } from './admin-users.query';
+import { revokeUserSessions } from './sessions.query';
 
 async function targetRole(id: string): Promise<Role | null> {
   const [row] = await db
@@ -79,16 +80,22 @@ export const adminApi = new Elysia({ prefix: '/admin' })
         headers,
         body: { userId: params.id, banReason: body.reason, banExpiresIn: body.expiresIn },
       });
+      // Better Auth only blocks new sign-ins; end every live session so the ban is immediate.
+      const revoked = await revokeUserSessions(params.id);
       void audit({
         actor,
         headers,
         action: AUDIT_ACTIONS.USER_BAN,
         targetType: 'user',
         targetId: params.id,
-        summary: `User diblokir${body.expiresIn ? ` selama ${Math.round(body.expiresIn / 86_400)} hari` : ' permanen'}${body.reason ? `: ${body.reason}` : ''}`,
-        meta: { reason: body.reason ?? null, expiresIn: body.expiresIn ?? null },
+        summary: `User diblokir${body.expiresIn ? ` selama ${Math.round(body.expiresIn / 86_400)} hari` : ' permanen'}${body.reason ? `: ${body.reason}` : ''}; ${revoked} sesi dicabut`,
+        meta: {
+          reason: body.reason ?? null,
+          expiresIn: body.expiresIn ?? null,
+          revokedSessions: revoked,
+        },
       });
-      return { ok: true };
+      return { ok: true, revokedSessions: revoked };
     },
     {
       params: t.Object({ id: t.String() }),

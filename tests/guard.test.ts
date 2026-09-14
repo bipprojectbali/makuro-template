@@ -7,7 +7,12 @@
  */
 import { afterAll, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 
-type SessionUser = { id: string; email: string } | null;
+type SessionUser = {
+  id: string;
+  email: string;
+  banned?: boolean;
+  banExpires?: Date | null;
+} | null;
 const ctx: { user: SessionUser; role: string } = { user: null, role: 'user' };
 
 // spyOn (not mock.module) so every override is reverted in afterAll. bun's
@@ -32,7 +37,8 @@ afterAll(() => {
   roleSpy.mockRestore();
 });
 
-const request = () => new Request('http://localhost/whatever');
+const request = (headers?: Record<string, string>) =>
+  new Request('http://localhost/whatever', { headers });
 
 /** Invoke `fn` and return the redirect Response it throws, or null if it returned. */
 async function catchRedirect(fn: () => Promise<unknown>): Promise<Response | null> {
@@ -56,6 +62,29 @@ describe('requireRole', () => {
     const res = await catchRedirect(() => requireRole(request(), ROLES.ADMIN));
     expect(res?.status).toBe(302);
     expect(res?.headers.get('Location')).toBe('/login');
+  });
+
+  test('stale session cookie without a session → /login with a notice', async () => {
+    ctx.user = null;
+    const res = await catchRedirect(() =>
+      requireRole(request({ cookie: 'better-auth.session_token=abc; other=1' }), ROLES.USER),
+    );
+    expect(res?.headers.get('Location')).toBe('/login?notice=session');
+  });
+
+  test('banned user with a live session → /banned; expired ban passes', async () => {
+    ctx.user = { id: 'b1', email: 'b1@test.local', banned: true, banExpires: null };
+    ctx.role = ROLES.USER;
+    const res = await catchRedirect(() => requireRole(request(), ROLES.USER));
+    expect(res?.headers.get('Location')).toBe('/banned');
+    ctx.user = {
+      id: 'b2',
+      email: 'b2@test.local',
+      banned: true,
+      banExpires: new Date(Date.now() - 1),
+    };
+    const ok = await catchRedirect(() => requireRole(request(), ROLES.USER));
+    expect(ok).toBeNull();
   });
 
   test('wrong role → redirect to the caller’s own home', async () => {
