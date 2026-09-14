@@ -42,13 +42,25 @@ describe('settings ops API', () => {
       (
         await call(
           '/settings/retention',
-          json('PUT', { visitDays: 0, loginDays: null, rateLimitDays: null, auditDays: null }),
+          json('PUT', {
+            visitDays: 0,
+            loginDays: null,
+            rateLimitDays: null,
+            auditDays: null,
+            apiUsageDays: null,
+          }),
         )
       ).status,
     ).toBeGreaterThanOrEqual(400);
     const { status, body } = await call(
       '/settings/retention',
-      json('PUT', { visitDays: 30, loginDays: null, rateLimitDays: 7, auditDays: null }),
+      json('PUT', {
+        visitDays: 30,
+        loginDays: null,
+        rateLimitDays: 7,
+        auditDays: null,
+        apiUsageDays: null,
+      }),
     );
     expect(status).toBe(200);
     expect(body.visitDays).toBe(30);
@@ -57,7 +69,13 @@ describe('settings ops API', () => {
     expect((run.body as { trigger: string }).trigger).toBe('manual');
     await call(
       '/settings/retention',
-      json('PUT', { visitDays: null, loginDays: null, rateLimitDays: null, auditDays: null }),
+      json('PUT', {
+        visitDays: null,
+        loginDays: null,
+        rateLimitDays: null,
+        auditDays: null,
+        apiUsageDays: null,
+      }),
     );
   });
 

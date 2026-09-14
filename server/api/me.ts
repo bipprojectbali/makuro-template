@@ -3,15 +3,15 @@
  * queries as the admin console but always scoped to the session's user id.
  */
 import { Elysia, t } from 'elysia';
-import { auth } from '../auth';
+import { resolveActor } from '../guard';
 import { listLogins } from './analytics-logins.query';
 
 const MAX_LIMIT = 50;
 
 export const meApi = new Elysia({ prefix: '/me' })
   .derive(async ({ request }) => {
-    const session = await auth.api.getSession({ headers: request.headers });
-    return { me: session?.user ?? null };
+    const who = await resolveActor(request);
+    return { me: who?.user ?? null };
   })
   .onBeforeHandle(({ me, status }) => {
     if (!me) return status(401, { error: 'Unauthorized' });

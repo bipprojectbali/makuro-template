@@ -5,7 +5,7 @@
 import { lt } from 'drizzle-orm';
 import { AUDIT_ACTIONS, audit } from './audit';
 import { db } from './db';
-import { auditLog, loginLog, rateLimitLog, visitLog } from './db/schema';
+import { apiKeyUsage, auditLog, loginLog, rateLimitLog, visitLog } from './db/schema';
 import { logger } from './logger';
 import { readSettingsRow, type SettingsRow, upsertSettingsRow } from './settings.core';
 
@@ -14,6 +14,7 @@ export type RetentionSettings = {
   loginDays: number | null;
   rateLimitDays: number | null;
   auditDays: number | null;
+  apiUsageDays: number | null;
 };
 export type RetentionResult = {
   ranAt: string;
@@ -36,6 +37,7 @@ export function parseRetention(row: SettingsRow | null): RetentionState {
     loginDays: row?.retentionLoginDays ?? null,
     rateLimitDays: row?.retentionRateLimitDays ?? null,
     auditDays: row?.retentionAuditDays ?? null,
+    apiUsageDays: row?.retentionApiUsageDays ?? null,
     lastRunAt: row?.retentionLastRunAt ? row.retentionLastRunAt.toISOString() : null,
     lastResult: (row?.retentionLastResult as RetentionResult | null) ?? null,
   };
@@ -51,6 +53,7 @@ export async function upsertRetention(s: RetentionSettings): Promise<RetentionSt
     retentionLoginDays: s.loginDays,
     retentionRateLimitDays: s.rateLimitDays,
     retentionAuditDays: s.auditDays,
+    retentionApiUsageDays: s.apiUsageDays,
   });
   return parseRetention(await readSettingsRow());
 }
@@ -60,6 +63,7 @@ const TABLES = {
   loginDays: loginLog,
   rateLimitDays: rateLimitLog,
   auditDays: auditLog,
+  apiUsageDays: apiKeyUsage,
 } as const;
 
 /** Delete rows older than each configured age. Tables with NULL retention are untouched. */
@@ -68,7 +72,7 @@ export async function runRetention(
   now = Date.now(),
 ): Promise<RetentionResult> {
   const s = await getRetention();
-  const deleted = { visitDays: 0, loginDays: 0, rateLimitDays: 0, auditDays: 0 };
+  const deleted = { visitDays: 0, loginDays: 0, rateLimitDays: 0, auditDays: 0, apiUsageDays: 0 };
   for (const key of Object.keys(TABLES) as Array<keyof typeof TABLES>) {
     const days = s[key];
     if (!days) continue;
@@ -99,7 +103,8 @@ export function startRetentionScheduler(): void {
   const tick = async () => {
     try {
       const s = await getRetention();
-      const configured = s.visitDays || s.loginDays || s.rateLimitDays || s.auditDays;
+      const configured =
+        s.visitDays || s.loginDays || s.rateLimitDays || s.auditDays || s.apiUsageDays;
       if (!configured) return;
       const last = s.lastRunAt ? Date.parse(s.lastRunAt) : 0;
       if (Date.now() - last < DAY_MS) return;

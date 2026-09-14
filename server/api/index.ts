@@ -1,4 +1,5 @@
 import { Elysia } from 'elysia';
+import { apiKeyPlugin } from '../api-keys/plugin';
 import { auth } from '../auth';
 import { mcpPlugin } from '../mcp';
 import { maintenancePlugin } from '../middleware/maintenance';
@@ -7,6 +8,7 @@ import { applyRateLimitSettings } from '../settings';
 import { startRetentionScheduler } from '../settings-retention';
 import { adminApi } from './admin';
 import { analyticsApi } from './analytics';
+import { apiKeysApi } from './api-keys';
 import { auditApi } from './audit';
 import { fileHealthApi } from './file-health';
 import { logsApi } from './logs';
@@ -40,6 +42,8 @@ export const api = new Elysia({ prefix: '/api' })
   .use(rateLimitPlugin())
   // Maintenance mode: 503 for everyone but the allowed roles (auth routes exempt).
   .use(maintenancePlugin())
+  // API keys: identity + scope enforcement + usage tracking (X-API-Key / Bearer mk_live_…).
+  .use(apiKeyPlugin())
   // Mount Better Auth handler for all /api/auth/* routes.
   .mount(auth.handler)
   // Admin console endpoints (self-guarded by role).
@@ -50,6 +54,8 @@ export const api = new Elysia({ prefix: '/api' })
   .use(analyticsApi)
   // Audit trail of privileged actions (super-admin only).
   .use(auditApi)
+  // API key management (super-admin only).
+  .use(apiKeysApi)
   // Cross-user session management (super-admin only).
   .use(sessionsApi)
   // File health report (super-admin only).

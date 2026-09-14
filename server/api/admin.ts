@@ -4,6 +4,7 @@ import { AUDIT_ACTIONS, audit } from '../audit';
 import { auth } from '../auth';
 import { db } from '../db';
 import { user as userTable } from '../db/schema';
+import { resolveActor } from '../guard';
 import {
   canActOnTarget,
   canSetRole,
@@ -13,7 +14,6 @@ import {
   ROLES,
   type Role,
 } from '../permissions';
-import { resolveUserRole } from '../roles';
 import { adminUserStats, listAdminUsers, UserListQuery } from './admin-users.query';
 
 async function targetRole(id: string): Promise<Role | null> {
@@ -33,9 +33,8 @@ async function targetRole(id: string): Promise<Role | null> {
  */
 export const adminApi = new Elysia({ prefix: '/admin' })
   .derive(async ({ request }) => {
-    const session = await auth.api.getSession({ headers: request.headers });
-    const actorRole = session?.user ? await resolveUserRole(session.user) : null;
-    return { actor: session?.user ?? null, actorRole, headers: request.headers };
+    const who = await resolveActor(request);
+    return { actor: who?.user ?? null, actorRole: who?.role ?? null, headers: request.headers };
   })
   .onBeforeHandle(({ actorRole, status }) => {
     if (!actorRole || !isAdminRole(actorRole)) return status(403, { error: 'Forbidden' });

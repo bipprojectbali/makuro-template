@@ -102,7 +102,13 @@ describe('retention', () => {
         { path: `/${TAG}/new`, isBot: false },
       ])
       .returning({ id: visitLog.id });
-    await upsertRetention({ visitDays: 30, loginDays: null, rateLimitDays: null, auditDays: null });
+    await upsertRetention({
+      visitDays: 30,
+      loginDays: null,
+      rateLimitDays: null,
+      auditDays: null,
+      apiUsageDays: null,
+    });
     const result = await runRetention('manual');
     expect(result.deleted.visitDays).toBeGreaterThanOrEqual(1);
     expect(result.deleted.loginDays).toBe(0);
@@ -119,6 +125,7 @@ describe('retention', () => {
       loginDays: null,
       rateLimitDays: null,
       auditDays: null,
+      apiUsageDays: null,
     });
   });
 });
