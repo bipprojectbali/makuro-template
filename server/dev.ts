@@ -12,7 +12,9 @@ import { createServer } from 'node:http';
 import { createRequestHandler } from 'react-router';
 import { createServer as createViteServer } from 'vite';
 import { api } from './api';
+import { newRequestId } from './api-error';
 import { env } from './env';
+import { errorResponse } from './error-page';
 import { nodeToWebRequest, writeWebResponse } from './http-bridge';
 import { isHttpProbe, probeResponse } from './http-probes';
 import { logger } from './logger';
@@ -38,9 +40,20 @@ const server = createServer((req, res) => {
         const response = await api.handle(request);
         await writeWebResponse(res, response);
       } catch (err) {
-        logger.error(err, 'API error');
+        // Bridge-level failure (before Elysia's own error handler could run).
+        const requestId = newRequestId();
+        logger.error({ err, requestId, path: pathname }, 'API bridge error');
         res.statusCode = 500;
-        res.end('Internal Server Error');
+        res.setHeader('content-type', 'application/json');
+        res.setHeader('x-request-id', requestId);
+        res.end(
+          JSON.stringify({
+            error: 'Terjadi kesalahan di server',
+            code: 'INTERNAL',
+            status: 500,
+            requestId,
+          }),
+        );
       }
     })();
     return;
@@ -71,9 +84,9 @@ const server = createServer((req, res) => {
       await writeWebResponse(res, response);
     } catch (err) {
       vite.ssrFixStacktrace(err as Error);
-      logger.error(err, 'SSR error');
-      res.statusCode = 500;
-      res.end('Internal Server Error');
+      const requestId = newRequestId();
+      logger.error({ err, requestId, path: pathname }, 'SSR error');
+      await writeWebResponse(res, errorResponse({ status: 500, requestId }));
     }
   });
 });

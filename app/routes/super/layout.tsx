@@ -23,6 +23,7 @@ import {
 } from 'react-icons/fi';
 import { Outlet } from 'react-router';
 import { AppFrame, type NavGroup, type NavItem } from '~/components/AppFrame';
+import { AreaErrorBoundary } from '~/components/errors/AreaErrorBoundary';
 import type { AppContext } from '~/lib/app-context';
 import type { Route } from './+types/layout';
 
@@ -147,24 +148,47 @@ export async function loader({ request }: Route.LoaderArgs) {
   return { ...auth, collapsed: getSidebarCollapsed(request), navBadges, ...(await frameInfo()) };
 }
 
-export default function SuperLayout({ loaderData }: Route.ComponentProps) {
-  const ctx: AppContext = { user: loaderData.user, role: loaderData.role };
+function Frame({
+  data,
+  children,
+}: {
+  data: Route.ComponentProps['loaderData'];
+  children: React.ReactNode;
+}) {
   return (
     <AppFrame
       navItems={NAV}
       secondaryNav={OTHER}
-      navBadges={loaderData.navBadges}
+      navBadges={data.navBadges}
       consoleLabel="Dev Console"
-      env={loaderData.env}
-      branding={loaderData.branding}
-      maintenance={loaderData.maintenance}
-      version={loaderData.version}
-      role={loaderData.role}
-      user={loaderData.user}
+      env={data.env}
+      branding={data.branding}
+      maintenance={data.maintenance}
+      version={data.version}
+      role={data.role}
+      user={data.user}
       badgeColor="grape"
-      initialCollapsed={loaderData.collapsed}
+      initialCollapsed={data.collapsed}
     >
-      <Outlet context={ctx} />
+      {children}
     </AppFrame>
+  );
+}
+
+export default function SuperLayout({ loaderData }: Route.ComponentProps) {
+  const ctx: AppContext = { user: loaderData.user, role: loaderData.role };
+  return (
+    <Frame data={loaderData}>
+      <Outlet context={ctx} />
+    </Frame>
+  );
+}
+
+/** A failing console page keeps the sidebar; the panel explains and offers a way out. */
+export function ErrorBoundary({ error, loaderData }: Route.ErrorBoundaryProps) {
+  return (
+    <AreaErrorBoundary error={error} homePath="/dev" homeLabel="Ke overview">
+      {loaderData ? (node) => <Frame data={loaderData}>{node}</Frame> : undefined}
+    </AreaErrorBoundary>
   );
 }

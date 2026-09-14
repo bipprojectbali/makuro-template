@@ -5,6 +5,7 @@ import { getSidebarCollapsed } from '@server/sidebar';
 import { FiGrid, FiHome, FiUser } from 'react-icons/fi';
 import { Outlet } from 'react-router';
 import { AppFrame, type NavItem } from '~/components/AppFrame';
+import { AreaErrorBoundary } from '~/components/errors/AreaErrorBoundary';
 import type { AppContext } from '~/lib/app-context';
 import type { Route } from './+types/layout';
 
@@ -33,23 +34,45 @@ export async function loader({ request }: Route.LoaderArgs) {
   return { ...auth, collapsed: getSidebarCollapsed(request), ...(await frameInfo()) };
 }
 
-export default function UserLayout({ loaderData }: Route.ComponentProps) {
-  const ctx: AppContext = { user: loaderData.user, role: loaderData.role };
+function Frame({
+  data,
+  children,
+}: {
+  data: Route.ComponentProps['loaderData'];
+  children: React.ReactNode;
+}) {
   return (
     <AppFrame
       navItems={NAV}
-      secondaryNav={SECONDARY_NAV[loaderData.role]}
-      role={loaderData.role}
-      user={loaderData.user}
-      badgeColor={BADGE_COLOR[loaderData.role] ?? 'gray'}
+      secondaryNav={SECONDARY_NAV[data.role]}
+      role={data.role}
+      user={data.user}
+      badgeColor={BADGE_COLOR[data.role] ?? 'gray'}
       consoleLabel="Akun"
-      env={loaderData.env}
-      branding={loaderData.branding}
-      maintenance={loaderData.maintenance}
-      version={loaderData.version}
-      initialCollapsed={loaderData.collapsed}
+      env={data.env}
+      branding={data.branding}
+      maintenance={data.maintenance}
+      version={data.version}
+      initialCollapsed={data.collapsed}
     >
-      <Outlet context={ctx} />
+      {children}
     </AppFrame>
+  );
+}
+
+export default function UserLayout({ loaderData }: Route.ComponentProps) {
+  const ctx: AppContext = { user: loaderData.user, role: loaderData.role };
+  return (
+    <Frame data={loaderData}>
+      <Outlet context={ctx} />
+    </Frame>
+  );
+}
+
+export function ErrorBoundary({ error, loaderData }: Route.ErrorBoundaryProps) {
+  return (
+    <AreaErrorBoundary error={error} homePath="/profile" homeLabel="Ke profil">
+      {loaderData ? (node) => <Frame data={loaderData}>{node}</Frame> : undefined}
+    </AreaErrorBoundary>
   );
 }

@@ -1,4 +1,5 @@
 import { Elysia } from 'elysia';
+import { apiErrorPlugin, notFoundResponse } from '../api-error';
 import { apiKeyPlugin } from '../api-keys/plugin';
 import { startUsageRollupScheduler } from '../api-keys/rollup';
 import { auth } from '../auth';
@@ -39,11 +40,15 @@ if (process.env.NODE_ENV !== 'test') {
   startUsageRollupScheduler();
 }
 
+const AUTH_BASE = '/api/auth';
+
 /**
  * Main Elysia API. Everything here is served under `/api` (see mount in
  * server/app.ts). Better Auth owns `/api/auth/*`.
  */
 export const api = new Elysia({ prefix: '/api' })
+  // Uniform JSON errors (404/422/500 + request id) must be registered before any route.
+  .use(apiErrorPlugin())
   // Rate limiting first: Elysia hooks only cover routes registered after them,
   // so this must precede every plugin (auth + mcp are excluded inside the plugin).
   .use(rateLimitPlugin())
@@ -51,8 +56,14 @@ export const api = new Elysia({ prefix: '/api' })
   .use(maintenancePlugin())
   // API keys: identity + scope enforcement + usage tracking (X-API-Key / Bearer mk_live_…).
   .use(apiKeyPlugin())
-  // Mount Better Auth handler for all /api/auth/* routes.
-  .mount(auth.handler)
+  // Better Auth handler for /api/auth/*. A mount is a catch-all fallback for
+  // every unmatched /api path, so anything else gets the uniform JSON 404 here
+  // instead of Better Auth's empty one.
+  .mount((request) =>
+    new URL(request.url).pathname.startsWith(AUTH_BASE)
+      ? auth.handler(request)
+      : notFoundResponse(request),
+  )
   // Admin console endpoints (self-guarded by role).
   .use(adminApi)
   // MCP debug server at /api/mcp — API key with `mcp` scope, or legacy MCP_ADMIN_TOKEN.

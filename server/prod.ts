@@ -19,7 +19,9 @@ import { createRequestHandler, type ServerBuild } from 'react-router';
 // dependencies (@react-router/node, react-dom, etc.) into the binary.
 import * as ssrBuild from '../build/server/index.js';
 import { api } from './api';
+import { newRequestId } from './api-error';
 import { env } from './env';
+import { errorResponse } from './error-page';
 import { isHttpProbe, probeResponse } from './http-probes';
 import { logger } from './logger';
 import { stampClientIp } from './middleware/client-ip';
@@ -70,7 +72,15 @@ const server = Bun.serve({
 
     // SSR. Record page visit (fire-and-forget — must not block response).
     void recordVisit(request);
-    return handler(request);
+    try {
+      return await handler(request);
+    } catch (err) {
+      // React Router renders its own error boundary for route errors; this only
+      // catches a crash of the shell itself, so the user still gets a real page.
+      const requestId = newRequestId();
+      logger.error({ err, requestId, path: url.pathname }, 'SSR error');
+      return errorResponse({ status: 500, requestId });
+    }
   },
 });
 
