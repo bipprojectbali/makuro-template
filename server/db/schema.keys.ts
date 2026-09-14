@@ -1,5 +1,14 @@
 // API keys (Better Auth apiKey plugin table + our extra columns) and per-request usage log.
-import { boolean, index, integer, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  date,
+  index,
+  integer,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+} from 'drizzle-orm/pg-core';
 import { user } from './schema.auth';
 
 // Column set required by @better-auth/api-key (model "apikey"); do not rename.
@@ -70,5 +79,28 @@ export const apiKeyUsage = pgTable(
   (t) => [
     index('api_key_usage_key_id_created_at_idx').on(t.keyId, t.createdAt),
     index('api_key_usage_created_at_idx').on(t.createdAt),
+  ],
+);
+
+// Daily rollup of api_key_usage per key + endpoint. Keeps the 90-day charts
+// cheap and survives raw-row retention (counts only ever grow, see rollup.ts).
+export const apiKeyUsageDaily = pgTable(
+  'api_key_usage_daily',
+  {
+    keyId: text('key_id')
+      .notNull()
+      .references(() => apikey.id, { onDelete: 'cascade' }),
+    /** Calendar day (UTC) as YYYY-MM-DD. */
+    day: date('day').notNull(),
+    method: text('method').notNull(),
+    path: text('path').notNull(),
+    count: integer('count').notNull().default(0),
+    errors: integer('errors').notNull().default(0),
+    durationSumMs: integer('duration_sum_ms').notNull().default(0),
+  },
+  (t) => [
+    primaryKey({ columns: [t.keyId, t.day, t.method, t.path] }),
+    index('api_key_usage_daily_key_id_day_idx').on(t.keyId, t.day),
+    index('api_key_usage_daily_day_idx').on(t.day),
   ],
 );

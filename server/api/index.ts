@@ -1,5 +1,6 @@
 import { Elysia } from 'elysia';
 import { apiKeyPlugin } from '../api-keys/plugin';
+import { startUsageRollupScheduler } from '../api-keys/rollup';
 import { auth } from '../auth';
 import { mcpPlugin } from '../mcp';
 import { maintenancePlugin } from '../middleware/maintenance';
@@ -9,10 +10,12 @@ import { startRetentionScheduler } from '../settings-retention';
 import { adminApi } from './admin';
 import { analyticsApi } from './analytics';
 import { apiKeysApi } from './api-keys';
+import { apiKeysUsageApi } from './api-keys-usage';
 import { auditApi } from './audit';
 import { fileHealthApi } from './file-health';
 import { logsApi } from './logs';
 import { meApi } from './me';
+import { meApiKeysApi } from './me-api-keys';
 import { opsApi } from './ops';
 import { postsApi } from './posts';
 import { sessionsApi } from './sessions';
@@ -30,7 +33,10 @@ async function getSession(headers: Headers) {
 // Load stored rate-limit overrides once per process (env defaults until then),
 // and start the daily log-retention job.
 void applyRateLimitSettings();
-if (process.env.NODE_ENV !== 'test') startRetentionScheduler();
+if (process.env.NODE_ENV !== 'test') {
+  startRetentionScheduler();
+  startUsageRollupScheduler();
+}
 
 /**
  * Main Elysia API. Everything here is served under `/api` (see mount in
@@ -48,12 +54,14 @@ export const api = new Elysia({ prefix: '/api' })
   .mount(auth.handler)
   // Admin console endpoints (self-guarded by role).
   .use(adminApi)
-  // MCP debug server at /api/mcp — protected by MCP_ADMIN_TOKEN bearer or query param.
+  // MCP debug server at /api/mcp — API key with `mcp` scope, or legacy MCP_ADMIN_TOKEN.
   .use(mcpPlugin)
   // Analytics read endpoints (super-admin only).
   .use(analyticsApi)
   // Audit trail of privileged actions (super-admin only).
   .use(auditApi)
+  // API key usage log across keys (static /api-keys/usage before /api-keys/:id).
+  .use(apiKeysUsageApi)
   // API key management (super-admin only).
   .use(apiKeysApi)
   // Cross-user session management (super-admin only).
@@ -67,7 +75,8 @@ export const api = new Elysia({ prefix: '/api' })
   .use(settingsOpsApi)
   // Operational tools (status, MCP catalog, cache resets) — super-admin only.
   .use(opsApi)
-  // Current-user endpoints (profile page).
+  // Current-user endpoints (profile page) + personal API keys.
+  .use(meApiKeysApi)
   .use(meApi)
   // Derive the session for downstream handlers.
   .derive(async ({ request }) => {

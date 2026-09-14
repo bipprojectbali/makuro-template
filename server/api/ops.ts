@@ -64,14 +64,17 @@ export const opsApi = new Elysia({ prefix: '/ops' })
   .get('/mcp', async ({ request }) => {
     await requireRole(request, ROLES.SUPER_ADMIN);
     return {
-      enabled: Boolean(env.MCP_ADMIN_TOKEN),
+      // API keys with the `mcp` scope always work; the env token is the legacy path.
+      enabled: true,
+      legacyTokenEnabled: Boolean(env.MCP_ADMIN_TOKEN),
       endpoint: `${env.APP_URL}/api/mcp`,
       tools: MCP_TOOL_CATALOG,
-      /** Never the token itself — only how to supply it. */
+      /** Never a secret itself — only how to supply it. */
       auth: {
-        header: 'Authorization: Bearer $MCP_ADMIN_TOKEN',
-        query: 'mcpAdminToken',
-        envVar: 'MCP_ADMIN_TOKEN',
+        header: 'Authorization: Bearer <API key dengan scope mcp>',
+        scope: 'mcp',
+        legacyQuery: 'mcpAdminToken',
+        legacyEnvVar: 'MCP_ADMIN_TOKEN',
       },
     };
   })

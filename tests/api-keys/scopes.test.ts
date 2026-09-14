@@ -17,11 +17,14 @@ describe('requiredScope', () => {
     expect(requiredScope('PUT', '/api/settings/rate-limit')).toBe('settings:write');
     expect(requiredScope('POST', '/api/posts')).toBe('posts:write');
     expect(requiredScope('GET', '/api/me/logins')).toBe('me:read');
+    expect(requiredScope('POST', '/api/mcp')).toBe('mcp');
+    expect(requiredScope('GET', '/api/mcp')).toBe('mcp');
   });
-  it('blocks auth, key management, MCP, resets and unknown routes', () => {
+  it('blocks auth, key management (admin and personal), resets and unknown routes', () => {
     expect(requiredScope('POST', '/api/auth/sign-in/email')).toBeNull();
     expect(requiredScope('GET', '/api/api-keys')).toBeNull();
-    expect(requiredScope('POST', '/api/mcp')).toBeNull();
+    expect(requiredScope('GET', '/api/me/api-keys')).toBeNull();
+    expect(requiredScope('POST', '/api/me/api-keys/x/rotate')).toBeNull();
     expect(requiredScope('POST', '/api/ops/reset/limiter')).toBeNull();
     expect(requiredScope('DELETE', '/api/logs')).toBeNull();
     expect(requiredScope('GET', '/api/posts')).toBeNull();
@@ -37,6 +40,8 @@ describe('role ceiling', () => {
     expect(roleAllowsScope('admin', 'users:write')).toBe(true);
     expect(roleAllowsScope('admin', 'settings:write')).toBe(false);
     expect(roleAllowsScope('super-admin', 'settings:write')).toBe(true);
+    expect(roleAllowsScope('admin', 'mcp')).toBe(false);
+    expect(roleAllowsScope('super-admin', 'mcp')).toBe(true);
     expect(scopesForRole('user')).toEqual(['posts:write', 'me:read']);
   });
 });

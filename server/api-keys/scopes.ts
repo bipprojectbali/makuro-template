@@ -88,6 +88,12 @@ export const SCOPES = [
     minRole: ROLES.SUPER_ADMIN,
   },
   {
+    id: 'mcp',
+    label: 'MCP debug server',
+    description: 'Semua tool agent: log, DB, status, file health',
+    minRole: ROLES.SUPER_ADMIN,
+  },
+  {
     id: 'me:read',
     label: 'Profil sendiri (baca)',
     description: 'Data dan riwayat login akun pemilik kunci',
@@ -124,8 +130,14 @@ export function requiredScope(method: string, pathname: string): Scope | null {
   const m = method.toUpperCase();
   const read = READ.has(m);
   const p = pathname;
-  if (p.startsWith('/api/auth/') || p.startsWith('/api/api-keys') || p.startsWith('/api/mcp'))
+  if (
+    p.startsWith('/api/auth/') ||
+    p.startsWith('/api/api-keys') ||
+    p.startsWith('/api/me/api-keys')
+  )
     return null;
+  // MCP is a JSON-RPC endpoint: every method needs the mcp scope.
+  if (p.startsWith('/api/mcp')) return 'mcp';
   if (p === '/api/settings' || p === '/api/settings/')
     return read ? 'settings:read' : 'settings:write';
   if (p.startsWith('/api/settings')) return read ? 'settings:read' : 'settings:write';

@@ -10,7 +10,7 @@ import {
   rotateKey,
   updateKey,
 } from '../api-keys/service';
-import { usageBreakdown, usageRecent, usageSummary } from '../api-keys/usage';
+import { usageAnomalies, usageBreakdown, usageRecent, usageSummary } from '../api-keys/usage';
 import { AUDIT_ACTIONS, audit } from '../audit';
 import { requireRole } from '../guard';
 import { ROLES } from '../permissions';
@@ -74,12 +74,13 @@ export const apiKeysApi = new Elysia({ prefix: '/api-keys' })
   .get('/:id/usage', async ({ request, params, status }) => {
     await requireRole(request, ROLES.SUPER_ADMIN);
     if (!(await getKey(params.id))) return status(404, { error: 'Key tidak ditemukan' });
-    const [summary, breakdown, recent] = await Promise.all([
+    const [summary, breakdown, recent, anomalies] = await Promise.all([
       usageSummary(params.id),
       usageBreakdown(params.id),
       usageRecent(params.id),
+      usageAnomalies(params.id),
     ]);
-    return { summary, breakdown, recent };
+    return { summary, breakdown, recent, anomalies };
   })
   .put(
     '/:id',
