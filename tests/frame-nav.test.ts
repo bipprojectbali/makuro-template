@@ -30,8 +30,11 @@ describe('isNavActive', () => {
 describe('withBadges / homePath', () => {
   it('attaches only positive badges and keeps definitions immutable', () => {
     const groups = normalizeNav([a, b]);
-    const out = withBadges(groups, { '/dev/visits': { value: 3 }, '/dev': { value: 0 } });
-    expect(out[0].items[1].badge).toEqual({ value: 3 });
+    const out = withBadges(groups, {
+      '/dev/visits': { value: 3, tone: 'info', tooltip: '3 kunjungan' },
+      '/dev': { value: 0 },
+    });
+    expect(out[0].items[1].badge).toEqual({ value: 3, tone: 'info', tooltip: '3 kunjungan' });
     expect(out[0].items[0].badge).toBeUndefined();
     expect(groups[0].items[1].badge).toBeUndefined();
     expect(homePath(groups)).toBe('/dev');

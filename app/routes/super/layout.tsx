@@ -1,11 +1,8 @@
-import { countRateLimitLastHour } from '@server/api/analytics-ratelimits.stats.query';
-import { errorsLastHour } from '@server/api/logs';
-import { countExpiringSoon, EXPIRING_SOON_DAYS } from '@server/api-keys/query';
 import { frameInfo } from '@server/app-info';
-import { scanFileHealth } from '@server/file-health/file-health.scan';
 import { requireRole } from '@server/guard';
 import { ROLES } from '@server/permissions';
 import { getSidebarCollapsed } from '@server/sidebar';
+import { devSidebarBadges } from '@server/sidebar-badges';
 import {
   FiClipboard,
   FiDatabase,
@@ -25,7 +22,7 @@ import {
   FiUsers,
 } from 'react-icons/fi';
 import { Outlet } from 'react-router';
-import { AppFrame, type NavBadge, type NavGroup, type NavItem } from '~/components/AppFrame';
+import { AppFrame, type NavGroup, type NavItem } from '~/components/AppFrame';
 import type { AppContext } from '~/lib/app-context';
 import type { Route } from './+types/layout';
 
@@ -145,37 +142,8 @@ const OTHER: NavItem[] = [
 
 export async function loader({ request }: Route.LoaderArgs) {
   const auth = await requireRole(request, ROLES.SUPER_ADMIN);
-  // Sidebar counters — cheap aggregates, failures must not break navigation.
-  const [blockedLastHour, filesOver, keysExpiring] = await Promise.all([
-    countRateLimitLastHour().catch(() => 0),
-    scanFileHealth()
-      .then((r) => r.summary.over)
-      .catch(() => 0),
-    countExpiringSoon().catch(() => 0),
-  ]);
-  const errors = errorsLastHour();
-  const navBadges: Record<string, NavBadge> = {
-    '/dev/server-logs': {
-      value: errors,
-      color: 'red',
-      tooltip: `${errors} error dalam 1 jam terakhir`,
-    },
-    '/dev/rate-limit-logs': {
-      value: blockedLastHour,
-      color: 'red',
-      tooltip: `${blockedLastHour} request diblokir dalam 1 jam terakhir`,
-    },
-    '/dev/file-health': {
-      value: filesOver,
-      color: 'yellow',
-      tooltip: `${filesOver} file melewati limit baris`,
-    },
-    '/dev/api-keys': {
-      value: keysExpiring,
-      color: 'yellow',
-      tooltip: `${keysExpiring} API key berakhir dalam ${EXPIRING_SOON_DAYS} hari`,
-    },
-  };
+  // Sidebar counters — cached briefly server-side, every source fails soft.
+  const navBadges = await devSidebarBadges();
   return { ...auth, collapsed: getSidebarCollapsed(request), navBadges, ...(await frameInfo()) };
 }
 
