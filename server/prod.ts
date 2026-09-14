@@ -24,6 +24,7 @@ import { isHttpProbe, probeResponse } from './http-probes';
 import { logger } from './logger';
 import { stampClientIp } from './middleware/client-ip';
 import { recordVisit } from './middleware/visitor';
+import { agentDocResponse, isAgentDoc } from './readme';
 import { getBranding } from './settings-branding';
 import { maintenanceGate } from './settings-maintenance';
 
@@ -51,6 +52,9 @@ const server = Bun.serve({
 
     // Browser/devtools probes — never SSR, never counted as a visit.
     if (isHttpProbe(url.pathname)) return probeResponse(url.pathname);
+
+    // Plain-text docs for agents (/README.md, /llms.txt) — from the bundled README.
+    if (isAgentDoc(url.pathname)) return agentDocResponse(request, url.pathname);
 
     // Static client assets.
     const filePath = CLIENT_DIR + url.pathname.replace(/^\/+/, '');

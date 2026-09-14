@@ -36,6 +36,9 @@ const EXEMPT_PREFIXES = [
   '/@',
   '/node_modules/',
   '/.well-known/',
+  '/README.md',
+  '/readme.md',
+  '/llms',
 ];
 
 export function parseMaintenance(row: SettingsRow | null): MaintenanceSettings {

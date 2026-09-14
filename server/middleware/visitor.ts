@@ -31,6 +31,9 @@ const SKIP_PREFIXES = [
   '/manifest',
   '/__manifest',
   '/.well-known/', // browser/devtools probes, see http-probes.ts
+  '/README.md',
+  '/readme.md',
+  '/llms', // agent docs, see server/readme.ts
 ];
 
 /** True for requests that are not page navigations (API, assets, loaders, probes). */
