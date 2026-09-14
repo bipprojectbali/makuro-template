@@ -7,16 +7,11 @@ import { ModalsProvider } from '@mantine/modals';
 import { Notifications } from '@mantine/notifications';
 import { getBranding } from '@server/settings-branding';
 import { QueryClientProvider } from '@tanstack/react-query';
-import {
-  isRouteErrorResponse,
-  Links,
-  Meta,
-  Outlet,
-  Scripts,
-  ScrollRestoration,
-} from 'react-router';
+import { Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
 import type { Route } from './+types/root';
+import { ErrorPage } from './components/errors/ErrorPage';
 import { RouteProgress } from './components/RouteProgress';
+import { describeError, ERROR_TITLE_SUFFIX } from './lib/error-page';
 import { queryClient } from './lib/query';
 import { theme } from './lib/theme';
 
@@ -25,9 +20,17 @@ export async function loader() {
   return { branding: await getBranding() };
 }
 
-export function meta({ loaderData }: Route.MetaArgs) {
+export function meta({ loaderData, error }: Route.MetaArgs) {
   const name = loaderData?.branding.appName ?? 'Makuro';
   const tagline = loaderData?.branding.appTagline ?? 'Fullstack Template';
+  // Error boundaries reuse the root meta: a 404 must not be titled like the home page.
+  if (error) {
+    const info = describeError(error);
+    return [
+      { title: `${info.status} ${info.title}${ERROR_TITLE_SUFFIX}` },
+      { name: 'robots', content: 'noindex' },
+    ];
+  }
   return [
     { title: name },
     {
@@ -101,19 +104,7 @@ export default function App() {
   );
 }
 
-export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let message = 'Oops!';
-  let details = 'An unexpected error occurred.';
-  if (isRouteErrorResponse(error)) {
-    message = error.status === 404 ? '404' : 'Error';
-    details = error.status === 404 ? 'Page not found.' : error.statusText || details;
-  } else if (import.meta.env.DEV && error instanceof Error) {
-    details = error.message;
-  }
-  return (
-    <main style={{ padding: 24, fontFamily: 'system-ui' }}>
-      <h1>{message}</h1>
-      <p>{details}</p>
-    </main>
-  );
+/** Last-resort boundary (no app shell): 404s, loader failures, render crashes. */
+export function ErrorBoundary({ error, loaderData }: Route.ErrorBoundaryProps) {
+  return <ErrorPage error={error} appName={loaderData?.branding.appName} />;
 }
