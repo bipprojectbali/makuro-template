@@ -5,6 +5,7 @@ import '@mantine/nprogress/styles.css';
 import { ColorSchemeScript, MantineProvider, mantineHtmlProps } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
 import { Notifications } from '@mantine/notifications';
+import { getBranding } from '@server/settings-branding';
 import { QueryClientProvider } from '@tanstack/react-query';
 import {
   isRouteErrorResponse,
@@ -19,13 +20,19 @@ import { RouteProgress } from './components/RouteProgress';
 import { queryClient } from './lib/query';
 import { theme } from './lib/theme';
 
-export function meta(_: Route.MetaArgs) {
+/** Branding for the global title fallback; cached settings read, no auth. */
+export async function loader() {
+  return { branding: await getBranding() };
+}
+
+export function meta({ loaderData }: Route.MetaArgs) {
+  const name = loaderData?.branding.appName ?? 'Makuro';
+  const tagline = loaderData?.branding.appTagline ?? 'Fullstack Template';
   return [
-    { title: 'Makuro' },
+    { title: name },
     {
       name: 'description',
-      content:
-        'Bun + Elysia + React Router v8 SSR + Drizzle + Better Auth. Fullstack template siap production.',
+      content: `${name} — ${tagline}. Bun + Elysia + React Router SSR + Drizzle + Better Auth.`,
     },
   ];
 }

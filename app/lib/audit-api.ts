@@ -96,6 +96,14 @@ const ACTION_META: Record<string, { label: string; color: string }> = {
   'settings.rate_limit.reset': { label: 'Reset rate limit', color: 'indigo' },
   'logs.purge': { label: 'Purge log', color: 'red' },
   'logs.delete': { label: 'Hapus log', color: 'red' },
+  'logs.retention': { label: 'Retensi otomatis', color: 'gray' },
+  'settings.retention.update': { label: 'Settings retensi', color: 'indigo' },
+  'settings.maintenance.update': { label: 'Settings maintenance', color: 'orange' },
+  'settings.features.update': { label: 'Feature flags', color: 'indigo' },
+  'settings.branding.update': { label: 'Branding', color: 'indigo' },
+  'ops.reset': { label: 'Reset cache', color: 'gray' },
+  'post.update': { label: 'Edit post', color: 'blue' },
+  'post.delete': { label: 'Hapus post', color: 'red' },
 };
 
 export function actionMeta(action: string): { label: string; color: string } {

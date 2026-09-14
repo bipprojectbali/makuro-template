@@ -26,10 +26,12 @@ export const AUDIT_ACTIONS = {
   SETTINGS_FEATURES_UPDATE: 'settings.features.update',
   SETTINGS_BRANDING_UPDATE: 'settings.branding.update',
   OPS_RESET: 'ops.reset',
+  POST_UPDATE: 'post.update',
+  POST_DELETE: 'post.delete',
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
-export type AuditTargetType = 'user' | 'session' | 'settings' | 'logs';
+export type AuditTargetType = 'user' | 'session' | 'settings' | 'logs' | 'post';
 
 export type AuditInput = {
   actor: { id: string; email?: string | null } | null;

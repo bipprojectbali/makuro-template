@@ -67,3 +67,63 @@ export function sameRateLimit(a: RateLimitSettings, b: RateLimitSettings): boole
     JSON.stringify(a.rateLimitExcludePrefixes) === JSON.stringify(b.rateLimitExcludePrefixes)
   );
 }
+
+// ── Retention / maintenance / feature flags / branding ───────────────────────
+
+export type RetentionSettings = {
+  visitDays: number | null;
+  loginDays: number | null;
+  rateLimitDays: number | null;
+  auditDays: number | null;
+};
+export type RetentionResult = {
+  ranAt: string;
+  deleted: Record<keyof RetentionSettings, number>;
+  trigger: 'schedule' | 'manual';
+};
+export type RetentionState = RetentionSettings & {
+  lastRunAt: string | null;
+  lastResult: RetentionResult | null;
+};
+export type MaintenanceSettings = {
+  enabled: boolean;
+  message: string | null;
+  allowRoles: string[] | null;
+};
+export type FeatureFlag = { key: string; enabled: boolean; description: string };
+export type BrandingSettings = {
+  appName: string | null;
+  appTagline: string | null;
+  supportUrl: string | null;
+};
+export type Branding = { appName: string; appTagline: string; supportUrl: string | null };
+
+export type SettingsOverviewFull = SettingsOverview & {
+  retention: RetentionState;
+  maintenance: MaintenanceSettings & {
+    defaults: { message: string; allowRoles: string[]; retryAfterSeconds: number };
+  };
+  features: FeatureFlag[];
+  branding: { settings: BrandingSettings; defaults: Branding; effective: Branding };
+};
+
+export const fetchSettingsOverviewFull = () => request<SettingsOverviewFull>(`${BASE}/all`);
+export const saveRetention = (s: RetentionSettings) =>
+  request<RetentionState>(`${BASE}/retention`, json('PUT', s));
+export const runRetentionNow = () =>
+  request<RetentionResult>(`${BASE}/retention/run`, json('POST', {}));
+export const saveMaintenance = (s: MaintenanceSettings) =>
+  request<MaintenanceSettings>(`${BASE}/maintenance`, json('PUT', s));
+export const saveFeatureFlags = (flags: FeatureFlag[]) =>
+  request<{ flags: FeatureFlag[] }>(`${BASE}/features`, json('PUT', { flags }));
+export const saveBranding = (s: BrandingSettings) =>
+  request<BrandingSettings>(`${BASE}/branding`, json('PUT', s));
+
+export function sameRetention(a: RetentionSettings, b: RetentionSettings): boolean {
+  return (
+    a.visitDays === b.visitDays &&
+    a.loginDays === b.loginDays &&
+    a.rateLimitDays === b.rateLimitDays &&
+    a.auditDays === b.auditDays
+  );
+}

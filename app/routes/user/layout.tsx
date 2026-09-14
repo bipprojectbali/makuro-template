@@ -30,7 +30,7 @@ const BADGE_COLOR: Record<string, string> = {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const auth = await requireAnyRole(request, [ROLES.USER, ROLES.ADMIN, ROLES.SUPER_ADMIN]);
-  return { ...auth, collapsed: getSidebarCollapsed(request), ...frameInfo() };
+  return { ...auth, collapsed: getSidebarCollapsed(request), ...(await frameInfo()) };
 }
 
 export default function UserLayout({ loaderData }: Route.ComponentProps) {
@@ -44,6 +44,8 @@ export default function UserLayout({ loaderData }: Route.ComponentProps) {
       badgeColor={BADGE_COLOR[loaderData.role] ?? 'gray'}
       consoleLabel="Akun"
       env={loaderData.env}
+      branding={loaderData.branding}
+      maintenance={loaderData.maintenance}
       version={loaderData.version}
       initialCollapsed={loaderData.collapsed}
     >

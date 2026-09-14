@@ -1,5 +1,7 @@
 import {
   ActionIcon,
+  Alert,
+  Anchor,
   AppShell,
   Badge,
   Burger,
@@ -12,8 +14,9 @@ import {
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import type { Role } from '@server/permissions';
+import type { Branding } from '@server/settings-branding';
 import { type ReactNode, useState } from 'react';
-import { FiCornerUpLeft, FiZap } from 'react-icons/fi';
+import { FiCornerUpLeft, FiTool, FiZap } from 'react-icons/fi';
 import { Link } from 'react-router';
 import type { AppUser } from '~/lib/app-context';
 import { authClient, useSession } from '~/lib/auth-client';
@@ -54,6 +57,10 @@ type Props = {
   navBadges?: Record<string, NavBadge>;
   env?: string;
   version?: string;
+  /** App name/tagline from settings (defaults to Makuro). */
+  branding?: Branding;
+  /** Show the maintenance banner to admins who can still use the app. */
+  maintenance?: boolean;
   /**
    * Server-resolved initial collapsed state (read from cookie in the layout
    * loader). Lets the server render the correct sidebar width immediately,
@@ -77,8 +84,11 @@ export function AppFrame(props: Props) {
     consoleLabel,
     env,
     version,
+    branding,
+    maintenance,
     initialCollapsed = false,
   } = props;
+  const appName = branding?.appName ?? 'Makuro';
   const [mobileOpened, { toggle: toggleMobile, close: closeMobile }] = useDisclosure();
   // Initialized from server-resolved value — no useEffect needed, no flash.
   const [collapsed, setCollapsed] = useState(initialCollapsed);
@@ -128,7 +138,7 @@ export function AppFrame(props: Props) {
             <Group gap={6} wrap="nowrap">
               <FiZap size={18} />
               <Text fw={700} truncate>
-                Makuro
+                {appName}
               </Text>
               {consoleLabel && (
                 <Text size="xs" c="dimmed" truncate>
@@ -150,6 +160,7 @@ export function AppFrame(props: Props) {
             env={env}
             version={version}
             extra={<ThemeToggle collapsed />}
+            appName={appName}
           />
         </AppShell.Section>
 
@@ -215,7 +226,23 @@ export function AppFrame(props: Props) {
         </AppShell.Section>
       </AppShell.Navbar>
 
-      <AppShell.Main>{children}</AppShell.Main>
+      <AppShell.Main>
+        {maintenance && (
+          <Alert
+            color="orange"
+            variant="filled"
+            icon={<FiTool size={16} />}
+            mb="md"
+            title="Mode maintenance aktif"
+          >
+            Pengunjung biasa melihat halaman pemeliharaan. Anda tetap bisa memakai konsol.{' '}
+            <Anchor c="white" underline="always" component={Link} to="/dev/settings">
+              Matikan di Settings
+            </Anchor>
+          </Alert>
+        )}
+        {children}
+      </AppShell.Main>
     </AppShell>
   );
 }

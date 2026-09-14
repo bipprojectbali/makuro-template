@@ -14,6 +14,7 @@ type Props = {
   version?: string;
   /** Extra icon control (theme toggle) shown beside the collapse button. */
   extra?: React.ReactNode;
+  appName?: string;
 };
 
 const ENV_COLOR: Record<string, string> = {
@@ -31,6 +32,7 @@ export function BrandHeader({
   env,
   version,
   extra,
+  appName = 'Makuro',
 }: Props) {
   const toggle = (
     <Tooltip label={collapsed ? 'Perlebar sidebar' : 'Ciutkan sidebar'} position="right" withArrow>
@@ -54,7 +56,7 @@ export function BrandHeader({
     return (
       <Stack gap={4} align="center">
         <Tooltip
-          label={`Makuro${version ? ` v${version}` : ''}${consoleLabel ? ` · ${consoleLabel}` : ''}`}
+          label={`${appName}${version ? ` v${version}` : ''}${consoleLabel ? ` · ${consoleLabel}` : ''}`}
           position="right"
           withArrow
         >
@@ -83,7 +85,7 @@ export function BrandHeader({
           <div style={{ minWidth: 0 }}>
             <Group gap={6} wrap="nowrap">
               <Text fw={700} size="lg" lh={1.2} truncate>
-                Makuro
+                {appName}
               </Text>
               {env && env !== 'development' && (
                 <Badge size="xs" variant="light" color={ENV_COLOR[env] ?? 'gray'}>

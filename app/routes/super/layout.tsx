@@ -8,6 +8,7 @@ import { getSidebarCollapsed } from '@server/sidebar';
 import {
   FiClipboard,
   FiDatabase,
+  FiEdit3,
   FiFileText,
   FiGrid,
   FiHome,
@@ -17,6 +18,7 @@ import {
   FiSettings,
   FiShield,
   FiTerminal,
+  FiTool,
   FiUser,
   FiUsers,
 } from 'react-icons/fi';
@@ -49,6 +51,12 @@ const NAV: NavGroup[] = [
         label: 'Sessions',
         icon: FiMonitor,
         description: 'Perangkat yang sedang masuk, cabut sesi',
+      },
+      {
+        to: '/dev/posts',
+        label: 'Posts',
+        icon: FiEdit3,
+        description: 'Konten contoh: buat, edit, moderasi',
       },
       {
         to: '/dev/db-schema',
@@ -100,6 +108,17 @@ const NAV: NavGroup[] = [
     ],
   },
   {
+    label: 'Tools',
+    items: [
+      {
+        to: '/dev/tools',
+        label: 'Tools & MCP',
+        icon: FiTool,
+        description: 'Akses agent, status proses, reset cache',
+      },
+    ],
+  },
+  {
     label: 'Konfigurasi',
     items: [
       {
@@ -143,7 +162,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       tooltip: `${filesOver} file melewati limit baris`,
     },
   };
-  return { ...auth, collapsed: getSidebarCollapsed(request), navBadges, ...frameInfo() };
+  return { ...auth, collapsed: getSidebarCollapsed(request), navBadges, ...(await frameInfo()) };
 }
 
 export default function SuperLayout({ loaderData }: Route.ComponentProps) {
@@ -155,6 +174,8 @@ export default function SuperLayout({ loaderData }: Route.ComponentProps) {
       navBadges={loaderData.navBadges}
       consoleLabel="Dev Console"
       env={loaderData.env}
+      branding={loaderData.branding}
+      maintenance={loaderData.maintenance}
       version={loaderData.version}
       role={loaderData.role}
       user={loaderData.user}

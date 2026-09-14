@@ -1,20 +1,21 @@
-import { desc, eq } from 'drizzle-orm';
-import { Elysia, t } from 'elysia';
+import { Elysia } from 'elysia';
 import { auth } from '../auth';
-import { db } from '../db';
-import { post } from '../db/schema';
-import { logger } from '../logger';
 import { mcpPlugin } from '../mcp';
+import { maintenancePlugin } from '../middleware/maintenance';
 import { rateLimitPlugin } from '../middleware/rate-limiter';
 import { applyRateLimitSettings } from '../settings';
+import { startRetentionScheduler } from '../settings-retention';
 import { adminApi } from './admin';
 import { analyticsApi } from './analytics';
 import { auditApi } from './audit';
 import { fileHealthApi } from './file-health';
 import { logsApi } from './logs';
 import { meApi } from './me';
+import { opsApi } from './ops';
+import { postsApi } from './posts';
 import { sessionsApi } from './sessions';
 import { settingsApi } from './settings';
+import { settingsOpsApi } from './settings-ops';
 
 /**
  * Resolve the current Better Auth session from request headers.
@@ -24,8 +25,10 @@ async function getSession(headers: Headers) {
   return auth.api.getSession({ headers });
 }
 
-// Load stored rate-limit overrides once per process (env defaults until then).
+// Load stored rate-limit overrides once per process (env defaults until then),
+// and start the daily log-retention job.
 void applyRateLimitSettings();
+if (process.env.NODE_ENV !== 'test') startRetentionScheduler();
 
 /**
  * Main Elysia API. Everything here is served under `/api` (see mount in
@@ -35,6 +38,8 @@ export const api = new Elysia({ prefix: '/api' })
   // Rate limiting first: Elysia hooks only cover routes registered after them,
   // so this must precede every plugin (auth + mcp are excluded inside the plugin).
   .use(rateLimitPlugin())
+  // Maintenance mode: 503 for everyone but the allowed roles (auth routes exempt).
+  .use(maintenancePlugin())
   // Mount Better Auth handler for all /api/auth/* routes.
   .mount(auth.handler)
   // Admin console endpoints (self-guarded by role).
@@ -53,6 +58,9 @@ export const api = new Elysia({ prefix: '/api' })
   .use(logsApi)
   // App settings (GET public, PUT super-admin only).
   .use(settingsApi)
+  .use(settingsOpsApi)
+  // Operational tools (status, MCP catalog, cache resets) — super-admin only.
+  .use(opsApi)
   // Current-user endpoints (profile page).
   .use(meApi)
   // Derive the session for downstream handlers.
@@ -65,32 +73,7 @@ export const api = new Elysia({ prefix: '/api' })
     time: new Date().toISOString(),
   }))
   .get('/me', ({ user }) => ({ user }))
-  .get('/posts', async () => {
-    return db.select().from(post).orderBy(desc(post.createdAt)).limit(50);
-  })
-  .post(
-    '/posts',
-    async ({ user, body, status }) => {
-      if (!user) return status(401, { error: 'Unauthorized' });
-      const [created] = await db
-        .insert(post)
-        .values({ title: body.title, content: body.content ?? null, authorId: user.id })
-        .returning();
-      logger.info({ postId: created.id }, 'post created');
-      return created;
-    },
-    {
-      body: t.Object({
-        title: t.String({ minLength: 1, maxLength: 200 }),
-        content: t.Optional(t.String()),
-      }),
-    },
-  )
-  .delete('/posts/:id', async ({ user, params, status }) => {
-    if (!user) return status(401, { error: 'Unauthorized' });
-    const [deleted] = await db.delete(post).where(eq(post.id, params.id)).returning();
-    if (!deleted) return status(404, { error: 'Not found' });
-    return { ok: true };
-  });
+  // Posts (public reads, session writes, admin moderation) live in posts.ts.
+  .use(postsApi);
 
 export type Api = typeof api;
