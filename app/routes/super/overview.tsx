@@ -35,6 +35,18 @@ export default function OverviewPage({ loaderData: data }: Route.ComponentProps)
       text: 'Login email mati dan Google OAuth belum dikonfigurasi — tidak ada cara masuk.',
       to: '/dev/settings',
     });
+  if (data.maintenance)
+    warnings.push({
+      key: 'maint',
+      text: 'Mode maintenance aktif — pengunjung biasa melihat halaman pemeliharaan.',
+      to: '/dev/settings',
+    });
+  if (!data.retentionConfigured)
+    warnings.push({
+      key: 'ret',
+      text: 'Retensi log belum diatur — tabel log akan tumbuh tanpa batas.',
+      to: '/dev/settings',
+    });
   if (data.users.banned > 0)
     warnings.push({
       key: 'ban',

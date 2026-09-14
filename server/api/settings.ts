@@ -9,6 +9,8 @@ import {
   upsertRateLimitSettings,
   upsertSettings,
 } from '../settings';
+import { getBranding } from '../settings-branding';
+import { flagsToMap, getFeatureFlags } from '../settings-features';
 
 const PREFIX = t.String({ pattern: '^/', minLength: 1, maxLength: 200 });
 const MAX_RATE = 100_000;
@@ -18,8 +20,12 @@ const MAX_WINDOW_MS = 24 * 3_600_000;
 export const settingsApi = new Elysia({ prefix: '/settings' })
   /** Public: login page needs this without auth to show/hide email form. */
   .get('/', async () => {
-    const { emailAuthEnabled, signupEnabled } = await getSettings();
-    return { emailAuthEnabled, signupEnabled };
+    const [{ emailAuthEnabled, signupEnabled }, flags, branding] = await Promise.all([
+      getSettings(),
+      getFeatureFlags(),
+      getBranding(),
+    ]);
+    return { emailAuthEnabled, signupEnabled, features: flagsToMap(flags), branding };
   })
 
   /** Super-admin: everything, plus defaults/effective values and read-only runtime facts. */

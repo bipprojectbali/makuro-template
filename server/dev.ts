@@ -18,6 +18,8 @@ import { isHttpProbe, probeResponse } from './http-probes';
 import { logger } from './logger';
 import { stampClientIp } from './middleware/client-ip';
 import { recordVisit } from './middleware/visitor';
+import { getBranding } from './settings-branding';
+import { maintenanceGate } from './settings-maintenance';
 
 const vite = await createViteServer({
   server: { middlewareMode: true },
@@ -58,6 +60,12 @@ const server = createServer((req, res) => {
       const handler = createRequestHandler(build as never, 'development');
       const request = await nodeToWebRequest(req);
       stampClientIp(request, req.socket.remoteAddress);
+      // Maintenance mode answers before SSR (and is not counted as a visit).
+      const blocked = await maintenanceGate(request, (await getBranding()).appName);
+      if (blocked) {
+        await writeWebResponse(res, blocked);
+        return;
+      }
       void recordVisit(request);
       const response = await handler(request);
       await writeWebResponse(res, response);

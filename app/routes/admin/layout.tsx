@@ -22,7 +22,7 @@ const SECONDARY: Record<string, NavItem[]> = {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const auth = await requireAnyRole(request, [ROLES.ADMIN, ROLES.SUPER_ADMIN]);
-  return { ...auth, collapsed: getSidebarCollapsed(request), ...frameInfo() };
+  return { ...auth, collapsed: getSidebarCollapsed(request), ...(await frameInfo()) };
 }
 
 export default function AdminLayout({ loaderData }: Route.ComponentProps) {
@@ -36,6 +36,8 @@ export default function AdminLayout({ loaderData }: Route.ComponentProps) {
       badgeColor="blue"
       consoleLabel="Admin"
       env={loaderData.env}
+      branding={loaderData.branding}
+      maintenance={loaderData.maintenance}
       version={loaderData.version}
       initialCollapsed={loaderData.collapsed}
     >

@@ -143,7 +143,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       tooltip: `${filesOver} file melewati limit baris`,
     },
   };
-  return { ...auth, collapsed: getSidebarCollapsed(request), navBadges, ...frameInfo() };
+  return { ...auth, collapsed: getSidebarCollapsed(request), navBadges, ...(await frameInfo()) };
 }
 
 export default function SuperLayout({ loaderData }: Route.ComponentProps) {
@@ -155,6 +155,8 @@ export default function SuperLayout({ loaderData }: Route.ComponentProps) {
       navBadges={loaderData.navBadges}
       consoleLabel="Dev Console"
       env={loaderData.env}
+      branding={loaderData.branding}
+      maintenance={loaderData.maintenance}
       version={loaderData.version}
       role={loaderData.role}
       user={loaderData.user}

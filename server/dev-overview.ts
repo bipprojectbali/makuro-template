@@ -53,6 +53,13 @@ export async function devOverview() {
     },
     fileHealth,
     settings: settings.settings,
+    maintenance: settings.maintenance.enabled,
+    retentionConfigured: Boolean(
+      settings.retention.visitDays ||
+        settings.retention.loginDays ||
+        settings.retention.rateLimitDays ||
+        settings.retention.auditDays,
+    ),
     runtime: settings.runtime,
     recentLogins: recentLogins.rows,
     recentBlocks: recentBlocks.rows,

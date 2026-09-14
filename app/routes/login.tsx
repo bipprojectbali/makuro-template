@@ -13,24 +13,28 @@ import {
 import { hasLength, isEmail, isNotEmpty, useForm } from '@mantine/form';
 import { hasGoogleAuth } from '@server/env';
 import { getSettings } from '@server/settings';
+import { getBranding } from '@server/settings-branding';
 import { useState } from 'react';
 import { FcGoogle } from 'react-icons/fc';
 import { useNavigate } from 'react-router';
 import { signIn, signUp } from '~/lib/auth-client';
 import type { Route } from './+types/login';
 
-export function meta(_: Route.MetaArgs) {
-  return [{ title: 'Sign in — Makuro' }];
+export function meta({ loaderData }: Route.MetaArgs) {
+  return [{ title: `Sign in — ${loaderData?.branding.appName ?? 'Makuro'}` }];
 }
 
 export async function loader() {
-  const { emailAuthEnabled, signupEnabled } = await getSettings();
-  return { googleEnabled: hasGoogleAuth, emailAuthEnabled, signupEnabled };
+  const [{ emailAuthEnabled, signupEnabled }, branding] = await Promise.all([
+    getSettings(),
+    getBranding(),
+  ]);
+  return { googleEnabled: hasGoogleAuth, emailAuthEnabled, signupEnabled, branding };
 }
 
 export default function Login({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();
-  const { googleEnabled, emailAuthEnabled, signupEnabled } = loaderData;
+  const { googleEnabled, emailAuthEnabled, signupEnabled, branding } = loaderData;
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -86,7 +90,7 @@ export default function Login({ loaderData }: Route.ComponentProps) {
   return (
     <Container size="xs" py={64}>
       <Title order={2} mb="lg" ta="center">
-        Welcome to Makuro
+        Welcome to {branding.appName}
       </Title>
 
       {emailAuthEnabled && signupEnabled && (

@@ -24,6 +24,8 @@ import { isHttpProbe, probeResponse } from './http-probes';
 import { logger } from './logger';
 import { stampClientIp } from './middleware/client-ip';
 import { recordVisit } from './middleware/visitor';
+import { getBranding } from './settings-branding';
+import { maintenanceGate } from './settings-maintenance';
 
 const build = ssrBuild as unknown as ServerBuild;
 const handler = createRequestHandler(build, 'production');
@@ -61,6 +63,10 @@ const server = Bun.serve({
           : { 'Cache-Control': 'public, max-age=3600' },
       });
     }
+
+    // Maintenance mode answers before SSR (and is not counted as a visit).
+    const blocked = await maintenanceGate(request, (await getBranding()).appName);
+    if (blocked) return blocked;
 
     // SSR. Record page visit (fire-and-forget — must not block response).
     void recordVisit(request);
