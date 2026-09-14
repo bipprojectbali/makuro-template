@@ -21,6 +21,7 @@ import { postsApi } from './posts';
 import { sessionsApi } from './sessions';
 import { settingsApi } from './settings';
 import { settingsOpsApi } from './settings-ops';
+import { versionApi } from './version';
 
 /**
  * Resolve the current Better Auth session from request headers.
@@ -83,6 +84,8 @@ export const api = new Elysia({ prefix: '/api' })
     const s = await getSession(request.headers);
     return { user: s?.user ?? null, session: s?.session ?? null };
   })
+  // Build identity (name/version from package.json) — public, also for uptime probes.
+  .use(versionApi)
   .get('/hello', () => ({
     message: 'Hello from Elysia + Bun \u26a1',
     time: new Date().toISOString(),

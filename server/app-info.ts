@@ -5,6 +5,12 @@ import { type Branding, getBranding } from './settings-branding';
 import { getMaintenance } from './settings-maintenance';
 
 export const APP_VERSION: string = pkg.version;
+export const APP_NAME: string = pkg.name;
+
+/** Single source of truth for "which build is this": package.json + runtime env. */
+export function versionInfo() {
+  return { name: APP_NAME, version: APP_VERSION, env: env.NODE_ENV, bun: Bun.version };
+}
 
 export type FrameInfo = { env: string; version: string; branding: Branding; maintenance: boolean };
 
