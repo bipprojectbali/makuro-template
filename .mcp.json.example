@@ -4,14 +4,14 @@
       "type": "http",
       "url": "https://staging.your-app.example.com/api/mcp",
       "headers": {
-        "Authorization": "Bearer ${MCP_ADMIN_TOKEN}"
+        "Authorization": "Bearer ${MAKURO_MCP_KEY}"
       }
     },
     "makuro-debug-prod": {
       "type": "http",
       "url": "https://your-app.example.com/api/mcp",
       "headers": {
-        "Authorization": "Bearer ${MCP_ADMIN_TOKEN}"
+        "Authorization": "Bearer ${MAKURO_MCP_KEY}"
       }
     }
   }

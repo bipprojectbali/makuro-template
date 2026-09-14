@@ -11,8 +11,8 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
-import { FiAlertCircle } from 'react-icons/fi';
-import { fetchApiKeyUsage, type UsageBreakdown } from '~/lib/api-keys-api';
+import { FiAlertCircle, FiAlertTriangle } from 'react-icons/fi';
+import type { ApiKeyUsage, UsageBreakdown } from '~/lib/api-keys-api';
 import { countryFlag, countryName, formatDateTime, formatRelative } from '~/lib/visits-format';
 import { BreakdownPanel } from '../logs/BreakdownPanel';
 import { TruncatedText } from '../logs/TruncatedText';
@@ -44,7 +44,7 @@ function DailyBars({ daily }: { daily: UsageBreakdown['daily'] }) {
   if (daily.length === 0)
     return (
       <Text size="sm" c="dimmed">
-        Belum ada request 30 hari terakhir.
+        Belum ada request 90 hari terakhir.
       </Text>
     );
   const max = Math.max(...daily.map((d) => d.count), 1);
@@ -78,11 +78,19 @@ function statusColor(s: number): string {
   return 'teal';
 }
 
+const pct = (r: number) => `${Math.round(r * 100)}%`;
+
 /** Usage tab of the detail drawer: headline numbers, daily bars, top-N lists, recent calls. */
-export function ApiKeyUsagePanel({ keyId }: { keyId: string }) {
+export function ApiKeyUsagePanel({
+  keyId,
+  fetchUsage,
+}: {
+  keyId: string;
+  fetchUsage: (id: string) => Promise<ApiKeyUsage>;
+}) {
   const q = useQuery({
     queryKey: ['api-key-usage', keyId],
-    queryFn: () => fetchApiKeyUsage(keyId),
+    queryFn: () => fetchUsage(keyId),
     staleTime: 15_000,
   });
   if (q.isPending)
@@ -99,10 +107,33 @@ export function ApiKeyUsagePanel({ keyId }: { keyId: string }) {
         {(q.error as Error).message}
       </Alert>
     );
-  const { summary, breakdown, recent } = q.data;
+  const { summary, breakdown, recent, anomalies } = q.data;
   const total30d = breakdown.daily.reduce((a, d) => a + d.count, 0);
   return (
     <Stack gap="md">
+      {anomalies.newCountries.length > 0 && (
+        <Alert
+          color="yellow"
+          variant="light"
+          icon={<FiAlertTriangle size={16} />}
+          title="Negara baru"
+        >
+          24 jam terakhir ada request dari {anomalies.newCountries.map(countryName).join(', ')},
+          yang belum pernah terlihat 30 hari sebelumnya. Pastikan ini memang integrasi Anda.
+        </Alert>
+      )}
+      {anomalies.errorSpike && (
+        <Alert
+          color="orange"
+          variant="light"
+          icon={<FiAlertTriangle size={16} />}
+          title="Lonjakan error"
+        >
+          {pct(anomalies.errorSpike.rate24h)} request 24 jam terakhir gagal (4xx/5xx), dibanding{' '}
+          {pct(anomalies.errorSpike.rate7d)} pada hari-hari sebelumnya. Bisa jadi scope kurang,
+          kunci disalahgunakan, atau integrasi rusak.
+        </Alert>
+      )}
       <SimpleGrid cols={2} spacing="sm">
         <Tile label="Total" value={nf.format(summary.total)} hint="sepanjang umur kunci" />
         <Tile
@@ -115,7 +146,7 @@ export function ApiKeyUsagePanel({ keyId }: { keyId: string }) {
       </SimpleGrid>
       <Paper withBorder radius="md" p="md">
         <Text size="xs" c="dimmed" tt="uppercase" fw={600} lts={0.3} mb="sm">
-          Harian (30 hari)
+          Harian (90 hari)
         </Text>
         <DailyBars daily={breakdown.daily} />
       </Paper>

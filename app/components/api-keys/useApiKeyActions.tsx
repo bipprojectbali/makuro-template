@@ -3,35 +3,34 @@ import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import {
-  type ApiKeyRow,
-  deleteApiKey,
-  revokeApiKey,
-  rotateApiKey,
-  updateApiKey,
-} from '~/lib/api-keys-api';
+import { type ApiKeyRow, adminKeyClient, type KeyClient } from '~/lib/api-keys-api';
 
 export type Reveal = { key: string; row: ApiKeyRow; rotatedFrom?: ApiKeyRow };
-export type FormState = { mode: 'create' } | { mode: 'edit'; row: ApiKeyRow };
+export type CreatePreset = { name?: string; scopes?: string[] };
+export type FormState =
+  | { mode: 'create'; preset?: CreatePreset }
+  | { mode: 'edit'; row: ApiKeyRow };
 
-/** Toggle / rotate / revoke / delete with confirmation, feedback, and cache invalidation. */
-export function useApiKeyActions() {
+const ADMIN_QUERY_KEYS = ['api-keys', 'api-keys-stats', 'api-key-usage'];
+
+/**
+ * Toggle / rotate / revoke / delete with confirmation, feedback, and cache
+ * invalidation. `client` selects admin vs personal endpoints; `queryKeys` are
+ * the react-query roots to refresh afterwards.
+ */
+export function useApiKeyActions(client: KeyClient = adminKeyClient, queryKeys = ADMIN_QUERY_KEYS) {
   const qc = useQueryClient();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
   const [reveal, setReveal] = useState<Reveal | null>(null);
   const invalidate = () =>
-    Promise.all([
-      qc.invalidateQueries({ queryKey: ['api-keys'] }),
-      qc.invalidateQueries({ queryKey: ['api-keys-stats'] }),
-      qc.invalidateQueries({ queryKey: ['api-key'] }),
-    ]);
+    Promise.all(queryKeys.map((k) => qc.invalidateQueries({ queryKey: [k] })));
   const fail = (title: string) => (e: Error) =>
     notifications.show({ color: 'red', title, message: e.message });
   const ok = (message: string) => notifications.show({ color: 'teal', message });
 
   const toggle = useMutation({
-    mutationFn: (k: ApiKeyRow) => updateApiKey(k.id, { enabled: !k.enabled }),
+    mutationFn: (k: ApiKeyRow) => client.update(k.id, { enabled: !k.enabled }),
     onMutate: (k) => setBusyId(k.id),
     onSettled: () => setBusyId(null),
     onSuccess: async (row) => {
@@ -41,7 +40,7 @@ export function useApiKeyActions() {
     onError: fail('Gagal mengubah status kunci'),
   });
   const rotate = useMutation({
-    mutationFn: (k: ApiKeyRow) => rotateApiKey(k.id),
+    mutationFn: (k: ApiKeyRow) => client.rotate(k.id),
     onMutate: (k) => setBusyId(k.id),
     onSettled: () => setBusyId(null),
     onSuccess: async (r) => {
@@ -51,7 +50,7 @@ export function useApiKeyActions() {
     onError: fail('Gagal merotasi kunci'),
   });
   const revoke = useMutation({
-    mutationFn: (k: ApiKeyRow) => revokeApiKey(k.id),
+    mutationFn: (k: ApiKeyRow) => client.revoke(k.id),
     onMutate: (k) => setBusyId(k.id),
     onSettled: () => setBusyId(null),
     onSuccess: async (row) => {
@@ -61,7 +60,7 @@ export function useApiKeyActions() {
     onError: fail('Gagal mencabut kunci'),
   });
   const remove = useMutation({
-    mutationFn: (k: ApiKeyRow) => deleteApiKey(k.id),
+    mutationFn: (k: ApiKeyRow) => client.remove(k.id),
     onMutate: (k) => setBusyId(k.id),
     onSettled: () => setBusyId(null),
     onSuccess: async (_r, k) => {
@@ -129,7 +128,7 @@ export function useApiKeyActions() {
   return {
     busyId,
     form,
-    openCreate: () => setForm({ mode: 'create' }),
+    openCreate: (preset?: CreatePreset) => setForm({ mode: 'create', preset }),
     onEdit: (row: ApiKeyRow) => setForm({ mode: 'edit', row }),
     closeForm: () => setForm(null),
     reveal,

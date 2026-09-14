@@ -22,88 +22,65 @@ import { DEFAULT_USER_FILTERS, fetchUsers } from '~/lib/admin-users-api';
 import {
   type ApiKeyInput,
   type ApiKeyPatch,
-  type ApiKeyRow,
-  createApiKey,
   EXPIRY_OPTIONS,
+  type KeyClient,
   type ScopeDef,
-  updateApiKey,
 } from '~/lib/api-keys-api';
+import {
+  DEFAULT_EXPIRY,
+  DEFAULT_WINDOW,
+  type Draft,
+  draftFromRow,
+  EMPTY_DRAFT,
+  WINDOWS,
+} from './api-key-form.model';
 import { ScopePicker } from './ScopePicker';
 import type { FormState, Reveal } from './useApiKeyActions';
-
-const WINDOWS = [
-  { value: '60000', label: 'per menit' },
-  { value: '600000', label: 'per 10 menit' },
-  { value: '3600000', label: 'per jam' },
-  { value: '86400000', label: 'per hari' },
-];
-const DEFAULT_EXPIRY = '90';
-const DEFAULT_RATE_MAX = 600;
-const DEFAULT_WINDOW = '60000';
-
-type Draft = {
-  name: string;
-  ownerId: string | null;
-  ownerRole: string | null;
-  scopes: string[];
-  expiry: string;
-  rateLimited: boolean;
-  rateMax: number;
-  window: string;
-  ips: string[];
-  note: string;
-};
-const EMPTY: Draft = {
-  name: '',
-  ownerId: null,
-  ownerRole: null,
-  scopes: [],
-  expiry: DEFAULT_EXPIRY,
-  rateLimited: false,
-  rateMax: DEFAULT_RATE_MAX,
-  window: DEFAULT_WINDOW,
-  ips: [],
-  note: '',
-};
-
-function fromRow(row: ApiKeyRow): Draft {
-  return {
-    name: row.name ?? '',
-    ownerId: row.ownerId,
-    ownerRole: row.ownerRole,
-    scopes: row.scopes,
-    expiry: 'keep',
-    rateLimited: Boolean(row.rateLimitMax),
-    rateMax: row.rateLimitMax ?? DEFAULT_RATE_MAX,
-    window: String(row.rateLimitTimeWindow ?? DEFAULT_WINDOW),
-    ips: row.allowedIps ? row.allowedIps.split('\n').filter(Boolean) : [],
-    note: row.note ?? '',
-  };
-}
 
 type Props = {
   state: FormState | null;
   scopes: ScopeDef[];
+  client: KeyClient;
+  /** Personal mode: the caller is the owner, so there is no owner picker. */
+  self?: { ownerRole: string | null };
   onClose: () => void;
   onCreated: (r: Reveal) => void;
   onSaved: () => Promise<unknown>;
 };
 
 /** Create (reveal once afterwards) or edit an API key. Owner is fixed after creation. */
-export function ApiKeyFormModal({ state, scopes, onClose, onCreated, onSaved }: Props) {
-  const [d, setD] = useState<Draft>(EMPTY);
+export function ApiKeyFormModal({
+  state,
+  scopes,
+  client,
+  self,
+  onClose,
+  onCreated,
+  onSaved,
+}: Props) {
+  const [d, setD] = useState<Draft>(EMPTY_DRAFT);
   const [ownerSearch, setOwnerSearch] = useState('');
   const [debounced] = useDebouncedValue(ownerSearch, 250);
   const edit = state?.mode === 'edit' ? state.row : null;
+  const isSelf = Boolean(self);
+  const selfRole = self?.ownerRole ?? null;
   useEffect(() => {
     if (!state) return;
-    setD(state.mode === 'edit' ? fromRow(state.row) : EMPTY);
+    if (state.mode === 'edit') setD(draftFromRow(state.row));
+    else
+      setD({
+        ...EMPTY_DRAFT,
+        ownerId: isSelf ? 'me' : null,
+        ownerRole: selfRole,
+        name: state.preset?.name ?? '',
+        scopes: state.preset?.scopes ?? [],
+      });
     setOwnerSearch('');
-  }, [state]);
+  }, [state, isSelf, selfRole]);
   const owners = useQuery({
     queryKey: ['api-key-owner-search', debounced],
     queryFn: () => fetchUsers({ ...DEFAULT_USER_FILTERS, search: debounced, page: 1, limit: 10 }),
-    enabled: state?.mode === 'create',
+    enabled: state?.mode === 'create' && !self,
     staleTime: 30_000,
   });
   const ownerOptions = (owners.data?.users ?? []).map((u) => ({
@@ -128,7 +105,7 @@ export function ApiKeyFormModal({ state, scopes, onClose, onCreated, onSaved }: 
   const fail = (e: Error) =>
     notifications.show({ color: 'red', title: 'Gagal menyimpan kunci', message: e.message });
   const create = useMutation({
-    mutationFn: (input: ApiKeyInput) => createApiKey(input),
+    mutationFn: (input: ApiKeyInput) => client.create(input),
     onSuccess: async (r) => {
       await onSaved();
       onClose();
@@ -137,7 +114,7 @@ export function ApiKeyFormModal({ state, scopes, onClose, onCreated, onSaved }: 
     onError: fail,
   });
   const save = useMutation({
-    mutationFn: ({ id, patch }: { id: string; patch: ApiKeyPatch }) => updateApiKey(id, patch),
+    mutationFn: ({ id, patch }: { id: string; patch: ApiKeyPatch }) => client.update(id, patch),
     onSuccess: async () => {
       await onSaved();
       onClose();
@@ -180,6 +157,10 @@ export function ApiKeyFormModal({ state, scopes, onClose, onCreated, onSaved }: 
           <Text size="sm" c="dimmed">
             Pemilik: <strong>{edit.ownerEmail ?? edit.ownerId}</strong> ({edit.ownerRole ?? 'user'})
             — tidak bisa diubah setelah dibuat.
+          </Text>
+        ) : self ? (
+          <Text size="sm" c="dimmed">
+            Kunci ini bertindak atas nama akun Anda (role {self.ownerRole ?? 'user'}).
           </Text>
         ) : (
           <Select

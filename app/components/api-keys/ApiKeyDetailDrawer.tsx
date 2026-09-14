@@ -1,6 +1,12 @@
 import { Alert, Badge, Button, Divider, Drawer, Group, Stack, Tabs, Text } from '@mantine/core';
 import { FiActivity, FiEdit2, FiInfo, FiRefreshCw, FiSlash, FiTrash2 } from 'react-icons/fi';
-import { type ApiKeyRow, maskedKey, rateLimitLabel, STATUS_META } from '~/lib/api-keys-api';
+import {
+  type ApiKeyRow,
+  type ApiKeyUsage,
+  maskedKey,
+  rateLimitLabel,
+  STATUS_META,
+} from '~/lib/api-keys-api';
 import { countryFlag, formatDateTime, formatRelative } from '~/lib/visits-format';
 import { Copyable, Field, Section } from '../logs/DetailParts';
 import { UserCell } from '../logs/LogCells';
@@ -12,11 +18,12 @@ type Props = {
   keyRow: ApiKeyRow | null;
   onClose: () => void;
   soonDays: number;
+  fetchUsage: (id: string) => Promise<ApiKeyUsage>;
   h: Pick<ApiKeyHandlers, 'busyId' | 'onEdit' | 'onToggle' | 'onRotate' | 'onRevoke' | 'onDelete'>;
 };
 
 /** Full metadata + usage for one key, with the same actions as the table menu. */
-export function ApiKeyDetailDrawer({ keyRow: k, onClose, soonDays, h }: Props) {
+export function ApiKeyDetailDrawer({ keyRow: k, onClose, soonDays, fetchUsage, h }: Props) {
   const gone = k?.status === 'revoked';
   const busy = k ? h.busyId === k.id : false;
   return (
@@ -197,7 +204,7 @@ export function ApiKeyDetailDrawer({ keyRow: k, onClose, soonDays, h }: Props) {
               </Stack>
             </Tabs.Panel>
             <Tabs.Panel value="usage" pt="md">
-              <ApiKeyUsagePanel keyId={k.id} />
+              <ApiKeyUsagePanel keyId={k.id} fetchUsage={fetchUsage} />
             </Tabs.Panel>
           </Tabs>
         </Stack>

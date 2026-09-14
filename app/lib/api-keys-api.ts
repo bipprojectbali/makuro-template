@@ -81,10 +81,15 @@ export type UsageRecentRow = {
   durationMs: number | null;
   createdAt: string;
 };
+export type UsageAnomalies = {
+  newCountries: string[];
+  errorSpike: { rate24h: number; rate7d: number } | null;
+};
 export type ApiKeyUsage = {
   summary: UsageSummary;
   breakdown: UsageBreakdown;
   recent: UsageRecentRow[];
+  anomalies: UsageAnomalies;
 };
 
 export type ApiKeyFilters = {
@@ -165,6 +170,46 @@ export const revokeApiKey = (id: string) =>
   request<ApiKeyRow>(`${BASE}/${encodeURIComponent(id)}/revoke`, json('POST', {}));
 export const deleteApiKey = (id: string) =>
   request<{ ok: true }>(`${BASE}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+
+/** Same operations against either the admin endpoints or the caller's personal keys. */
+export type KeyClient = {
+  create: (input: ApiKeyInput) => Promise<{ key: string; row: ApiKeyRow }>;
+  update: (id: string, patch: ApiKeyPatch) => Promise<ApiKeyRow>;
+  rotate: (id: string) => Promise<{ key: string; row: ApiKeyRow; old: ApiKeyRow }>;
+  revoke: (id: string) => Promise<ApiKeyRow>;
+  remove: (id: string) => Promise<{ ok: true }>;
+  usage: (id: string) => Promise<ApiKeyUsage>;
+};
+export const adminKeyClient: KeyClient = {
+  create: createApiKey,
+  update: updateApiKey,
+  rotate: rotateApiKey,
+  revoke: revokeApiKey,
+  remove: deleteApiKey,
+  usage: fetchApiKeyUsage,
+};
+
+const ME = '/api/me/api-keys';
+export type PersonalKeysResponse = ApiKeyListResponse & {
+  scopes: ScopeDef[];
+  max: number;
+  live: number;
+};
+export const fetchPersonalKeys = () => request<PersonalKeysResponse>(ME);
+export const personalKeyClient: KeyClient = {
+  // ownerId is implied by the session; the server ignores anything else.
+  create: ({ ownerId: _owner, ...input }) =>
+    request<{ key: string; row: ApiKeyRow }>(ME, json('POST', input)),
+  update: (id, patch) => request<ApiKeyRow>(`${ME}/${encodeURIComponent(id)}`, json('PUT', patch)),
+  rotate: (id) =>
+    request<{ key: string; row: ApiKeyRow; old: ApiKeyRow }>(
+      `${ME}/${encodeURIComponent(id)}/rotate`,
+      json('POST', {}),
+    ),
+  revoke: (id) => request<ApiKeyRow>(`${ME}/${encodeURIComponent(id)}/revoke`, json('POST', {})),
+  remove: (id) => request<{ ok: true }>(`${ME}/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  usage: (id) => request<ApiKeyUsage>(`${ME}/${encodeURIComponent(id)}/usage`),
+};
 
 // ── Presentation helpers ─────────────────────────────────────────────────────
 

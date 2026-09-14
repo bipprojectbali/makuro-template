@@ -1,16 +1,13 @@
 import {
   Alert,
-  Badge,
   Box,
   Button,
-  CloseButton,
   Group,
   Pagination,
   Paper,
-  Select,
+  SegmentedControl,
   Stack,
   Text,
-  TextInput,
   Title,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
@@ -19,26 +16,29 @@ import { SCOPES } from '@server/api-keys/scopes';
 import { requireRole } from '@server/guard';
 import { ROLES } from '@server/permissions';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
-import { FiAlertCircle, FiPlus, FiRefreshCw, FiSearch } from 'react-icons/fi';
+import { useEffect, useState } from 'react';
+import { FiAlertCircle, FiPlus, FiRefreshCw } from 'react-icons/fi';
+import { useSearchParams } from 'react-router';
 import { ApiKeyDetailDrawer } from '~/components/api-keys/ApiKeyDetailDrawer';
+import { ApiKeyFilterBar } from '~/components/api-keys/ApiKeyFilterBar';
 import { ApiKeyFormModal } from '~/components/api-keys/ApiKeyFormModal';
 import { ApiKeyStatsCards } from '~/components/api-keys/ApiKeyStatsCards';
 import { ApiKeyCardList, ApiKeyTable } from '~/components/api-keys/ApiKeyTable';
 import { RevealKeyModal } from '~/components/api-keys/RevealKeyModal';
+import { UsageLogSection } from '~/components/api-keys/UsageLogSection';
 import { useApiKeyActions } from '~/components/api-keys/useApiKeyActions';
 import { VisitEmptyState } from '~/components/visits/VisitEmptyState';
 import {
   type ApiKeyListResponse,
   type ApiKeyRow,
   type ApiKeyStats,
+  adminKeyClient,
   DEFAULT_KEY_FILTERS,
   type ApiKeyFilters as Filters,
   fetchApiKeyStats,
   fetchApiKeys,
   hasActiveKeyFilters,
   type ScopeDef,
-  STATUS_META,
 } from '~/lib/api-keys-api';
 import { toJson } from '~/lib/loader-json';
 import type { Route } from './+types/api-keys';
@@ -49,10 +49,6 @@ export function meta() {
 
 const LIMIT = 25;
 const nf = new Intl.NumberFormat('id-ID');
-const STATUS_OPTIONS = [
-  { value: 'all', label: 'Semua status' },
-  ...Object.entries(STATUS_META).map(([value, m]) => ({ value, label: m.label })),
-];
 
 export async function loader({ request }: Route.LoaderArgs) {
   await requireRole(request, ROLES.SUPER_ADMIN);
@@ -72,6 +68,8 @@ export default function ApiKeysPage({ loaderData }: Route.ComponentProps) {
   const [filters, setFiltersState] = useState<Filters>(DEFAULT_KEY_FILTERS);
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<ApiKeyRow | null>(null);
+  const [view, setView] = useState<'keys' | 'usage'>('keys');
+  const [searchParams, setSearchParams] = useSearchParams();
   const [debouncedSearch] = useDebouncedValue(filters.search, 300);
   const params = { ...filters, search: debouncedSearch, page, limit: LIMIT };
   const filtered = hasActiveKeyFilters(filters);
@@ -97,6 +95,13 @@ export default function ApiKeysPage({ loaderData }: Route.ComponentProps) {
     setPage(1);
   };
   const actions = useApiKeyActions();
+  // /dev/api-keys?new=mcp (from Tools & MCP) opens the create form with the mcp scope preset.
+  const presetScope = searchParams.get('new');
+  useEffect(() => {
+    if (!presetScope) return;
+    actions.openCreate({ name: presetScope === 'mcp' ? 'agent-mcp' : '', scopes: [presetScope] });
+    setSearchParams({}, { replace: true });
+  }, [presetScope, actions.openCreate, setSearchParams]);
   // Keep the drawer in sync after toggle/rotate/revoke without closing it.
   const current = selected ? (rows.find((r) => r.id === selected.id) ?? selected) : null;
   const handlers = {
@@ -142,7 +147,7 @@ export default function ApiKeysPage({ loaderData }: Route.ComponentProps) {
           >
             Refresh
           </Button>
-          <Button size="sm" leftSection={<FiPlus size={14} />} onClick={actions.openCreate}>
+          <Button size="sm" leftSection={<FiPlus size={14} />} onClick={() => actions.openCreate()}>
             Buat kunci
           </Button>
         </Group>
@@ -150,122 +155,84 @@ export default function ApiKeysPage({ loaderData }: Route.ComponentProps) {
 
       <ApiKeyStatsCards stats={stats.data} />
 
-      <Paper withBorder radius="md" p="sm">
-        <Group gap="xs" wrap="wrap" align="center">
-          <TextInput
-            placeholder="Cari nama kunci, prefix, pemilik, catatan…"
-            leftSection={<FiSearch size={14} />}
-            rightSection={
-              filters.search ? (
-                <CloseButton
-                  size="sm"
-                  aria-label="Bersihkan"
-                  onClick={() => setFilters({ search: '' })}
-                />
-              ) : null
-            }
-            value={filters.search}
-            onChange={(e) => setFilters({ search: e.currentTarget.value })}
-            size="sm"
-            style={{ flex: '1 1 240px', minWidth: 0 }}
+      <SegmentedControl
+        size="sm"
+        w={{ base: '100%', sm: 'auto' }}
+        value={view}
+        onChange={(v) => setView(v as 'keys' | 'usage')}
+        data={[
+          { value: 'keys', label: 'Kunci' },
+          { value: 'usage', label: 'Log penggunaan' },
+        ]}
+      />
+      {view === 'usage' && <UsageLogSection />}
+      {view === 'keys' && (
+        <>
+          <ApiKeyFilterBar
+            filters={filters}
+            setFilters={setFilters}
+            scopes={loaderData.scopes}
+            total={total}
+            filtered={filtered}
+            ownerLabel={ownerLabel}
           />
-          <Select
-            size="sm"
-            w={{ base: '100%', sm: 170 }}
-            data={STATUS_OPTIONS}
-            value={filters.status}
-            onChange={(v) => setFilters({ status: (v as Filters['status']) ?? 'all' })}
-            allowDeselect={false}
-            aria-label="Status"
-          />
-          <Select
-            size="sm"
-            w={{ base: '100%', sm: 200 }}
-            placeholder="Semua scope"
-            data={loaderData.scopes.map((s) => ({ value: s.id, label: s.id }))}
-            value={filters.scope}
-            onChange={(v) => setFilters({ scope: v })}
-            clearable
-            searchable
-            aria-label="Scope"
-          />
-          {filters.ownerId && (
-            <Badge
-              size="lg"
-              variant="light"
-              rightSection={
-                <CloseButton
-                  size="xs"
-                  aria-label="Hapus filter pemilik"
-                  onClick={() => setFilters({ ownerId: null })}
-                />
-              }
-            >
-              Pemilik: {ownerLabel}
-            </Badge>
-          )}
-          {filtered && (
-            <Button
-              variant="subtle"
-              color="gray"
-              size="sm"
-              onClick={() => setFilters(DEFAULT_KEY_FILTERS)}
-            >
-              Reset filter
-            </Button>
-          )}
-        </Group>
-        <Text size="xs" c="dimmed" mt="xs">
-          {nf.format(total)} kunci {filtered ? 'cocok dengan filter' : 'tersimpan'}
-        </Text>
-      </Paper>
 
-      {list.isError && (
-        <Alert color="red" icon={<FiAlertCircle size={16} />} title="Gagal memuat kunci">
-          {(list.error as Error).message}
-        </Alert>
+          {list.isError && (
+            <Alert color="red" icon={<FiAlertCircle size={16} />} title="Gagal memuat kunci">
+              {(list.error as Error).message}
+            </Alert>
+          )}
+
+          <Paper withBorder radius="md" visibleFrom="sm" style={{ overflow: 'hidden' }}>
+            <ApiKeyTable
+              rows={rows}
+              loading={list.isPending}
+              fetching={list.isFetching}
+              empty={empty}
+              soonDays={soonDays}
+              {...handlers}
+            />
+          </Paper>
+          <Box hiddenFrom="sm">
+            <ApiKeyCardList
+              rows={rows}
+              loading={list.isPending}
+              empty={empty}
+              soonDays={soonDays}
+              {...handlers}
+            />
+          </Box>
+
+          <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+            <Text size="xs" c="dimmed">
+              {total > 0
+                ? `Menampilkan ${nf.format((page - 1) * LIMIT + 1)}–${nf.format(Math.min(page * LIMIT, total))} dari ${nf.format(total)}`
+                : 'Tidak ada hasil'}
+            </Text>
+            {totalPages > 1 && (
+              <Pagination
+                value={page}
+                total={totalPages}
+                onChange={setPage}
+                size="sm"
+                siblings={1}
+              />
+            )}
+          </Group>
+        </>
       )}
-
-      <Paper withBorder radius="md" visibleFrom="sm" style={{ overflow: 'hidden' }}>
-        <ApiKeyTable
-          rows={rows}
-          loading={list.isPending}
-          fetching={list.isFetching}
-          empty={empty}
-          soonDays={soonDays}
-          {...handlers}
-        />
-      </Paper>
-      <Box hiddenFrom="sm">
-        <ApiKeyCardList
-          rows={rows}
-          loading={list.isPending}
-          empty={empty}
-          soonDays={soonDays}
-          {...handlers}
-        />
-      </Box>
-
-      <Group justify="space-between" align="center" wrap="wrap" gap="xs">
-        <Text size="xs" c="dimmed">
-          {total > 0
-            ? `Menampilkan ${nf.format((page - 1) * LIMIT + 1)}–${nf.format(Math.min(page * LIMIT, total))} dari ${nf.format(total)}`
-            : 'Tidak ada hasil'}
-        </Text>
-        {totalPages > 1 && (
-          <Pagination value={page} total={totalPages} onChange={setPage} size="sm" siblings={1} />
-        )}
-      </Group>
 
       <ApiKeyDetailDrawer
         keyRow={current}
         onClose={() => setSelected(null)}
         soonDays={soonDays}
+        fetchUsage={adminKeyClient.usage}
         h={handlers}
       />
       <ApiKeyFormModal
         state={actions.form}
         scopes={loaderData.scopes}
+        client={adminKeyClient}
         onClose={actions.closeForm}
         onCreated={actions.setReveal}
         onSaved={actions.invalidate}
