@@ -28,10 +28,15 @@ export const AUDIT_ACTIONS = {
   OPS_RESET: 'ops.reset',
   POST_UPDATE: 'post.update',
   POST_DELETE: 'post.delete',
+  APIKEY_CREATE: 'apikey.create',
+  APIKEY_UPDATE: 'apikey.update',
+  APIKEY_ROTATE: 'apikey.rotate',
+  APIKEY_REVOKE: 'apikey.revoke',
+  APIKEY_DELETE: 'apikey.delete',
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
-export type AuditTargetType = 'user' | 'session' | 'settings' | 'logs' | 'post';
+export type AuditTargetType = 'user' | 'session' | 'settings' | 'logs' | 'post' | 'apikey';
 
 export type AuditInput = {
   actor: { id: string; email?: string | null } | null;

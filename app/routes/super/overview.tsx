@@ -53,6 +53,12 @@ export default function OverviewPage({ loaderData: data }: Route.ComponentProps)
       text: `${data.users.banned} user sedang diblokir.`,
       to: '/dev/users',
     });
+  if (data.apiKeys.expiringSoon > 0)
+    warnings.push({
+      key: 'keys',
+      text: `${data.apiKeys.expiringSoon} API key berakhir dalam ${data.apiKeys.expiringSoonDays} hari — rotasi sebelum integrasi putus.`,
+      to: '/dev/api-keys',
+    });
   if (data.fileHealth && data.fileHealth.danger > 0)
     warnings.push({
       key: 'fh',

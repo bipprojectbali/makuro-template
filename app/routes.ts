@@ -13,6 +13,7 @@ export default [
     route('dev/users', 'routes/super/users.tsx'),
     route('dev/sessions', 'routes/super/sessions.tsx'),
     route('dev/posts', 'routes/super/posts.tsx'),
+    route('dev/api-keys', 'routes/super/api-keys.tsx'),
     route('dev/db-schema', 'routes/super/db-schema.tsx'),
     route('dev/visits', 'routes/super/visits.tsx'),
     route('dev/login-logs', 'routes/super/login-logs.tsx'),

@@ -5,4 +5,5 @@
  */
 export * from './schema.app';
 export * from './schema.auth';
+export * from './schema.keys';
 export * from './schema.logs';

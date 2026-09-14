@@ -10,25 +10,36 @@ import { getLoginStats } from './api/analytics-logins.stats.query';
 import { listRateLimits } from './api/analytics-ratelimits.query';
 import { getRateLimitStats } from './api/analytics-ratelimits.stats.query';
 import { getVisitStats } from './api/analytics-visits.stats.query';
+import { keyStats } from './api-keys/query';
 import { scanFileHealth } from './file-health/file-health.scan';
 import { settingsOverview } from './settings';
 
 const RECENT = 5;
 
 export async function devOverview() {
-  const [users, visits, logins, rateLimits, fileHealth, settings, recentLogins, recentBlocks] =
-    await Promise.all([
-      adminUserStats(),
-      getVisitStats(),
-      getLoginStats(),
-      getRateLimitStats(),
-      scanFileHealth()
-        .then((r) => (r.available ? r.summary : null))
-        .catch(() => null),
-      settingsOverview(),
-      listLogins({ limit: String(RECENT) }),
-      listRateLimits({ limit: String(RECENT) }),
-    ]);
+  const [
+    users,
+    visits,
+    logins,
+    rateLimits,
+    fileHealth,
+    settings,
+    recentLogins,
+    recentBlocks,
+    apiKeys,
+  ] = await Promise.all([
+    adminUserStats(),
+    getVisitStats(),
+    getLoginStats(),
+    getRateLimitStats(),
+    scanFileHealth()
+      .then((r) => (r.available ? r.summary : null))
+      .catch(() => null),
+    settingsOverview(),
+    listLogins({ limit: String(RECENT) }),
+    listRateLimits({ limit: String(RECENT) }),
+    keyStats(),
+  ]);
   return {
     generatedAt: new Date().toISOString(),
     users,
@@ -52,6 +63,7 @@ export async function devOverview() {
       config: rateLimits.config,
     },
     fileHealth,
+    apiKeys,
     settings: settings.settings,
     maintenance: settings.maintenance.enabled,
     retentionConfigured: Boolean(

@@ -33,7 +33,15 @@ export const settingsOpsApi = new Elysia({ prefix: '/settings' })
       });
       return saved;
     },
-    { body: t.Object({ visitDays: Days, loginDays: Days, rateLimitDays: Days, auditDays: Days }) },
+    {
+      body: t.Object({
+        visitDays: Days,
+        loginDays: Days,
+        rateLimitDays: Days,
+        auditDays: Days,
+        apiUsageDays: Days,
+      }),
+    },
   )
   .post('/retention/run', async ({ request }) => {
     const { user } = await requireRole(request, ROLES.SUPER_ADMIN);

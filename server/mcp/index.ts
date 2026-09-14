@@ -1,4 +1,5 @@
 import { mcp } from 'elysia-mcp';
+import { getApiKeyIdentity } from '../api-keys/identity';
 import { env } from '../env';
 import { registerAppStatusTool } from './tools/app-status';
 import { registerDbTools } from './tools/db';
@@ -25,9 +26,22 @@ export const mcpPlugin = mcp({
   // frames (`data: event: message`), which spec-compliant clients cannot parse.
   enableJsonResponse: true,
   authentication: async (ctx) => {
+    // Preferred: an API key with the `mcp` scope (verified by apiKeyPlugin in
+    // onRequest, which also records usage per key). Never the key itself in AuthInfo.
+    const key = getApiKeyIdentity(ctx.request);
+    if (key)
+      return {
+        authInfo: { token: key.keyId, clientId: key.keyName ?? key.keyId, scopes: ['mcp'] },
+      };
+    // Legacy: shared MCP_ADMIN_TOKEN from env (bearer or query param).
     if (!env.MCP_ADMIN_TOKEN) {
       return {
-        response: new Response('MCP is disabled (MCP_ADMIN_TOKEN not set)', { status: 503 }),
+        response: new Response(
+          'Unauthorized: kirim API key ber-scope mcp (Authorization: Bearer mk_live_…)',
+          {
+            status: 401,
+          },
+        ),
       };
     }
     const token = resolveToken(ctx.request);

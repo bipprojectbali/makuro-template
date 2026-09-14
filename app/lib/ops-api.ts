@@ -13,10 +13,13 @@ export type OpsStatus = {
 };
 export type McpInfo = {
   enabled: boolean;
+  legacyTokenEnabled: boolean;
   endpoint: string;
   tools: Array<{ name: string; description: string; group: 'status' | 'logs' | 'db' | 'code' }>;
-  auth: { header: string; query: string; envVar: string };
+  auth: { header: string; scope: string; legacyQuery: string; legacyEnvVar: string };
 };
+/** Env var the MCP client expands into the API key (never write the key inline). */
+export const MCP_KEY_ENV = 'MAKURO_MCP_KEY';
 export type ResetTarget = { key: string; label: string; description: string };
 
 const BASE = '/api/ops';
@@ -41,7 +44,7 @@ export function formatUptime(seconds: number): string {
   return `${m} menit`;
 }
 
-/** `.mcp.json` snippet for Claude Code / other MCP clients (token via env, never inline). */
+/** `.mcp.json` snippet for Claude Code / other MCP clients (API key via env, never inline). */
 export function mcpConfigSnippet(endpoint: string): string {
   return JSON.stringify(
     {
@@ -49,8 +52,7 @@ export function mcpConfigSnippet(endpoint: string): string {
         'makuro-debug': {
           type: 'http',
           url: endpoint,
-          // biome-ignore lint/suspicious/noTemplateCurlyInString: literal ${MCP_ADMIN_TOKEN} is the env placeholder the MCP client expands
-          headers: { Authorization: 'Bearer ${MCP_ADMIN_TOKEN}' },
+          headers: { Authorization: `Bearer \${${MCP_KEY_ENV}}` },
         },
       },
     },

@@ -48,6 +48,7 @@ export const appSetting = pgTable('app_setting', {
   retentionLoginDays: integer('retention_login_days'),
   retentionRateLimitDays: integer('retention_rate_limit_days'),
   retentionAuditDays: integer('retention_audit_days'),
+  retentionApiUsageDays: integer('retention_api_usage_days'),
   retentionLastRunAt: timestamp('retention_last_run_at'),
   retentionLastResult: jsonb('retention_last_result'),
   // Maintenance mode: everyone except the allowed roles gets a 503 page/JSON.

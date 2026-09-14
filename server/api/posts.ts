@@ -5,13 +5,11 @@
 import { eq } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 import { AUDIT_ACTIONS, audit } from '../audit';
-import { auth } from '../auth';
 import { db } from '../db';
 import { post } from '../db/schema';
-import { requireRole } from '../guard';
+import { requireRole, resolveActor } from '../guard';
 import { logger } from '../logger';
 import { isAdminRole, ROLES } from '../permissions';
-import { resolveUserRole } from '../roles';
 import {
   CONTENT_MAX,
   getPost,
@@ -28,10 +26,8 @@ const PostBody = t.Object({
 
 export const postsApi = new Elysia({ prefix: '/posts' })
   .derive(async ({ request }) => {
-    const session = await auth.api.getSession({ headers: request.headers });
-    const me = session?.user ?? null;
-    const role = me ? await resolveUserRole(me) : null;
-    return { me, role };
+    const who = await resolveActor(request);
+    return { me: who?.user ?? null, role: who?.role ?? null };
   })
   .get('/', ({ query }) => listPosts(query), { query: PostListQuery })
   .get('/stats', async ({ request }) => {

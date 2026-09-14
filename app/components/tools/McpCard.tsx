@@ -1,6 +1,7 @@
 import {
   ActionIcon,
   Badge,
+  Button,
   Code,
   CopyButton,
   Group,
@@ -9,8 +10,9 @@ import {
   Text,
   Tooltip,
 } from '@mantine/core';
-import { FiCheck, FiCopy } from 'react-icons/fi';
-import { type McpInfo, mcpConfigSnippet } from '~/lib/ops-api';
+import { FiCheck, FiCopy, FiKey } from 'react-icons/fi';
+import { Link } from 'react-router';
+import { MCP_KEY_ENV, type McpInfo, mcpConfigSnippet } from '~/lib/ops-api';
 import { SettingsCard } from '../settings/SettingsParts';
 
 const GROUP_LABEL: Record<string, string> = {
@@ -27,22 +29,36 @@ export function McpCard({ info }: { info: McpInfo | undefined }) {
   return (
     <SettingsCard
       title="MCP debug server"
-      description="Agent AI (Claude Code, dll.) bisa membaca log, DB, dan kesehatan file lewat endpoint ini dengan token."
+      description="Agent AI (Claude Code, dll.) membaca log, DB, dan kesehatan file lewat endpoint ini. Tiap agent memakai API key sendiri ber-scope mcp: bisa dicabut satu per satu dan pemakaiannya terlacak."
       aside={
-        <Badge variant="light" color={info.enabled ? 'teal' : 'gray'}>
-          {info.enabled ? 'Aktif' : `Nonaktif — set ${info.auth.envVar}`}
+        <Badge variant="light" color="teal">
+          Aktif
         </Badge>
       }
     >
-      <Group gap="xs" wrap="wrap">
+      <Group gap="xs" wrap="wrap" align="center">
         <Text size="sm" c="dimmed">
           Endpoint
         </Text>
         <Code>{info.endpoint}</Code>
         <Text size="sm" c="dimmed">
-          · auth: <Code>{info.auth.header}</Code> atau query <Code>?{info.auth.query}=…</Code>
+          · auth: <Code>{info.auth.header}</Code>
         </Text>
+        <Button
+          component={Link}
+          to="/dev/api-keys?new=mcp"
+          size="xs"
+          variant="light"
+          leftSection={<FiKey size={13} />}
+        >
+          Buat kunci MCP
+        </Button>
       </Group>
+      <Text size="xs" c="dimmed">
+        {info.legacyTokenEnabled
+          ? `Token bersama ${info.auth.legacyEnvVar} (header Bearer atau ?${info.auth.legacyQuery}=) masih diterima sebagai jalur lama; sebaiknya pindah ke API key lalu hapus env tersebut.`
+          : `Token bersama ${info.auth.legacyEnvVar} tidak diset — hanya API key ber-scope mcp yang diterima.`}
+      </Text>
       <Table fz="sm" verticalSpacing={4} withRowBorders>
         <Table.Thead>
           <Table.Tr>
@@ -70,7 +86,8 @@ export function McpCard({ info }: { info: McpInfo | undefined }) {
       <Stack gap={4}>
         <Group justify="space-between">
           <Text size="sm" fw={500}>
-            Contoh <Code>.mcp.json</Code> (token dari env, jangan ditulis langsung)
+            Contoh <Code>.mcp.json</Code> (kunci dari env <Code>{MCP_KEY_ENV}</Code>, jangan ditulis
+            langsung)
           </Text>
           <CopyButton value={snippet} timeout={1500}>
             {({ copied, copy }) => (

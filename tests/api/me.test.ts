@@ -7,22 +7,20 @@ import { db } from '../../server/db';
 import { loginLog, user } from '../../server/db/schema';
 
 const uid = `me-${crypto.randomUUID().slice(0, 8)}`;
-let actor: { id: string } | null = null;
+let actor: { id: string; email: string } | null = null;
 const spy = spyOn(auth.api, 'getSession').mockImplementation((async () =>
   actor ? { user: actor } : null) as unknown as typeof auth.api.getSession);
 const app = new Elysia().use(meApi);
 
 beforeAll(async () => {
-  await db
-    .insert(user)
-    .values({
-      id: uid,
-      name: 'Me',
-      email: `${uid}@test.local`,
-      emailVerified: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+  await db.insert(user).values({
+    id: uid,
+    name: 'Me',
+    email: `${uid}@test.local`,
+    emailVerified: false,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
   await db.insert(loginLog).values([
     { userId: uid, ip: '9.9.9.1', method: 'email' },
     { userId: uid, ip: '9.9.9.2', method: 'google' },
@@ -43,7 +41,7 @@ describe('GET /me/logins', () => {
   });
 
   test("returns only the caller's logins, newest first, with limit", async () => {
-    actor = { id: uid };
+    actor = { id: uid, email: `${uid}@test.local` };
     const res = await app.handle(new Request('http://localhost/me/logins?limit=1'));
     expect(res.status).toBe(200);
     const body = (await res.json()) as {

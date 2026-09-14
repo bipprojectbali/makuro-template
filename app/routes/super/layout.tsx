@@ -1,5 +1,6 @@
 import { countRateLimitLastHour } from '@server/api/analytics-ratelimits.stats.query';
 import { errorsLastHour } from '@server/api/logs';
+import { countExpiringSoon, EXPIRING_SOON_DAYS } from '@server/api-keys/query';
 import { frameInfo } from '@server/app-info';
 import { scanFileHealth } from '@server/file-health/file-health.scan';
 import { requireRole } from '@server/guard';
@@ -12,6 +13,7 @@ import {
   FiFileText,
   FiGrid,
   FiHome,
+  FiKey,
   FiList,
   FiLogIn,
   FiMonitor,
@@ -57,6 +59,12 @@ const NAV: NavGroup[] = [
         label: 'Posts',
         icon: FiEdit3,
         description: 'Konten contoh: buat, edit, moderasi',
+      },
+      {
+        to: '/dev/api-keys',
+        label: 'API Keys',
+        icon: FiKey,
+        description: 'Kunci akses API: scope, rotasi, pemakaian',
       },
       {
         to: '/dev/db-schema',
@@ -138,11 +146,12 @@ const OTHER: NavItem[] = [
 export async function loader({ request }: Route.LoaderArgs) {
   const auth = await requireRole(request, ROLES.SUPER_ADMIN);
   // Sidebar counters — cheap aggregates, failures must not break navigation.
-  const [blockedLastHour, filesOver] = await Promise.all([
+  const [blockedLastHour, filesOver, keysExpiring] = await Promise.all([
     countRateLimitLastHour().catch(() => 0),
     scanFileHealth()
       .then((r) => r.summary.over)
       .catch(() => 0),
+    countExpiringSoon().catch(() => 0),
   ]);
   const errors = errorsLastHour();
   const navBadges: Record<string, NavBadge> = {
@@ -160,6 +169,11 @@ export async function loader({ request }: Route.LoaderArgs) {
       value: filesOver,
       color: 'yellow',
       tooltip: `${filesOver} file melewati limit baris`,
+    },
+    '/dev/api-keys': {
+      value: keysExpiring,
+      color: 'yellow',
+      tooltip: `${keysExpiring} API key berakhir dalam ${EXPIRING_SOON_DAYS} hari`,
     },
   };
   return { ...auth, collapsed: getSidebarCollapsed(request), navBadges, ...(await frameInfo()) };

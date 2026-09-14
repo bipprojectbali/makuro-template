@@ -104,6 +104,11 @@ const ACTION_META: Record<string, { label: string; color: string }> = {
   'ops.reset': { label: 'Reset cache', color: 'gray' },
   'post.update': { label: 'Edit post', color: 'blue' },
   'post.delete': { label: 'Hapus post', color: 'red' },
+  'apikey.create': { label: 'Buat API key', color: 'indigo' },
+  'apikey.update': { label: 'Ubah API key', color: 'blue' },
+  'apikey.rotate': { label: 'Rotasi API key', color: 'yellow' },
+  'apikey.revoke': { label: 'Cabut API key', color: 'red' },
+  'apikey.delete': { label: 'Hapus API key', color: 'red' },
 };
 
 export function actionMeta(action: string): { label: string; color: string } {

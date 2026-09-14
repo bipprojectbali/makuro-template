@@ -3,6 +3,7 @@ import type { IconType } from 'react-icons';
 import {
   FiDatabase,
   FiFileText,
+  FiKey,
   FiList,
   FiLogIn,
   FiSettings,
@@ -24,6 +25,13 @@ const LINKS: Array<{
     description: 'Role, ban, impersonasi',
     icon: FiUsers,
     color: 'blue',
+  },
+  {
+    to: '/dev/api-keys',
+    label: 'API Keys',
+    description: 'Scope, rotasi, pemakaian',
+    icon: FiKey,
+    color: 'indigo',
   },
   {
     to: '/dev/visits',

@@ -10,6 +10,7 @@ import {
   FiEdit3,
   FiFileText,
   FiGrid,
+  FiKey,
   FiLayers,
   FiList,
   FiLogIn,
@@ -103,6 +104,12 @@ export const CONSOLE_PAGES: ConsolePage[] = [
     icon: FiEdit3,
     label: 'Posts',
     desc: 'Contoh CRUD konten dengan izin pemilik/admin.',
+    group: 'Kelola',
+  },
+  {
+    icon: FiKey,
+    label: 'API Keys',
+    desc: 'Kunci akses dengan scope, kedaluwarsa, rotasi, dan jejak pemakaian.',
     group: 'Kelola',
   },
   {

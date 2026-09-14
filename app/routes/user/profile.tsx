@@ -4,6 +4,7 @@ import { hasGoogleAuth } from '@server/env';
 import { requireAnyRole } from '@server/guard';
 import { ROLES } from '@server/permissions';
 import { useQuery } from '@tanstack/react-query';
+import { ApiKeysCard } from '~/components/profile/ApiKeysCard';
 import { DangerZoneCard } from '~/components/profile/DangerZoneCard';
 import { LinkedAccountsCard } from '~/components/profile/LinkedAccountsCard';
 import { LoginHistoryCard } from '~/components/profile/LoginHistoryCard';
@@ -81,6 +82,7 @@ export default function Profile({ loaderData }: Route.ComponentProps) {
         loading={sessions.isPending}
         onChanged={() => sessions.refetch()}
       />
+      <ApiKeysCard role={role} />
       <LoginHistoryCard rows={loaderData.logins.rows} total={loaderData.logins.total} />
       <DangerZoneCard email={user.email} hasPassword={hasPassword} />
     </Stack>
