@@ -34,7 +34,9 @@ const spies = [
   spyOn(auth.api, 'banUser').mockImplementation(asyncEmpty as typeof auth.api.banUser),
   spyOn(auth.api, 'unbanUser').mockImplementation(asyncEmpty as typeof auth.api.unbanUser),
   spyOn(auth.api, 'removeUser').mockImplementation(asyncEmpty as typeof auth.api.removeUser),
-  spyOn(rolesMod, 'resolveUserRole').mockImplementation(async () => ctx.actorRole),
+  spyOn(rolesMod, 'resolveUserRole').mockImplementation(
+    async () => (ctx.actorRole ?? 'user') as 'user',
+  ),
 ];
 
 import { eq } from 'drizzle-orm';

@@ -1,6 +1,7 @@
 import pino from 'pino';
 import { env, isProd } from './env';
 import { logBuffer } from './mcp/log-buffer';
+import { registerProcessLogger } from './ssr-log';
 
 // Bun.isStandaloneExecutable is true when running inside a compiled binary (bun build --compile).
 // In binary mode we avoid pino-pretty's worker threads and file-based logging.
@@ -23,11 +24,14 @@ async function createLogger() {
   if (isProd) {
     // Regular prod (bun run start): stdout + daily-rotating log file via pino-roll.
     // pino-roll's build() creates a SonicBoom stream (no worker threads).
+    // pino-roll v4 takes a single options object (v3 took `(file, opts)`).
     const build = (await import('pino-roll')).default;
-    const rollStream = await build('logs/app.log', {
-      frequency: '1d',
+    const rollStream = await build({
+      file: 'logs/app.log',
+      frequency: 'daily',
       size: '10m',
       limit: { count: 7 },
+      mkdir: true,
     });
     return pino(
       { level: 'info', base: { env: env.NODE_ENV } },
@@ -54,4 +58,11 @@ async function createLogger() {
   );
 }
 
-export const logger = await createLogger();
+// Process-wide singleton: server modules imported from app/ are bundled again
+// into build/server/index.js (and re-evaluated on Vite SSR reloads). Without this
+// each copy would open its own pino-roll writer and pino-pretty worker.
+const g = globalThis as typeof globalThis & { __makuroLogger?: pino.Logger };
+g.__makuroLogger ??= await createLogger();
+export const logger: pino.Logger = g.__makuroLogger;
+// Let the SSR entry log through this instance without importing pino (see ssr-log.ts).
+registerProcessLogger(logger);

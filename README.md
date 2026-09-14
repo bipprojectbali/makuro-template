@@ -85,7 +85,9 @@ bun run start
 |---|---|
 | `bun run dev` | Dev server satu port (Elysia + Vite HMR + RR SSR) |
 | `bun run build` | Build client + server bundle |
-| `bun run start` | Production server (`server/prod.ts`) |
+| `bun run start` | Production server (`server/prod.ts`, NODE_ENV=production) |
+| `bun run smoke:prod` | Build lalu boot `server/prod.ts` di port bebas dan jalankan 17 pemeriksaan black-box (`scripts/smoke-server.ts`) |
+| `bun run smoke:binary` | Sama, tetapi terhadap binary hasil `build:binary` |
 | `bun run build:binary` | Build binary native (platform saat ini) |
 | `bun run build:binary:linux` | Cross-compile ke Linux x64 glibc |
 | `bun run build:binary:linux-musl` | Cross-compile ke Linux x64 musl (Alpine/Docker) |
@@ -123,6 +125,10 @@ makuro-linux-x64   ← binary ~130 MB — semua embedded:
 ```
 
 Seperti Go binary: copy satu file ke server, langsung jalan. Tidak perlu `build/`, tidak perlu Node/Bun, tidak perlu `npm install`.
+
+**Verifikasi sebelum deploy:** `bun run smoke:binary` membangun binary, menjalankannya di port acak dengan `NODE_ENV=production`, lalu memeriksa versi, SSR landing/login, redirect guard, favicon, probe, halaman 404, JSON 404 API, Better Auth, penolakan API key palsu dan MCP anonim, `/README.md`, `/llms.txt`, header rate limit, dan aset client ber-cache immutable. `bun run smoke:prod` melakukan hal yang sama untuk mode skrip (`bun run start`). Keduanya keluar dengan kode ≠ 0 bila ada yang gagal.
+
+**NODE_ENV:** binary men-default `NODE_ENV=production`, tetapi Bun otomatis memuat `.env` dari direktori kerja — bila file itu berisi `NODE_ENV=development`, binary berjalan dalam mode development (detail error API terbuka, tanpa log file) dan mencetak peringatan saat start. Di server, gunakan `.env` tanpa `NODE_ENV` atau set `production`.
 
 > **Teknik:** SSR bundle di-embed via static `import * as ssrBuild from '../build/server/index.js'` — Bun bundler mengikuti static import dan mem-bundle seluruh dependensi (`@react-router/node`, `react-dom`, dll) ke dalam binary. `--asset ./build/client` embed seluruh direktori client ke VFS (tersedia di runtime sebagai `client/` — satu level parent directory di-strip). `inlineDynamicImports: true` di Vite memastikan SSR bundle adalah satu file tunggal tanpa dynamic chunk splits.
 
@@ -282,6 +288,8 @@ Pola autentikasi di integration test: stub `auth.api.getSession` dan `resolveUse
 ## Catatan teknis
 
 - **SSR di Bun**: import `react-dom/server.node` bukan bare `react-dom/server` (bare specifier resolve ke web-streams build tanpa `renderToPipeableStream`).
+- **Bundle SSR berisi salinan kode server**: modul `@server/*` yang diimpor dari `app/` (loader, `entry.server.tsx`) ikut dibundel Vite ke `build/server/index.js`, jadi singleton seperti logger akan punya dua instance. `entry.server.tsx` melapor lewat `@server/ssr-log` (jembatan `globalThis` yang diisi `server/logger.ts`), bukan mengimpor logger langsung.
+- **pino-roll v4** menerima satu objek opsi (`{ file, frequency: 'daily', size, limit, mkdir }`); bentuk lama `build(path, opts)` melempar "No file name provided" dan membuat `bun run start` gagal boot.
 - **No FOUC**: `ColorSchemeScript` + inline `<style>` blocking di `<head>` di `root.tsx` — background warna yang benar dirender sebelum Mantine CSS dimuat.
 - **Multiple Set-Cookie**: `http-bridge.ts` pakai `Headers.getSetCookie()` (WinterCG) untuk kumpulkan semua Set-Cookie header, lalu set sekaligus sebagai array ke Node.js response. Ini kritis untuk multi-session Better Auth.
 - **Sidebar collapsed state**: disimpan di cookie `mk-sidebar-collapsed`, dibaca server-side di layout loader — tidak ada flash saat hard reload.
