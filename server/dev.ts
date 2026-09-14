@@ -49,7 +49,7 @@ const server = createServer((req, res) => {
   // Browser/devtools probes (e.g. Chrome's com.chrome.devtools.json): plain 404,
   // never SSR, never counted as a visit.
   if (isHttpProbe(pathname)) {
-    void writeWebResponse(res, probeResponse());
+    void writeWebResponse(res, probeResponse(pathname));
     return;
   }
 

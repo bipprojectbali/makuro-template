@@ -50,7 +50,7 @@ const server = Bun.serve({
     }
 
     // Browser/devtools probes — never SSR, never counted as a visit.
-    if (isHttpProbe(url.pathname)) return probeResponse();
+    if (isHttpProbe(url.pathname)) return probeResponse(url.pathname);
 
     // Static client assets.
     const filePath = CLIENT_DIR + url.pathname.replace(/^\/+/, '');
