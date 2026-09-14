@@ -64,6 +64,13 @@
       "when": 1789268225216,
       "tag": "0008_sturdy_chronomancer",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789268870790,
+      "tag": "0009_fair_moonstone",
+      "breakpoints": true
     }
   ]
 }

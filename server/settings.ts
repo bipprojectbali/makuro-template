@@ -5,9 +5,6 @@
  * super-admin only and override the env defaults at runtime; NULL columns mean
  * "use the default", which the console shows as such and can reset per field.
  */
-import { eq } from 'drizzle-orm';
-import { db } from './db';
-import { appSetting } from './db/schema';
 import { env, hasGoogleAuth } from './env';
 import { logger } from './logger';
 import {
@@ -15,8 +12,25 @@ import {
   type RateLimitConfig,
   rateLimiter,
 } from './middleware/rate-limiter';
-
-const SINGLETON_ID = 'singleton';
+import {
+  parseLines,
+  readSettingsRow,
+  type SettingsInsert,
+  upsertSettingsRow,
+} from './settings.core';
+import {
+  BRANDING_DEFAULTS,
+  type BrandingSettings,
+  effectiveBranding,
+  parseBranding,
+} from './settings-branding';
+import { type FeatureFlag, parseFeatureFlags } from './settings-features';
+import {
+  MAINTENANCE_DEFAULTS,
+  type MaintenanceSettings,
+  parseMaintenance,
+} from './settings-maintenance';
+import { parseRetention, type RetentionState } from './settings-retention';
 
 export type AuthSettings = {
   emailAuthEnabled: boolean;
@@ -61,17 +75,9 @@ export function effectiveRateLimit(s: RateLimitSettings): RateLimitConfig & { en
   };
 }
 
-function parsePrefixes(raw: string | null): string[] | null {
-  if (raw === null) return null;
-  return raw
-    .split('\n')
-    .map((p) => p.trim())
-    .filter(Boolean);
-}
-
-/** Read all settings. Returns defaults if no row exists yet. */
+/** Read auth + rate-limit settings (cached). Returns defaults if no row exists yet. */
 export async function getSettings(): Promise<AppSettings> {
-  const [row] = await db.select().from(appSetting).where(eq(appSetting.id, SINGLETON_ID)).limit(1);
+  const row = await readSettingsRow();
   if (!row) return { ...AUTH_DEFAULTS, ...RATE_LIMIT_SETTINGS_DEFAULTS };
   return {
     emailAuthEnabled: row.emailAuthEnabled,
@@ -79,17 +85,12 @@ export async function getSettings(): Promise<AppSettings> {
     rateLimitEnabled: row.rateLimitEnabled,
     rateLimitMax: row.rateLimitMax,
     rateLimitWindowMs: row.rateLimitWindowMs,
-    rateLimitExcludePrefixes: parsePrefixes(row.rateLimitExcludePrefixes),
+    rateLimitExcludePrefixes: parseLines(row.rateLimitExcludePrefixes),
   };
 }
 
-type Row = typeof appSetting.$inferInsert;
-
-async function upsert(values: Partial<Row>): Promise<AppSettings> {
-  await db
-    .insert(appSetting)
-    .values({ id: SINGLETON_ID, ...values, updatedAt: new Date() })
-    .onConflictDoUpdate({ target: appSetting.id, set: { ...values, updatedAt: new Date() } });
+async function upsert(values: Partial<SettingsInsert>): Promise<AppSettings> {
+  await upsertSettingsRow(values);
   return getSettings();
 }
 
@@ -130,15 +131,33 @@ export type SettingsOverview = {
     defaults: ReturnType<typeof rateLimitDefaults>;
     effective: ReturnType<typeof effectiveRateLimit>;
   };
+  retention: RetentionState;
+  maintenance: MaintenanceSettings & { defaults: typeof MAINTENANCE_DEFAULTS };
+  features: FeatureFlag[];
+  branding: {
+    settings: BrandingSettings;
+    defaults: typeof BRANDING_DEFAULTS;
+    effective: ReturnType<typeof effectiveBranding>;
+  };
   runtime: { nodeEnv: string; appUrl: string; googleAuthConfigured: boolean; mcpEnabled: boolean };
 };
 
 /** Everything the settings console shows: stored values, defaults, effective config, runtime facts. */
 export async function settingsOverview(): Promise<SettingsOverview> {
+  const row = await readSettingsRow();
   const settings = await getSettings();
+  const branding = parseBranding(row);
   return {
     settings,
     rateLimit: { defaults: rateLimitDefaults(), effective: effectiveRateLimit(settings) },
+    retention: parseRetention(row),
+    maintenance: { ...parseMaintenance(row), defaults: MAINTENANCE_DEFAULTS },
+    features: parseFeatureFlags(row),
+    branding: {
+      settings: branding,
+      defaults: BRANDING_DEFAULTS,
+      effective: effectiveBranding(branding),
+    },
     runtime: {
       nodeEnv: env.NODE_ENV,
       appUrl: env.APP_URL,

@@ -20,6 +20,12 @@ export const AUDIT_ACTIONS = {
   SETTINGS_RATE_LIMIT_RESET: 'settings.rate_limit.reset',
   LOGS_PURGE: 'logs.purge',
   LOGS_DELETE: 'logs.delete',
+  LOGS_RETENTION: 'logs.retention',
+  SETTINGS_RETENTION_UPDATE: 'settings.retention.update',
+  SETTINGS_MAINTENANCE_UPDATE: 'settings.maintenance.update',
+  SETTINGS_FEATURES_UPDATE: 'settings.features.update',
+  SETTINGS_BRANDING_UPDATE: 'settings.branding.update',
+  OPS_RESET: 'ops.reset',
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
