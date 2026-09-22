@@ -9,10 +9,12 @@
  *  - everything else -> React Router SSR handler (loaded via Vite, HMR-aware)
  */
 import { createServer } from 'node:http';
+import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { createRequestHandler } from 'react-router';
 import { createServer as createViteServer } from 'vite';
 import { api } from './api';
 import { newRequestId } from './api-error';
+import { db } from './db';
 import { env } from './env';
 import { errorResponse } from './error-page';
 import { nodeToWebRequest, writeWebResponse } from './http-bridge';
@@ -23,6 +25,15 @@ import { recordVisit } from './middleware/visitor';
 import { agentDocResponse, isAgentDoc } from './readme';
 import { getBranding } from './settings-branding';
 import { maintenanceGate } from './settings-maintenance';
+
+// Dev-only (this entry runs only under `bun run dev`): sync the local DB schema
+// on boot so a fresh or behind database doesn't 500 on first query. Prod
+// migrates as an explicit deploy step, never on boot.
+try {
+  await migrate(db, { migrationsFolder: './server/db/migrations' });
+} catch (err) {
+  logger.error({ err }, 'auto-migrate on boot failed; continuing');
+}
 
 const vite = await createViteServer({
   server: { middlewareMode: true },
