@@ -12,7 +12,7 @@ import {
   Title,
   Tooltip,
 } from '@mantine/core';
-import { type ChangelogRelease, countItems } from '@server/changelog';
+import { type ChangelogRelease, countItems } from '@server/changelog-parse';
 import { FiCheck, FiClock, FiLink, FiTag } from 'react-icons/fi';
 
 export const SECTION_META: Record<string, { label: string; color: string }> = {

@@ -5,7 +5,7 @@ import { useMutation } from '@tanstack/react-query';
 import { FiLogOut, FiMonitor, FiSmartphone } from 'react-icons/fi';
 import { authClient } from '~/lib/auth-client';
 import { type DeviceSession, describeSession, isCurrentSession } from '~/lib/profile-api';
-import { formatDateTime, formatRelative } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
 import { SettingsCard } from '../settings/SettingsParts';
 
 type Props = {
@@ -17,6 +17,7 @@ type Props = {
 
 /** Devices currently signed in; revoke one or all others. */
 export function SessionsCard({ sessions, currentToken, loading, onChanged }: Props) {
+  const { dateTime: formatDateTime, relative: formatRelative } = useTimeFormat();
   const others = sessions.filter((s) => !isCurrentSession(s, currentToken));
   const fail = (title: string) => (e: Error) =>
     notifications.show({ color: 'red', title, message: e.message });

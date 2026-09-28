@@ -3,8 +3,8 @@ import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useTimeFormat } from '~/lib/time-format';
 import { deleteVisit, deleteVisits, purgeLogs, type VisitRow } from '~/lib/visits-api';
-import { formatDateTime } from '~/lib/visits-format';
 
 const PURGE_DAYS = 30;
 const nf = new Intl.NumberFormat('id-ID');
@@ -19,6 +19,7 @@ function notifyError(title: string, err: unknown) {
 
 /** Destructive visit-log actions with confirm dialogs, loading state, and feedback. */
 export function useVisitActions({ onDone }: { onDone: () => void }) {
+  const { dateTime: formatDateTime } = useTimeFormat();
   const qc = useQueryClient();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 

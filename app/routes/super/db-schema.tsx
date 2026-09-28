@@ -11,7 +11,7 @@ import type { Direction } from '~/components/db-schema/erd.layout';
 import { SchemaStatsCards } from '~/components/db-schema/SchemaStatsCards';
 import { SchemaToolbar } from '~/components/db-schema/SchemaToolbar';
 import { TableDetailDrawer } from '~/components/db-schema/TableDetailDrawer';
-import { formatDateTime } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
 import type { Route } from './+types/db-schema';
 
 export function meta(_: Route.MetaArgs) {
@@ -31,6 +31,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export default function DbSchemaPage({ loaderData }: Route.ComponentProps) {
+  const { dateTime: formatDateTime } = useTimeFormat();
   const { schema, stats } = loaderData;
   const revalidator = useRevalidator();
   const [selectedId, setSelectedId] = useState<string | null>(null);

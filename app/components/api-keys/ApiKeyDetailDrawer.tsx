@@ -7,7 +7,8 @@ import {
   rateLimitLabel,
   STATUS_META,
 } from '~/lib/api-keys-api';
-import { countryFlag, formatDateTime, formatRelative } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
+import { countryFlag } from '~/lib/visits-format';
 import { Copyable, Field, Section } from '../logs/DetailParts';
 import { UserCell } from '../logs/LogCells';
 import { ExpiryCell, KeyStatusBadge, ScopeChips } from './ApiKeyCells';
@@ -24,6 +25,7 @@ type Props = {
 
 /** Full metadata + usage for one key, with the same actions as the table menu. */
 export function ApiKeyDetailDrawer({ keyRow: k, onClose, soonDays, fetchUsage, h }: Props) {
+  const { dateTime: formatDateTime, relative: formatRelative } = useTimeFormat();
   const gone = k?.status === 'revoked';
   const busy = k ? h.busyId === k.id : false;
   return (

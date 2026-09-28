@@ -2,25 +2,35 @@
 
 const LOCALE = 'id-ID';
 
-const dateTimeFmt = new Intl.DateTimeFormat(LOCALE, {
-  day: '2-digit',
-  month: 'short',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-});
+const dateTimeFmts = new Map<string, Intl.DateTimeFormat>();
+function dateTimeFmt(timeZone: string | undefined): Intl.DateTimeFormat {
+  const key = timeZone ?? '';
+  let fmt = dateTimeFmts.get(key);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat(LOCALE, {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      timeZone,
+    });
+    dateTimeFmts.set(key, fmt);
+  }
+  return fmt;
+}
 
 const relativeFmt = new Intl.RelativeTimeFormat(LOCALE, { numeric: 'auto' });
 
-/** "13 Sep 2026, 08.25.48" */
-export function formatDateTime(iso: string): string {
+/** "13 Sep 2026, 08.25.48" in `timeZone` (default: the runtime's zone). */
+export function formatDateTime(iso: string, timeZone?: string): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '—' : dateTimeFmt.format(d);
+  return Number.isNaN(d.getTime()) ? '—' : dateTimeFmt(timeZone).format(d);
 }
 
 /** "baru saja", "5 menit yang lalu", "kemarin", … relative to `now`. */
-export function formatRelative(iso: string, now: number = Date.now()): string {
+export function formatRelative(iso: string, now: number = Date.now(), timeZone?: string): string {
   const t = new Date(iso).getTime();
   if (Number.isNaN(t)) return '—';
   const diffSec = Math.round((t - now) / 1000);
@@ -29,7 +39,7 @@ export function formatRelative(iso: string, now: number = Date.now()): string {
   if (abs < 3600) return relativeFmt.format(Math.round(diffSec / 60), 'minute');
   if (abs < 86_400) return relativeFmt.format(Math.round(diffSec / 3600), 'hour');
   if (abs < 30 * 86_400) return relativeFmt.format(Math.round(diffSec / 86_400), 'day');
-  return formatDateTime(iso);
+  return formatDateTime(iso, timeZone);
 }
 
 /** ISO 3166-1 alpha-2 → regional indicator emoji ("ID" → 🇮🇩). */

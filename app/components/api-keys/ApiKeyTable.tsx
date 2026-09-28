@@ -21,7 +21,7 @@ import {
   FiTrash2,
 } from 'react-icons/fi';
 import type { ApiKeyRow } from '~/lib/api-keys-api';
-import { formatRelative } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
 import { UserCell } from '../logs/LogCells';
 import { ExpiryCell, KeyIdentityCell, KeyStatusBadge, ScopeChips, UsageCell } from './ApiKeyCells';
 
@@ -172,6 +172,7 @@ export function ApiKeyTable({ rows, loading, fetching = false, empty, soonDays, 
 }
 
 export function ApiKeyCardList({ rows, loading, empty, soonDays, ...h }: Props) {
+  const { relative: formatRelative } = useTimeFormat();
   if (loading) {
     return (
       <Stack gap="xs">

@@ -1,13 +1,8 @@
 import { Group, Stack, Text, Tooltip } from '@mantine/core';
 import type { LoginRow } from '~/lib/login-logs-api';
 import { methodMeta } from '~/lib/login-logs-api';
-import {
-  countryFlag,
-  deviceSummary,
-  formatDateTime,
-  formatRelative,
-  locationLabel,
-} from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
+import { countryFlag, deviceSummary, locationLabel } from '~/lib/visits-format';
 import { MethodBadge } from '../login-logs/LoginCells';
 import { TruncatedText } from '../logs/TruncatedText';
 import { SettingsCard } from '../settings/SettingsParts';
@@ -16,6 +11,7 @@ const nf = new Intl.NumberFormat('id-ID');
 
 /** The user's own recent sign-ins so they can spot anything unfamiliar. */
 export function LoginHistoryCard({ rows, total }: { rows: LoginRow[]; total: number }) {
+  const { dateTime: formatDateTime, relative: formatRelative } = useTimeFormat();
   return (
     <SettingsCard
       title="Riwayat masuk"

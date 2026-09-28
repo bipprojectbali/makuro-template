@@ -1,11 +1,12 @@
 import { Code, Divider, Drawer, Group, Stack, Text } from '@mantine/core';
 import { type AuditRow, TARGET_LABELS } from '~/lib/audit-api';
-import { formatDateTime } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
 import { Copyable, Field, Section } from '../logs/DetailParts';
 import { ActionBadge, ActorCell } from './AuditCells';
 
 /** Full record: who, what, target, structured details, origin. */
 export function AuditDetailDrawer({ row, onClose }: { row: AuditRow | null; onClose: () => void }) {
+  const { dateTime: formatDateTime } = useTimeFormat();
   return (
     <Drawer
       opened={row !== null}

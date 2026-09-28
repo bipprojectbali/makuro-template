@@ -14,7 +14,7 @@ import {
 } from '@mantine/core';
 import { useState } from 'react';
 import { FiAlertTriangle, FiCheck, FiCopy } from 'react-icons/fi';
-import { formatDateTime } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
 import type { Reveal } from './useApiKeyActions';
 
 /** Shows the plain key exactly once. Closing is gated by an explicit "I saved it" check. */
@@ -30,6 +30,7 @@ export function RevealKeyModal({
 }
 
 function RevealBody({ reveal, onClose }: { reveal: Reveal; onClose: () => void }) {
+  const { dateTime: formatDateTime } = useTimeFormat();
   const [saved, setSaved] = useState(false);
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const example = `curl -H "X-API-Key: ${reveal.key}" ${origin}/api/me/logins`;

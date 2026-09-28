@@ -18,7 +18,7 @@ import { useState } from 'react';
 import { FiClock, FiHome, FiLifeBuoy, FiLogOut, FiSlash } from 'react-icons/fi';
 import { Link, redirect, useNavigate } from 'react-router';
 import { signOut } from '~/lib/auth-client';
-import { formatDateTime, formatRelative } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
 import type { Route } from './+types/banned';
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -40,6 +40,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export default function Banned({ loaderData }: Route.ComponentProps) {
+  const { dateTime: formatDateTime, relative: formatRelative } = useTimeFormat();
   const { ban, email, branding } = loaderData;
   const navigate = useNavigate();
   const [leaving, setLeaving] = useState(false);

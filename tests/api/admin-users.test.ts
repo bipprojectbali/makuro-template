@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { eq, inArray } from 'drizzle-orm';
+import { desc, eq, inArray } from 'drizzle-orm';
 import { adminUserStats, buildUserWhere, listAdminUsers } from '../../server/api/admin-users.query';
 import { db } from '../../server/db';
 import { account, loginLog, user } from '../../server/db/schema';
@@ -68,7 +68,15 @@ describe('listAdminUsers', () => {
     expect(r.total).toBe(3);
     const alice = r.users.find((u) => u.id === ids[0]);
     expect(alice?.loginCount).toBe(2);
-    expect(alice?.lastLoginAt).not.toBeNull();
+    // Same instant as the typed column (a zone-less raw string would shift by the TZ offset).
+    const [latest] = await db
+      .select({ at: loginLog.createdAt })
+      .from(loginLog)
+      .where(eq(loginLog.userId, ids[0]))
+      .orderBy(desc(loginLog.createdAt))
+      .limit(1);
+    expect(alice?.lastLoginAt).toBeInstanceOf(Date);
+    expect(alice?.lastLoginAt?.getTime()).toBe(latest.at.getTime());
     expect(alice?.providers).toEqual(['google']);
     expect(alice?.activeSessions).toBe(0);
     const bob = r.users.find((u) => u.id === ids[1]);

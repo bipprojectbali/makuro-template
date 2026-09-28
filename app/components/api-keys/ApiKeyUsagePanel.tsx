@@ -13,7 +13,8 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { FiAlertCircle, FiAlertTriangle } from 'react-icons/fi';
 import type { ApiKeyUsage, UsageBreakdown } from '~/lib/api-keys-api';
-import { countryFlag, countryName, formatDateTime, formatRelative } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
+import { countryFlag, countryName } from '~/lib/visits-format';
 import { BreakdownPanel } from '../logs/BreakdownPanel';
 import { TruncatedText } from '../logs/TruncatedText';
 
@@ -88,6 +89,7 @@ export function ApiKeyUsagePanel({
   keyId: string;
   fetchUsage: (id: string) => Promise<ApiKeyUsage>;
 }) {
+  const { dateTime: formatDateTime, relative: formatRelative } = useTimeFormat();
   const q = useQuery({
     queryKey: ['api-key-usage', keyId],
     queryFn: () => fetchUsage(keyId),

@@ -1,13 +1,8 @@
 import { Badge, Button, Code, Divider, Drawer, Group, Stack, Text } from '@mantine/core';
 import { FiFilter, FiTrash2 } from 'react-icons/fi';
 import type { LoginRow } from '~/lib/login-logs-api';
-import {
-  countryFlag,
-  deviceLabel,
-  formatDateTime,
-  formatRelative,
-  locationLabel,
-} from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
+import { countryFlag, deviceLabel, locationLabel } from '~/lib/visits-format';
 import { Copyable, Field, Section } from '../logs/DetailParts';
 import { DeviceIcon, UserCell } from '../logs/LogCells';
 import { MethodBadge } from './LoginCells';
@@ -24,6 +19,7 @@ const dash = (v: string | null | undefined) => v || '—';
 
 /** Full record for one login, with "show this user's logins" and delete actions. */
 export function LoginDetailDrawer({ row, onClose, onDelete, onFilterUser, deleting }: Props) {
+  const { dateTime: formatDateTime, relative: formatRelative } = useTimeFormat();
   return (
     <Drawer
       opened={row !== null}

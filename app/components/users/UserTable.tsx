@@ -1,6 +1,6 @@
 import { Box, LoadingOverlay, Skeleton, Table, Text, Tooltip } from '@mantine/core';
 import type { AdminUser } from '~/lib/admin-users-api';
-import { formatDateTime, formatRelative } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
 import { UserActionsMenu, type UserPermissions } from './UserActionsMenu';
 import { ActivityCell, IdentityCell, RoleBadge, StatusBadge } from './UserCells';
 import type { useUserActions } from './useUserActions';
@@ -28,6 +28,7 @@ export function UserTable({
   onOpen,
   empty,
 }: UserListProps) {
+  const { dateTime: formatDateTime, relative: formatRelative } = useTimeFormat();
   return (
     <Box pos="relative" style={{ overflowX: 'auto' }}>
       <LoadingOverlay visible={fetching && !loading} zIndex={5} overlayProps={{ blur: 1 }} />
