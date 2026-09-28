@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { stripExtensionAttributes } from '../app/lib/extension-attrs';
+
+describe('entry.client', () => {
+  it('strips and hydrates in one synchronous flush, not a yielding transition', () => {
+    const src = readFileSync(path.join(import.meta.dir, '../app/entry.client.tsx'), 'utf8');
+    expect(src).not.toContain('startTransition');
+    expect(src).toMatch(
+      /flushSync\(\(\) => \{\s*stripExtensionAttributes\(document\);\s*hydrateRoot\(/,
+    );
+  });
+});
 
 function el(...names: string[]) {
   const attrs = names.map((name) => ({ name }));
