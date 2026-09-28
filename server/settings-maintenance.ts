@@ -39,6 +39,11 @@ const EXEMPT_PREFIXES = [
   '/README.md',
   '/readme.md',
   '/llms',
+  '/robots.txt',
+  '/sitemap.xml',
+  '/site.webmanifest',
+  '/og.png',
+  '/apple-touch-icon',
 ];
 
 export function parseMaintenance(row: SettingsRow | null): MaintenanceSettings {

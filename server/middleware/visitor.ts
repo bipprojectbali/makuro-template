@@ -34,6 +34,11 @@ const SKIP_PREFIXES = [
   '/README.md',
   '/readme.md',
   '/llms', // agent docs, see server/readme.ts
+  '/robots.txt', // crawler files, see server/seo.ts
+  '/sitemap.xml',
+  '/site.webmanifest',
+  '/og.png',
+  '/apple-touch-icon',
 ];
 
 /** True for requests that are not page navigations (API, assets, loaders, probes). */

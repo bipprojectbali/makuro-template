@@ -29,6 +29,7 @@ import { logger } from './logger';
 import { stampClientIp } from './middleware/client-ip';
 import { recordVisit } from './middleware/visitor';
 import { agentDocResponse, isAgentDoc } from './readme';
+import { isSeoFile, seoResponse } from './seo';
 import { getBranding } from './settings-branding';
 import { maintenanceGate } from './settings-maintenance';
 
@@ -61,6 +62,9 @@ const server = Bun.serve({
 
     // Plain-text docs for agents (/README.md, /llms.txt) — from the bundled README.
     if (isAgentDoc(url.pathname)) return agentDocResponse(request, url.pathname);
+
+    // Crawler files (/robots.txt, /sitemap.xml) built from APP_URL.
+    if (isSeoFile(url.pathname)) return seoResponse(request, url.pathname);
 
     // Static client assets.
     const filePath = CLIENT_DIR + url.pathname.replace(/^\/+/, '');

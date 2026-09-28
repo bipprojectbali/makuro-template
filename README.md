@@ -20,6 +20,8 @@ Dokumentasi ini adalah satu-satunya sumber dan bisa dibaca tanpa JavaScript:
 - API dipakai dengan header `X-API-Key: mk_live_…` atau `Authorization: Bearer mk_live_…`; scope per route ada di bagian **API keys**. Semua error API berbentuk JSON `{ error, code, status, requestId }`.
 - Server MCP di `/api/mcp` (Streamable HTTP) menerima API key ber-scope `mcp`; katalog tool ada di bagian **Dev console → Tools & MCP**.
 
+Untuk mesin pencari: `/robots.txt` (area login, konsol, dan API ditutup) dan `/sitemap.xml` dibangun dari `APP_URL`, sedangkan landing punya meta Open Graph/Twitter, `og:image` (`/og.png`, 1200×630), dan `canonical` — jadi set `APP_URL` ke origin publik di produksi.
+
 Ketiga URL dokumentasi dilayani sebelum SSR, ber-ETag (`304` bila tidak berubah), tidak dihitung sebagai kunjungan, dan tetap tersedia saat mode maintenance.
 
 ## Apa yang sudah ada
@@ -86,7 +88,7 @@ bun run start
 | `bun run dev` | Dev server satu port (Elysia + Vite HMR + RR SSR) |
 | `bun run build` | Build client + server bundle |
 | `bun run start` | Production server (`server/prod.ts`, NODE_ENV=production) |
-| `bun run smoke:prod` | Build lalu boot `server/prod.ts` di port bebas dan jalankan 17 pemeriksaan black-box (`scripts/smoke-server.ts`) |
+| `bun run smoke:prod` | Build lalu boot `server/prod.ts` di port bebas dan jalankan 22 pemeriksaan black-box (`scripts/smoke-server.ts`) |
 | `bun run smoke:binary` | Sama, tetapi terhadap binary hasil `build:binary` |
 | `bun run build:binary` | Build binary native (platform saat ini) |
 | `bun run build:binary:linux` | Cross-compile ke Linux x64 glibc |
@@ -126,7 +128,7 @@ makuro-linux-x64   ← binary ~130 MB — semua embedded:
 
 Seperti Go binary: copy satu file ke server, langsung jalan. Tidak perlu `build/`, tidak perlu Node/Bun, tidak perlu `npm install`.
 
-**Verifikasi sebelum deploy:** `bun run smoke:binary` membangun binary, menjalankannya di port acak dengan `NODE_ENV=production`, lalu memeriksa versi, SSR landing/login, redirect guard, favicon, probe, halaman 404, JSON 404 API, Better Auth, penolakan API key palsu dan MCP anonim, `/README.md`, `/llms.txt`, header rate limit, dan aset client ber-cache immutable. `bun run smoke:prod` melakukan hal yang sama untuk mode skrip (`bun run start`). Keduanya keluar dengan kode ≠ 0 bila ada yang gagal.
+**Verifikasi sebelum deploy:** `bun run smoke:binary` membangun binary, menjalankannya di port acak dengan `NODE_ENV=production`, lalu memeriksa versi, SSR landing/login, redirect guard, favicon, probe, halaman 404, JSON 404 API, Better Auth, penolakan API key palsu dan MCP anonim, `/README.md`, `/llms.txt`, meta OG landing, `/robots.txt`, `/sitemap.xml`, gambar OG, apple-touch-icon, header rate limit, dan aset client ber-cache immutable. `bun run smoke:prod` melakukan hal yang sama untuk mode skrip (`bun run start`). Keduanya keluar dengan kode ≠ 0 bila ada yang gagal.
 
 **NODE_ENV:** binary men-default `NODE_ENV=production`, tetapi Bun otomatis memuat `.env` dari direktori kerja — bila file itu berisi `NODE_ENV=development`, binary berjalan dalam mode development (detail error API terbuka, tanpa log file) dan mencetak peringatan saat start. Di server, gunakan `.env` tanpa `NODE_ENV` atau set `production`.
 
@@ -165,6 +167,7 @@ server/
   error-page.ts         HTML fallback 500/503 tanpa React
   readme.ts             /README.md, /llms.txt, /llms-full.txt dari satu sumber
   http-probes.ts        favicon.ico, .well-known, apple-touch-icon sebelum SSR
+  seo.ts                /robots.txt dan /sitemap.xml dari APP_URL sebelum SSR
   sidebar-badges.ts     Counter badge sidebar /dev (cache 15 dtk)
   settings*.ts          app_setting: auth, rate limit, retensi, maintenance, flags, branding
   middleware/           client-ip, visitor (+geo, UA), rate-limiter, maintenance
