@@ -18,7 +18,10 @@ const CHROME =
 
 async function visit(path: string, headers: Record<string, string> = {}, ip?: string) {
   await recordVisit(new Request(`http://localhost/${TAG}${path}`, { headers }), ip);
-  const [row] = await db.select().from(visitLog).where(eq(visitLog.path, `/${TAG}${path}`));
+  const [row] = await db
+    .select()
+    .from(visitLog)
+    .where(eq(visitLog.path, `/${TAG}${path}`));
   return row;
 }
 
@@ -78,14 +81,34 @@ describe('recordVisit', () => {
   });
 
   test.each([
-    ['gptbot', 'Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; GPTBot/1.2)', 'ai:openai'],
-    ['claudebot', 'Mozilla/5.0 (compatible; ClaudeBot/1.0; +claudebot@anthropic.com)', 'ai:anthropic'],
-    ['bingbot', 'Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)', 'search:bing'],
-    ['googlebot', 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)', 'search:google'],
+    [
+      'gptbot',
+      'Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; GPTBot/1.2)',
+      'ai:openai',
+    ],
+    [
+      'claudebot',
+      'Mozilla/5.0 (compatible; ClaudeBot/1.0; +claudebot@anthropic.com)',
+      'ai:anthropic',
+    ],
+    [
+      'bingbot',
+      'Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)',
+      'search:bing',
+    ],
+    [
+      'googlebot',
+      'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+      'search:google',
+    ],
     ['ccbot', 'CCBot/2.0 (https://commoncrawl.org/faq/)', 'ai:cc'],
     ['ahrefs', 'Mozilla/5.0 (compatible; AhrefsBot/7.0; +http://ahrefs.com/robot/)', 'seo-crawler'],
     ['rogerbot', 'rogerbot/1.0 (http://moz.com/help/pro/what-is-rogerbot-)', 'seo-crawler'],
-    ['pingdom', 'Mozilla/5.0 (compatible; Pingdom.com_bot_version_1.4_(http://www.pingdom.com/))', 'monitor'],
+    [
+      'pingdom',
+      'Mozilla/5.0 (compatible; Pingdom.com_bot_version_1.4_(http://www.pingdom.com/))',
+      'monitor',
+    ],
     ['uptime', 'Mozilla/5.0+(compatible; UptimeRobot/2.0; http://www.uptimerobot.com/)', 'monitor'],
   ])('classifies %s', async (slug, ua, kind) => {
     const row = await visit(`/bot-${slug}`, { 'user-agent': ua });
