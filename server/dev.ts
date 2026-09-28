@@ -36,11 +36,6 @@ try {
   logger.error({ err }, 'auto-migrate on boot failed; continuing');
 }
 
-const vite = await createViteServer({
-  server: { middlewareMode: true },
-  appType: 'custom',
-});
-
 const server = createServer((req, res) => {
   const pathname = (req.url ?? '/').split('?')[0];
 
@@ -118,6 +113,14 @@ const server = createServer((req, res) => {
       await writeWebResponse(res, errorResponse({ status: 500, requestId }));
     }
   });
+});
+
+// HMR rides the app's own port. Without `ws.server`, middleware mode opens a
+// second WebSocket port (24678) that collides when two projects run at once.
+// `port` keeps the client's direct-connect fallback off Vite's default 5173.
+const vite = await createViteServer({
+  server: { middlewareMode: true, port: env.PORT, ws: { server } },
+  appType: 'custom',
 });
 
 server.listen(env.PORT, () => {
