@@ -6,8 +6,16 @@ function mockServerResponse() {
   const headers: Record<string, string | string[]> = {};
   let statusCode = 200;
   const chunks: Buffer[] = [];
+  const listeners: Record<string, () => void> = {};
 
   const res = {
+    writableFinished: false,
+    on(event: string, fn: () => void) {
+      listeners[event] = fn;
+    },
+    emit(event: string) {
+      listeners[event]?.();
+    },
     get statusCode() {
       return statusCode;
     },
@@ -28,7 +36,11 @@ function mockServerResponse() {
       return Buffer.concat(chunks).toString();
     },
   };
-  return res as unknown as ServerResponse & { headers: typeof headers; body: string };
+  return res as unknown as ServerResponse & {
+    headers: typeof headers;
+    body: string;
+    emit: (event: string) => void;
+  };
 }
 
 // ─── writeWebResponse ─────────────────────────────────────────────────────────
@@ -118,7 +130,7 @@ describe('nodeToWebRequest', () => {
 
   test('copies URL and method', async () => {
     const msg = makeIncomingMessage({ method: 'POST', url: '/api/test?foo=bar' });
-    // @ts-ignore — duck-typed IncomingMessage
+    // @ts-expect-error — duck-typed IncomingMessage
     const req = await nodeToWebRequest(msg);
     expect(req.method).toBe('POST');
     expect(new URL(req.url).pathname).toBe('/api/test');
@@ -132,7 +144,7 @@ describe('nodeToWebRequest', () => {
         'content-type': 'application/json',
       },
     });
-    // @ts-ignore
+    // @ts-expect-error
     const req = await nodeToWebRequest(msg);
     expect(req.headers.get('cookie')).toBe('session=abc; csrf=def');
     expect(req.headers.get('content-type')).toBe('application/json');
@@ -140,16 +152,37 @@ describe('nodeToWebRequest', () => {
 
   test('GET request has no body', async () => {
     const msg = makeIncomingMessage({ method: 'GET' });
-    // @ts-ignore
+    // @ts-expect-error
     const req = await nodeToWebRequest(msg);
     expect(req.body).toBeNull();
   });
 
   test('POST request body is readable', async () => {
     const msg = makeIncomingMessage({ method: 'POST', body: '{"x":1}' });
-    // @ts-ignore
+    // @ts-expect-error
     const req = await nodeToWebRequest(msg);
     const text = await req.text();
     expect(text).toBe('{"x":1}');
+  });
+});
+
+describe('writeWebResponse — client disconnect', () => {
+  test('cancels the body stream when the client closes early', async () => {
+    let cancelled = false;
+    const body = new ReadableStream({
+      start(c) {
+        c.enqueue(new TextEncoder().encode('data: 1\n\n'));
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    const res = mockServerResponse();
+    const done = writeWebResponse(res, new Response(body));
+    await Bun.sleep(5);
+    res.emit('close');
+    await done;
+    expect(cancelled).toBe(true);
+    expect(res.body).toContain('data: 1');
   });
 });

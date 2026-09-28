@@ -42,6 +42,20 @@ export function fetchServerLogs(
 }
 export const fetchServerLogStats = () => request<ServerLogStats>(`${BASE}/stats`);
 
+/** SSE URL for entries newer than `after` (seq) matching the filters. */
+export function serverLogStreamUrl(f: ServerLogFilters, after: number): string {
+  const q = new URLSearchParams({ after: String(after) });
+  if (f.level !== 'all') q.set('level', f.level);
+  if (f.search.trim()) q.set('search', f.search.trim());
+  return `${BASE}/stream?${q}`;
+}
+
+/** Streamed rows (newest first) on top of the snapshot, de-duplicated by seq. */
+export function mergeLogRows(streamed: ServerLogRow[], snapshot: ServerLogRow[]): ServerLogRow[] {
+  const newest = snapshot[0]?.seq ?? 0;
+  return [...streamed.filter((r) => (r.seq ?? 0) > newest), ...snapshot];
+}
+
 export const LEVEL_META: Record<string, { label: string; color: string }> = {
   trace: { label: 'trace', color: 'gray' },
   debug: { label: 'debug', color: 'gray' },

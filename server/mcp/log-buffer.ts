@@ -27,15 +27,35 @@ export const LEVEL_NAMES: Record<number, string> = {
   60: 'fatal',
 };
 
+export type LogFilter = { level?: string; search?: string; since?: number; after?: number };
+
 export class LogBuffer {
   private entries: LogEntry[] = [];
   private seq = 0;
+  private listeners = new Set<(entry: LogEntry) => void>();
 
   constructor(readonly maxSize: number) {}
 
   push(entry: LogEntry) {
-    this.entries.push({ ...entry, seq: ++this.seq });
+    const stored = { ...entry, seq: ++this.seq };
+    this.entries.push(stored);
     if (this.entries.length > this.maxSize) this.entries.shift();
+    for (const fn of this.listeners) fn(stored);
+  }
+
+  /** Called with every entry pushed from now on; returns the unsubscribe function. */
+  subscribe(fn: (entry: LogEntry) => void): () => void {
+    this.listeners.add(fn);
+    return () => this.listeners.delete(fn);
+  }
+
+  /** Whether `e` passes the level (minimum), time, sequence and full-text filters. */
+  matches(e: LogEntry, f: LogFilter): boolean {
+    if (f.level && e.level < (LEVEL_NUMBERS[f.level] ?? 0)) return false;
+    if (f.since && e.time < f.since) return false;
+    if (f.after && (e.seq ?? 0) <= f.after) return false;
+    if (f.search && !JSON.stringify(e).toLowerCase().includes(f.search.toLowerCase())) return false;
+    return true;
   }
 
   /** Entries at or above `minLevel` logged since `sinceMs` (epoch). */
@@ -71,17 +91,8 @@ export class LogBuffer {
     this.entries = [];
   }
 
-  query(opts: { limit?: number; level?: string; search?: string; since?: number }): LogEntry[] {
-    const minLevel = Object.entries(LEVEL_NAMES).find(([, v]) => v === opts.level)?.[0];
-    const result = this.entries.filter((e) => {
-      if (minLevel && e.level < Number(minLevel)) return false;
-      if (opts.since && e.time < opts.since) return false;
-      if (opts.search && !JSON.stringify(e).toLowerCase().includes(opts.search.toLowerCase()))
-        return false;
-      return true;
-    });
-    const limit = opts.limit ?? 50;
-    return result.slice(-limit);
+  query(opts: LogFilter & { limit?: number }): LogEntry[] {
+    return this.entries.filter((e) => this.matches(e, opts)).slice(-(opts.limit ?? 50));
   }
 
   size() {

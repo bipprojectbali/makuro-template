@@ -1,4 +1,5 @@
 import {
+  Affix,
   Alert,
   Button,
   CloseButton,
@@ -14,17 +15,17 @@ import {
 import { useDebouncedValue } from '@mantine/hooks';
 import { requireRole } from '@server/guard';
 import { ROLES } from '@server/permissions';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { FiAlertCircle, FiRefreshCw, FiSearch } from 'react-icons/fi';
+import { FiAlertCircle, FiArrowUp, FiRefreshCw, FiSearch } from 'react-icons/fi';
 import { TruncatedText } from '~/components/logs/TruncatedText';
 import { ServerLogList } from '~/components/server-logs/ServerLogList';
 import { ServerLogStatsCards } from '~/components/server-logs/ServerLogStatsCards';
+import { useLiveServerLogs } from '~/components/server-logs/useLiveServerLogs';
 import { VisitEmptyState } from '~/components/visits/VisitEmptyState';
 import {
   DEFAULT_LOG_FILTERS,
   fetchServerLogStats,
-  fetchServerLogs,
   type LogLevelFilter,
   type ServerLogFilters,
 } from '~/lib/server-logs-api';
@@ -33,8 +34,6 @@ import type { Route } from './+types/server-logs';
 export function meta() {
   return [{ title: 'Server Logs — Makuro Dev' }];
 }
-
-const AUTO_REFRESH_MS = 5_000;
 
 export async function loader({ request }: Route.LoaderArgs) {
   await requireRole(request, ROLES.SUPER_ADMIN);
@@ -46,19 +45,9 @@ export default function ServerLogsPage() {
   const [live, setLive] = useState(true);
   const [debouncedSearch] = useDebouncedValue(filters.search, 300);
   const effective = { ...filters, search: debouncedSearch };
-  const logs = useQuery({
-    queryKey: ['server-logs', effective],
-    queryFn: () => fetchServerLogs(effective),
-    placeholderData: keepPreviousData,
-    refetchInterval: live ? AUTO_REFRESH_MS : false,
-  });
-  const stats = useQuery({
-    queryKey: ['server-logs-stats'],
-    queryFn: fetchServerLogStats,
-    refetchInterval: live ? AUTO_REFRESH_MS : false,
-  });
+  const { logs, rows, pending, connected, showNewest } = useLiveServerLogs(effective, live);
+  const stats = useQuery({ queryKey: ['server-logs-stats'], queryFn: fetchServerLogStats });
   const filtered = filters.level !== 'all' || filters.search.trim() !== '';
-  const rows = logs.data?.rows ?? [];
 
   return (
     <Stack gap="md" p={{ base: 'sm', md: 'md' }}>
@@ -73,7 +62,7 @@ export default function ServerLogsPage() {
         <Group gap="sm" wrap="wrap">
           <Switch
             size="sm"
-            label="Auto-refresh 5 dtk"
+            label={live && !connected ? 'Live (menyambung…)' : 'Live'}
             checked={live}
             onChange={(e) => setLive(e.currentTarget.checked)}
           />
@@ -145,6 +134,14 @@ export default function ServerLogsPage() {
           <VisitEmptyState filtered={filtered} onReset={() => setFilters(DEFAULT_LOG_FILTERS)} />
         }
       />
+
+      {pending > 0 && (
+        <Affix position={{ bottom: 20, right: 20 }}>
+          <Button size="sm" radius="xl" leftSection={<FiArrowUp size={14} />} onClick={showNewest}>
+            {`${pending} log baru`}
+          </Button>
+        </Affix>
+      )}
     </Stack>
   );
 }

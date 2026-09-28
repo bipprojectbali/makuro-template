@@ -60,6 +60,10 @@ export async function writeWebResponse(res: ServerResponse, webRes: Response): P
   }
 
   const reader = webRes.body.getReader();
+  // Client gone (e.g. closed SSE tab): cancel the body so the stream's cancel() cleans up.
+  res.on('close', () => {
+    if (!res.writableFinished) void reader.cancel();
+  });
   try {
     for (;;) {
       const { done, value } = await reader.read();
