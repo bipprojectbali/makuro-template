@@ -23,6 +23,7 @@ import { logger } from './logger';
 import { stampClientIp } from './middleware/client-ip';
 import { recordVisit } from './middleware/visitor';
 import { agentDocResponse, isAgentDoc } from './readme';
+import { isSeoFile, seoResponse } from './seo';
 import { getBranding } from './settings-branding';
 import { maintenanceGate } from './settings-maintenance';
 
@@ -83,6 +84,14 @@ const server = createServer((req, res) => {
     void nodeToWebRequest(req)
       .then((request) => agentDocResponse(request, pathname))
       .then((response) => writeWebResponse(res, response));
+    return;
+  }
+
+  // Crawler files (/robots.txt, /sitemap.xml): no SSR, no visit log.
+  if (isSeoFile(pathname)) {
+    void nodeToWebRequest(req).then((request) =>
+      writeWebResponse(res, seoResponse(request, pathname)),
+    );
     return;
   }
 

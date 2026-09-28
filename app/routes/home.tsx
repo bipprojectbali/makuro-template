@@ -1,5 +1,6 @@
 import { Box } from '@mantine/core';
 import { auth } from '@server/auth';
+import { env } from '@server/env';
 import { landingStats } from '@server/landing-stats';
 import { homeFor } from '@server/permissions';
 import { resolveUserRole } from '@server/roles';
@@ -20,6 +21,8 @@ export function meta({ loaderData }: Route.MetaArgs) {
   const name = loaderData?.branding.appName ?? 'Makuro';
   const tagline = loaderData?.branding.appTagline ?? 'Fullstack Template';
   const title = `${name} — ${tagline}`;
+  const url = `${loaderData?.siteUrl ?? ''}/`;
+  const image = `${loaderData?.siteUrl ?? ''}/og.png`;
   const description = `${name}: template fullstack Bun + Elysia + React Router SSR + Drizzle + Better Auth dengan konsol admin lengkap (user, sesi, log, audit, rate limit, settings) dan deploy satu binary. Siap produksi, MIT.`;
   return [
     { title },
@@ -28,9 +31,15 @@ export function meta({ loaderData }: Route.MetaArgs) {
     { property: 'og:description', content: description },
     { property: 'og:type', content: 'website' },
     { property: 'og:site_name', content: name },
-    { name: 'twitter:card', content: 'summary' },
+    { property: 'og:url', content: url },
+    { property: 'og:image', content: image },
+    { property: 'og:image:width', content: '1200' },
+    { property: 'og:image:height', content: '630' },
+    { name: 'twitter:card', content: 'summary_large_image' },
     { name: 'twitter:title', content: title },
     { name: 'twitter:description', content: description },
+    { name: 'twitter:image', content: image },
+    { tagName: 'link', rel: 'canonical', href: url },
   ];
 }
 
@@ -45,6 +54,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   return {
     branding,
     stats,
+    // Crawlers need absolute URLs for og:image/og:url; APP_URL is the public origin.
+    siteUrl: env.APP_URL.replace(/\/$/, ''),
     signedIn: Boolean(session?.user),
     homePath: role ? homeFor(role) : '/login',
   };

@@ -1,0 +1,13 @@
+{
+  "name": "Makuro",
+  "short_name": "Makuro",
+  "description": "Fullstack base template: Bun, Elysia, React Router SSR, Drizzle, Better Auth.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1b1e",
+  "theme_color": "#4c6ef5",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

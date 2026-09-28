@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <radialGradient id="bg-glow" cx="25%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#4c6ef5" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#1a1b1e" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#1a1b1e"/>
+  <rect width="1200" height="630" fill="url(#bg-glow)"/>
+
+  <!-- Decorative grid dots -->
+  <pattern id="dots" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+    <circle cx="1" cy="1" r="1" fill="#2c2e33"/>
+  </pattern>
+  <rect width="1200" height="630" fill="url(#dots)"/>
+
+  <!-- Logo mark: same as favicon.svg -->
+  <g transform="translate(64,64) scale(2.75)">
+    <rect width="32" height="32" rx="7" fill="#4c6ef5"/>
+    <path d="M8 23V9h3.4l4.6 7.2L20.6 9H24v14h-3.3v-8.4l-4.7 7.1-4.7-7.1V23z" fill="#fff"/>
+  </g>
+
+  <!-- Brand name -->
+  <text x="176" y="122" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif" font-size="72" font-weight="700" fill="#ffffff" letter-spacing="-1">Makuro</text>
+
+  <!-- Tagline -->
+  <text x="64" y="220" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif" font-size="32" fill="#909296" font-weight="400">Fullstack Base Template</text>
+
+  <!-- Divider -->
+  <line x1="64" y1="258" x2="640" y2="258" stroke="#2c2e33" stroke-width="1.5"/>
+
+  <!-- Tech stack row 1 -->
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif" font-size="22" font-weight="500">
+    <rect x="64" y="284" width="70" height="40" rx="8" fill="#2c2e33"/>
+    <text x="99" y="310" fill="#c1c2c5" text-anchor="middle">Bun</text>
+    <rect x="146" y="284" width="107" height="40" rx="8" fill="#2c2e33"/>
+    <text x="199" y="310" fill="#c1c2c5" text-anchor="middle">Elysia</text>
+    <rect x="265" y="284" width="220" height="40" rx="8" fill="#2c2e33"/>
+    <text x="375" y="310" fill="#c1c2c5" text-anchor="middle">React Router v8</text>
+    <rect x="497" y="284" width="120" height="40" rx="8" fill="#2c2e33"/>
+    <text x="557" y="310" fill="#c1c2c5" text-anchor="middle">Drizzle</text>
+    <rect x="629" y="284" width="170" height="40" rx="8" fill="#2c2e33"/>
+    <text x="714" y="310" fill="#c1c2c5" text-anchor="middle">Better Auth</text>
+    <rect x="811" y="284" width="120" height="40" rx="8" fill="#2c2e33"/>
+    <text x="871" y="310" fill="#c1c2c5" text-anchor="middle">Mantine</text>
+  </g>
+
+  <!-- Tech stack row 2 -->
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif" font-size="22" font-weight="500">
+    <rect x="64" y="338" width="157" height="40" rx="8" fill="#2c2e33"/>
+    <text x="142" y="364" fill="#c1c2c5" text-anchor="middle">PostgreSQL</text>
+    <rect x="233" y="338" width="207" height="40" rx="8" fill="#2c2e33"/>
+    <text x="336" y="364" fill="#c1c2c5" text-anchor="middle">TanStack Query</text>
+    <rect x="452" y="338" width="94" height="40" rx="8" fill="#2c2e33"/>
+    <text x="499" y="364" fill="#c1c2c5" text-anchor="middle">Biome</text>
+    <rect x="558" y="338" width="120" height="40" rx="8" fill="#2c2e33"/>
+    <text x="618" y="364" fill="#c1c2c5" text-anchor="middle">Zustand</text>
+    <rect x="690" y="338" width="70" height="40" rx="8" fill="#2c2e33"/>
+    <text x="725" y="364" fill="#c1c2c5" text-anchor="middle">Zod</text>
+    <rect x="772" y="338" width="82" height="40" rx="8" fill="#2c2e33"/>
+    <text x="813" y="364" fill="#c1c2c5" text-anchor="middle">Pino</text>
+  </g>
+
+  <!-- Description -->
+  <text x="64" y="450" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif" font-size="26" fill="#5c5f66">Production-ready full-stack TypeScript • Single origin • SSR</text>
+
+  <!-- Right decorative accent -->
+  <rect x="900" y="0" width="300" height="630" fill="#4c6ef5" opacity="0.04"/>
+  <rect x="1050" y="0" width="150" height="630" fill="#4c6ef5" opacity="0.04"/>
+
+  <!-- Bottom URL -->
+  <text x="64" y="588" font-family="ui-monospace, 'Cascadia Code', monospace" font-size="22" fill="#373A40">github.com/bipproduction/makuro-template</text>
+
+</svg>

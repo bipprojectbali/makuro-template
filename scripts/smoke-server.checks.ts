@@ -105,6 +105,33 @@ export const SMOKE_CHECKS: SmokeCheck[] = [
     bodyIncludes: '# Makuro',
   },
   {
+    name: 'landing meta OG',
+    path: '/',
+    status: 200,
+    bodyIncludes: 'og.png',
+  },
+  {
+    name: 'robots.txt',
+    path: '/robots.txt',
+    status: 200,
+    contentType: 'text/plain',
+    bodyIncludes: 'Sitemap:',
+  },
+  {
+    name: 'sitemap.xml',
+    path: '/sitemap.xml',
+    status: 200,
+    contentType: 'application/xml',
+    bodyIncludes: '<urlset',
+  },
+  { name: 'gambar OG', path: '/og.png', status: 200, contentType: 'image/png' },
+  {
+    name: 'apple-touch-icon',
+    path: '/apple-touch-icon.png',
+    status: 200,
+    contentType: 'image/png',
+  },
+  {
     name: 'rate limit header',
     path: '/api/hello',
     status: 200,
