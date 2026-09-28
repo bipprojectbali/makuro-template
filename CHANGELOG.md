@@ -19,6 +19,7 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 - Waktu (misalnya "5 menit yang lalu" dan tanggal lengkap) ditampilkan dalam zona waktu browser kamu, sama persis antara render server dan browser, tanpa kedipan.
 - Kolom "login terakhir" di `/dev/users` tidak lagi meleset beberapa jam ketika zona waktu server berbeda dengan zona waktu browser.
 - `/dev/changelog` tidak lagi error saat dibuka di browser.
+- Console browser tidak lagi menampilkan error hydration ketika ekstensi browser (VPN/keamanan) menandai elemen halaman dengan atribut `bis_*`/`__processed_*__`.
 
 ## [0.1.0] - 2026-09-14
 
