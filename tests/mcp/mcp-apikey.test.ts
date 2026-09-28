@@ -6,6 +6,7 @@
 import { describe, expect, test } from 'bun:test';
 import Elysia from 'elysia';
 import { setApiKeyIdentity } from '../../server/api-keys/identity';
+import { env } from '../../server/env';
 import { mcpPlugin } from '../../server/mcp/index';
 
 const app = new Elysia().use(mcpPlugin);
@@ -33,6 +34,17 @@ describe('MCP auth via API key', () => {
   test('anonymous initialize is rejected', async () => {
     const res = await app.handle(request());
     expect(res.status).toBe(401);
+  });
+  test('without MCP_ADMIN_TOKEN the 401 tells the caller to use an mcp-scoped key', async () => {
+    const saved = env.MCP_ADMIN_TOKEN;
+    env.MCP_ADMIN_TOKEN = undefined;
+    try {
+      const res = await app.handle(request());
+      expect(res.status).toBe(401);
+      expect(await res.text()).toContain('API key ber-scope mcp');
+    } finally {
+      env.MCP_ADMIN_TOKEN = saved;
+    }
   });
   test('a verified key identity opens a session', async () => {
     const req = request();

@@ -34,6 +34,7 @@ describe('visits-format', () => {
   it('countryName localizes and falls back', () => {
     expect(countryName('ID')).toBe('Indonesia');
     expect(countryName(null)).toBe('Tidak diketahui');
+    expect(countryName('not-a-region')).toBe('not-a-region');
   });
 
   it('isPrivateIp recognizes loopback and RFC1918 ranges', () => {
@@ -80,6 +81,8 @@ describe('visits-format', () => {
   it('refererHost and percent', () => {
     expect(refererHost('https://google.com/search')).toBe('google.com');
     expect(refererHost(null)).toBeNull();
+    expect(refererHost('android-app://com.x')).toBe('com.x');
+    expect(refererHost('not a url')).toBe('not a url');
     expect(percent(1, 3)).toBe(33.3);
     expect(percent(1, 0)).toBe(0);
   });
