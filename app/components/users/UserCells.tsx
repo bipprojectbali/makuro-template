@@ -2,7 +2,7 @@ import { Avatar, Badge, Group, Stack, Text, Tooltip } from '@mantine/core';
 import { isAdminRole, normalizeRole, ROLES } from '@server/permissions';
 import { FiCheckCircle } from 'react-icons/fi';
 import { type AdminUser, isBanActive } from '~/lib/admin-users-api';
-import { formatDateTime, formatRelative } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
 import { TruncatedText } from '../logs/TruncatedText';
 
 export function roleColor(role: string | null | undefined): string {
@@ -32,6 +32,7 @@ export function RoleBadge({
 }
 
 export function StatusBadge({ user, size = 'sm' }: { user: AdminUser; size?: 'xs' | 'sm' }) {
+  const { dateTime: formatDateTime } = useTimeFormat();
   if (isBanActive(user)) {
     const until = user.banExpires ? `sampai ${formatDateTime(user.banExpires)}` : 'permanen';
     return (
@@ -94,6 +95,7 @@ export function IdentityCell({ user, isSelf }: { user: AdminUser; isSelf: boolea
 
 /** "3 hari yang lalu · 12 login" or "Belum pernah login". */
 export function ActivityCell({ user }: { user: AdminUser }) {
+  const { dateTime: formatDateTime, relative: formatRelative } = useTimeFormat();
   if (!user.lastLoginAt) {
     return (
       <Text size="sm" c="dimmed">

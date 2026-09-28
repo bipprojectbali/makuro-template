@@ -7,12 +7,13 @@ import {
   FiLayers,
 } from 'react-icons/fi';
 import type { ServerLogStats } from '~/lib/server-logs-api';
-import { formatRelative } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
 import { StatTileGrid, type StatTileProps } from '../logs/StatTile';
 
 const nf = new Intl.NumberFormat('id-ID');
 
 export function ServerLogStatsCards({ stats }: { stats: ServerLogStats | undefined }) {
+  const { relative: formatRelative } = useTimeFormat();
   const tiles: StatTileProps[] | undefined = stats && [
     {
       label: 'Error 1 jam',

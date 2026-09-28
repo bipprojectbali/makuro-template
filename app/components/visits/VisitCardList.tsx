@@ -1,13 +1,8 @@
 import { ActionIcon, Checkbox, Group, Paper, Skeleton, Stack } from '@mantine/core';
 import { FiTrash2 } from 'react-icons/fi';
+import { useTimeFormat } from '~/lib/time-format';
 import type { VisitRow } from '~/lib/visits-api';
-import {
-  countryFlag,
-  deviceSummary,
-  formatRelative,
-  locationLabel,
-  refererHost,
-} from '~/lib/visits-format';
+import { countryFlag, deviceSummary, locationLabel, refererHost } from '~/lib/visits-format';
 import { TruncatedText } from '../logs/TruncatedText';
 import { TypeBadge, UserCell } from './VisitCells';
 import type { VisitListHandlers } from './VisitTable';
@@ -22,6 +17,7 @@ type Props = VisitListHandlers & {
 
 /** Mobile card list (< sm): all key data visible without horizontal scroll. */
 export function VisitCardList({ rows, loading, empty, selected, deletingId, ...h }: Props) {
+  const { relative: formatRelative } = useTimeFormat();
   if (loading) {
     return (
       <Stack gap="xs">

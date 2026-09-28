@@ -1,14 +1,8 @@
 import { Anchor, Button, Code, Divider, Drawer, Group, Stack, Text } from '@mantine/core';
 import { FiExternalLink, FiTrash2 } from 'react-icons/fi';
+import { useTimeFormat } from '~/lib/time-format';
 import type { VisitRow } from '~/lib/visits-api';
-import {
-  botKindLabel,
-  countryFlag,
-  deviceLabel,
-  formatDateTime,
-  formatRelative,
-  locationLabel,
-} from '~/lib/visits-format';
+import { botKindLabel, countryFlag, deviceLabel, locationLabel } from '~/lib/visits-format';
 import { Copyable, Field, Section } from '../logs/DetailParts';
 import { DeviceIcon, TypeBadge, UserCell } from './VisitCells';
 
@@ -23,6 +17,7 @@ const dash = (v: string | null | undefined) => v || '—';
 
 /** Full record view for one visit — everything the middleware captured, plus a delete action. */
 export function VisitDetailDrawer({ row, onClose, onDelete, deleting }: Props) {
+  const { dateTime: formatDateTime, relative: formatRelative } = useTimeFormat();
   return (
     <Drawer
       opened={row !== null}

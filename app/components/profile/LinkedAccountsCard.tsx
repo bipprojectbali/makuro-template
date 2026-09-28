@@ -6,7 +6,7 @@ import { FcGoogle } from 'react-icons/fc';
 import { FiKey, FiLink, FiLink2 } from 'react-icons/fi';
 import { authClient } from '~/lib/auth-client';
 import { type LinkedAccount, providerLabel } from '~/lib/profile-api';
-import { formatRelative } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
 import { SettingRow, SettingsCard } from '../settings/SettingsParts';
 
 type Props = {
@@ -18,6 +18,7 @@ type Props = {
 
 /** Providers linked to this account; link Google, unlink when another way in remains. */
 export function LinkedAccountsCard({ accounts, googleEnabled, loading, onChanged }: Props) {
+  const { relative: formatRelative } = useTimeFormat();
   const hasGoogle = accounts.some((a) => a.providerId === 'google');
   const fail = (title: string) => (e: Error) =>
     notifications.show({ color: 'red', title, message: e.message });

@@ -12,7 +12,7 @@ import {
 } from '@mantine/core';
 import { FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { excerpt, type PostRow } from '~/lib/posts-api';
-import { formatDateTime, formatRelative } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
 import { UserCell } from '../logs/LogCells';
 import { TruncatedText } from '../logs/TruncatedText';
 
@@ -63,6 +63,7 @@ function Actions({ p, h }: { p: PostRow; h: PostHandlers }) {
 }
 
 function Edited({ p }: { p: PostRow }) {
+  const { dateTime: formatDateTime, relative: formatRelative } = useTimeFormat();
   const edited = new Date(p.updatedAt).getTime() - new Date(p.createdAt).getTime() > 60_000;
   return (
     <Tooltip
@@ -154,6 +155,7 @@ export function PostTable({ rows, loading, fetching = false, empty, ...h }: Prop
 }
 
 export function PostCardList({ rows, loading, empty, ...h }: Props) {
+  const { relative: formatRelative } = useTimeFormat();
   if (loading) {
     return (
       <Stack gap="xs">

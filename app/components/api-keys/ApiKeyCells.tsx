@@ -1,6 +1,6 @@
 import { Badge, Group, Stack, Text, Tooltip } from '@mantine/core';
 import { type ApiKeyRow, daysUntil, maskedKey, STATUS_META } from '~/lib/api-keys-api';
-import { formatDateTime, formatRelative } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
 import { TruncatedText } from '../logs/TruncatedText';
 
 const nf = new Intl.NumberFormat('id-ID');
@@ -66,6 +66,7 @@ export function ScopeChips({ scopes, max = 3 }: { scopes: string[]; max?: number
 
 /** "Berakhir dalam 12 hari" with a warning tint under 7 days; "Tanpa kedaluwarsa" when null. */
 export function ExpiryCell({ k, soonDays = 7 }: { k: ApiKeyRow; soonDays?: number }) {
+  const { dateTime: formatDateTime, relative: formatRelative } = useTimeFormat();
   if (!k.expiresAt)
     return (
       <Text size="sm" c="dimmed">
@@ -99,6 +100,7 @@ export function ExpiryCell({ k, soonDays = 7 }: { k: ApiKeyRow; soonDays?: numbe
 }
 
 export function UsageCell({ k }: { k: ApiKeyRow }) {
+  const { relative: formatRelative } = useTimeFormat();
   return (
     <Stack gap={0}>
       <Text size="sm" lh={1.3}>

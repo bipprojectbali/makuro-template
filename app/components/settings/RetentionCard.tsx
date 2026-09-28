@@ -11,7 +11,7 @@ import {
   sameRetention,
   saveRetention,
 } from '~/lib/settings-api';
-import { formatDateTime, formatRelative } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
 import { SettingRow, SettingsCard } from './SettingsParts';
 
 const ROWS: Array<{
@@ -65,6 +65,7 @@ function pick(s: RetentionState): RetentionSettings {
 
 /** Per-table max age; NULL = keep forever. Runs daily, or now on demand. */
 export function RetentionCard({ state }: { state: RetentionState }) {
+  const { dateTime: formatDateTime, relative: formatRelative } = useTimeFormat();
   const qc = useQueryClient();
   const [form, setForm] = useState<RetentionSettings>(pick(state));
   useEffect(() => setForm(pick(state)), [state]);

@@ -25,6 +25,7 @@ import {
 } from 'react-icons/fi';
 import { Link, useLocation } from 'react-router';
 import { type ErrorInfo, type ErrorKind, errorReference } from '~/lib/error-page';
+import { useTimeFormat } from '~/lib/time-format';
 
 const ICON: Record<ErrorKind, { icon: IconType; color: string }> = {
   'not-found': { icon: FiCompass, color: 'blue' },
@@ -58,7 +59,10 @@ export function ErrorPanel({
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const { icon: Icon, color } = ICON[info.kind];
-  const reference = errorReference();
+  const { now, dateTime } = useTimeFormat();
+  // Request time on SSR + hydration (identical text), render time for client-side errors.
+  const [at] = useState(now);
+  const reference = errorReference(at);
   const canGoBack = typeof window !== 'undefined' && window.history.length > 1;
   const isServer = info.kind === 'server' || info.kind === 'unavailable';
 
@@ -94,7 +98,7 @@ export function ErrorPanel({
         </div>
         <Text size="xs" c="dimmed" ff="monospace" style={{ wordBreak: 'break-all' }}>
           {pathname}
-          {isServer ? ` · ${reference} · ${new Date().toLocaleString('id-ID')}` : ''}
+          {isServer ? ` · ${reference} · ${dateTime(new Date(at).toISOString())}` : ''}
         </Text>
         <Group gap="xs" wrap="wrap" justify={embedded ? 'flex-start' : 'center'}>
           {canGoBack && (

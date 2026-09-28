@@ -1,5 +1,5 @@
 import { Box, Group, Paper, Skeleton, Stack, Text } from '@mantine/core';
-import { formatRelative } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
 import { UserActionsMenu } from './UserActionsMenu';
 import { IdentityCell, RoleBadge, StatusBadge } from './UserCells';
 import type { UserListProps } from './UserTable';
@@ -8,6 +8,7 @@ const SKELETON_KEYS = ['s0', 's1', 's2', 's3'];
 
 /** Mobile card list (< sm). */
 export function UserCardList({ rows, loading, perms, actions, onOpen, empty }: UserListProps) {
+  const { relative: formatRelative } = useTimeFormat();
   if (loading) {
     return (
       <Stack gap="xs">

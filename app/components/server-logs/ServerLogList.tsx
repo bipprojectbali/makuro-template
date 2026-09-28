@@ -12,12 +12,13 @@ import {
 import { useState } from 'react';
 import { FiChevronDown, FiChevronRight } from 'react-icons/fi';
 import { LEVEL_META, logExtras, type ServerLogRow } from '~/lib/server-logs-api';
-import { formatDateTime, formatRelative } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
 import { TruncatedText } from '../logs/TruncatedText';
 
 const SKELETON_KEYS = ['s0', 's1', 's2', 's3', 's4', 's5'];
 
 function Row({ row }: { row: ServerLogRow }) {
+  const { dateTime: formatDateTime, relative: formatRelative } = useTimeFormat();
   const [open, setOpen] = useState(false);
   const extras = logExtras(row);
   const hasExtras = Object.keys(extras).length > 0;

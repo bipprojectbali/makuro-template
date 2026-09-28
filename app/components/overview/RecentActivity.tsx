@@ -2,7 +2,8 @@ import { Anchor, Avatar, Badge, Group, Paper, SimpleGrid, Stack, Text } from '@m
 import type { DevOverview } from '@server/dev-overview';
 import { Link } from 'react-router';
 import { methodMeta } from '~/lib/login-logs-api';
-import { countryFlag, formatRelative, locationLabel } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
+import { countryFlag, locationLabel } from '~/lib/visits-format';
 import { TruncatedText } from '../logs/TruncatedText';
 
 function Panel({
@@ -39,6 +40,7 @@ function Panel({
 
 /** Latest logins and latest rate-limit blocks, side by side. */
 export function RecentActivity({ data }: { data: DevOverview }) {
+  const { relative: formatRelative } = useTimeFormat();
   return (
     <SimpleGrid cols={{ base: 1, md: 2 }} spacing="sm">
       <Panel title="Login terbaru" to="/dev/login-logs" empty="Belum ada login tercatat.">

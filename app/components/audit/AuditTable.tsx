@@ -12,7 +12,7 @@ import {
 } from '@mantine/core';
 import { FiEye } from 'react-icons/fi';
 import type { AuditRow } from '~/lib/audit-api';
-import { formatRelative } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
 import { TimeCell } from '../logs/LogCells';
 import { TruncatedText } from '../logs/TruncatedText';
 import { ActionBadge, ActorCell, TargetCell } from './AuditCells';
@@ -111,6 +111,7 @@ export function AuditTable({ rows, loading, fetching = false, onOpen, empty }: P
 
 /** Mobile card list (< sm). */
 export function AuditCardList({ rows, loading, onOpen, empty }: Props) {
+  const { relative: formatRelative } = useTimeFormat();
   if (loading) {
     return (
       <Stack gap="xs">

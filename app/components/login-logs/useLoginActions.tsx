@@ -4,8 +4,8 @@ import { notifications } from '@mantine/notifications';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { deleteLogin, deleteLogins, type LoginRow } from '~/lib/login-logs-api';
+import { useTimeFormat } from '~/lib/time-format';
 import { purgeLogs } from '~/lib/visits-api';
-import { formatDateTime } from '~/lib/visits-format';
 
 const PURGE_DAYS = 30;
 const nf = new Intl.NumberFormat('id-ID');
@@ -20,6 +20,7 @@ function notifyError(title: string, err: unknown) {
 
 /** Destructive login-log actions with confirm dialogs, loading state, and feedback. */
 export function useLoginActions({ onDone }: { onDone: () => void }) {
+  const { dateTime: formatDateTime } = useTimeFormat();
   const qc = useQueryClient();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 

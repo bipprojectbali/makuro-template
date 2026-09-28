@@ -1,7 +1,8 @@
 import { ActionIcon, Checkbox, Group, Paper, Skeleton, Stack } from '@mantine/core';
 import { FiTrash2 } from 'react-icons/fi';
 import type { RateLimitRow } from '~/lib/rate-limit-logs-api';
-import { countryFlag, deviceSummary, formatRelative, locationLabel } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
+import { countryFlag, deviceSummary, locationLabel } from '~/lib/visits-format';
 import { UserCell } from '../logs/LogCells';
 import { TruncatedText } from '../logs/TruncatedText';
 import { MethodBadge } from './RateLimitCells';
@@ -17,6 +18,7 @@ const SKELETON_KEYS = ['s0', 's1', 's2', 's3'];
 
 /** Mobile card list (< sm): all key data visible without horizontal scroll. */
 export function RateLimitCardList({ rows, loading, empty, selected, deletingId, ...h }: Props) {
+  const { relative: formatRelative } = useTimeFormat();
   if (loading) {
     return (
       <Stack gap="xs">

@@ -1,14 +1,8 @@
 import { Avatar, Group, Stack, Text, ThemeIcon, Tooltip } from '@mantine/core';
-import { TruncatedText } from './TruncatedText';
 import { FiCpu, FiMonitor, FiSmartphone, FiTablet } from 'react-icons/fi';
-import {
-  countryFlag,
-  deviceLabel,
-  deviceSummary,
-  formatDateTime,
-  formatRelative,
-  locationLabel,
-} from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
+import { countryFlag, deviceLabel, deviceSummary, locationLabel } from '~/lib/visits-format';
+import { TruncatedText } from './TruncatedText';
 
 /** Structural row shapes so visit and login rows can share these cells. */
 export type ClientRow = { ip: string | null; country: string | null; city: string | null };
@@ -23,6 +17,7 @@ export type DeviceRow = {
 export type UserRow = { userId: string | null; userName: string | null; userImage: string | null };
 
 export function TimeCell({ iso }: { iso: string }) {
+  const { dateTime: formatDateTime, relative: formatRelative } = useTimeFormat();
   return (
     <Tooltip label={formatDateTime(iso)} withArrow openDelay={300}>
       <Stack gap={0}>
@@ -52,7 +47,12 @@ export function ClientCell({ row }: { row: ClientRow }) {
   );
 }
 
-const DEVICE_ICON = { desktop: FiMonitor, mobile: FiSmartphone, tablet: FiTablet, bot: FiCpu } as const;
+const DEVICE_ICON = {
+  desktop: FiMonitor,
+  mobile: FiSmartphone,
+  tablet: FiTablet,
+  bot: FiCpu,
+} as const;
 
 export function DeviceIcon({ type, size = 14 }: { type: DeviceRow['deviceType']; size?: number }) {
   const Icon = (type && DEVICE_ICON[type]) || FiMonitor;
@@ -80,7 +80,15 @@ export function DeviceCell({ row }: { row: DeviceRow }) {
   );
 }
 
-export function UserCell({ row, compact = false, subtitle }: { row: UserRow; compact?: boolean; subtitle?: string | null }) {
+export function UserCell({
+  row,
+  compact = false,
+  subtitle,
+}: {
+  row: UserRow;
+  compact?: boolean;
+  subtitle?: string | null;
+}) {
   if (!row.userId) {
     return (
       <Text size="sm" c="dimmed">
@@ -98,7 +106,13 @@ export function UserCell({ row, compact = false, subtitle }: { row: UserRow; com
           {row.userName ?? '—'}
         </TruncatedText>
         {!compact && (
-          <TruncatedText ff={subtitle ? undefined : 'monospace'} size="xs" c="dimmed" lh={1.3} maw={180}>
+          <TruncatedText
+            ff={subtitle ? undefined : 'monospace'}
+            size="xs"
+            c="dimmed"
+            lh={1.3}
+            maw={180}
+          >
             {subtitle ?? row.userId ?? '—'}
           </TruncatedText>
         )}

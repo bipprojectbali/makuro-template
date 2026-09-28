@@ -6,18 +6,19 @@ import { ColorSchemeScript, MantineProvider, mantineHtmlProps } from '@mantine/c
 import { ModalsProvider } from '@mantine/modals';
 import { Notifications } from '@mantine/notifications';
 import { getBranding } from '@server/settings-branding';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
 import type { Route } from './+types/root';
 import { ErrorPage } from './components/errors/ErrorPage';
 import { RouteProgress } from './components/RouteProgress';
 import { describeError, ERROR_TITLE_SUFFIX } from './lib/error-page';
-import { queryClient } from './lib/query';
+import { QueryProvider } from './lib/query';
 import { theme } from './lib/theme';
+import { rememberTimeZone, requestClock } from './lib/time-format';
 
-/** Branding for the global title fallback; cached settings read, no auth. */
-export async function loader() {
-  return { branding: await getBranding() };
+/** Branding for the global title fallback (cached, no auth) + the SSR/hydration clock. */
+export async function loader({ request }: Route.LoaderArgs) {
+  return { branding: await getBranding(), clock: requestClock(request) };
 }
 
 export function meta({ loaderData, error }: Route.MetaArgs) {
@@ -91,8 +92,9 @@ html, body { background-color: inherit; }
 }
 
 export default function App() {
+  useEffect(rememberTimeZone, []);
   return (
-    <QueryClientProvider client={queryClient}>
+    <QueryProvider>
       <MantineProvider theme={theme} defaultColorScheme="auto">
         <RouteProgress />
         <Notifications position="top-right" />
@@ -100,7 +102,7 @@ export default function App() {
           <Outlet />
         </ModalsProvider>
       </MantineProvider>
-    </QueryClientProvider>
+    </QueryProvider>
   );
 }
 

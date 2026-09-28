@@ -1,7 +1,8 @@
 import { ActionIcon, Avatar, Checkbox, Group, Paper, Skeleton, Stack } from '@mantine/core';
 import { FiTrash2 } from 'react-icons/fi';
 import type { LoginRow } from '~/lib/login-logs-api';
-import { countryFlag, deviceSummary, formatRelative, locationLabel } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
+import { countryFlag, deviceSummary, locationLabel } from '~/lib/visits-format';
 import { TruncatedText } from '../logs/TruncatedText';
 import { MethodBadge } from './LoginCells';
 import type { LoginListHandlers } from './LoginTable';
@@ -12,6 +13,7 @@ const SKELETON_KEYS = ['s0', 's1', 's2', 's3'];
 
 /** Mobile card list (< sm): all key data visible without horizontal scroll. */
 export function LoginCardList({ rows, loading, empty, selected, deletingId, ...h }: Props) {
+  const { relative: formatRelative } = useTimeFormat();
   if (loading) {
     return (
       <Stack gap="xs">

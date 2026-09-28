@@ -14,7 +14,7 @@ import {
 import { FiLogOut, FiUserX } from 'react-icons/fi';
 import { describeSession } from '~/lib/profile-api';
 import { isExpired, type SessionRow } from '~/lib/sessions-api';
-import { formatDateTime, formatRelative } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
 import { TimeCell, UserCell } from '../logs/LogCells';
 import { TruncatedText } from '../logs/TruncatedText';
 
@@ -48,6 +48,7 @@ function DeviceCell({ s }: { s: SessionRow }) {
 }
 
 function Flags({ s, currentSessionId }: { s: SessionRow; currentSessionId: string | null }) {
+  const { dateTime: formatDateTime, relative: formatRelative } = useTimeFormat();
   const expired = isExpired(s);
   return (
     <Group gap={4} wrap="wrap">
@@ -116,6 +117,7 @@ function Actions({ s, h }: { s: SessionRow; h: SessionHandlers }) {
 }
 
 export function SessionTable({ rows, loading, fetching = false, empty, ...h }: Props) {
+  const { relative: formatRelative } = useTimeFormat();
   return (
     <Box pos="relative" style={{ overflowX: 'auto' }}>
       <LoadingOverlay visible={fetching && !loading} zIndex={5} overlayProps={{ blur: 1 }} />
@@ -182,6 +184,7 @@ export function SessionTable({ rows, loading, fetching = false, empty, ...h }: P
 }
 
 export function SessionCardList({ rows, loading, empty, ...h }: Props) {
+  const { relative: formatRelative } = useTimeFormat();
   if (loading) {
     return (
       <Stack gap="xs">

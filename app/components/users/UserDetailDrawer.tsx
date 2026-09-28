@@ -2,7 +2,7 @@ import { Alert, Avatar, Badge, Button, Divider, Drawer, Group, Stack, Text } fro
 import { normalizeRole, ROLES } from '@server/permissions';
 import { FiLogIn, FiShield, FiSlash, FiTrash2, FiUser, FiUserCheck } from 'react-icons/fi';
 import { type AdminUser, isBanActive } from '~/lib/admin-users-api';
-import { formatDateTime, formatRelative } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
 import { Copyable, Field, Section } from '../logs/DetailParts';
 import { allowedActions, type UserPermissions } from './UserActionsMenu';
 import { RoleBadge, StatusBadge } from './UserCells';
@@ -19,6 +19,7 @@ const nf = new Intl.NumberFormat('id-ID');
 
 /** Full profile + permitted actions for one user. */
 export function UserDetailDrawer({ user, onClose, perms, actions }: Props) {
+  const { dateTime: formatDateTime, relative: formatRelative } = useTimeFormat();
   const can = user ? allowedActions(user, perms) : null;
   const busy = user ? actions.busyId === user.id : false;
   const banned = user ? isBanActive(user) : false;

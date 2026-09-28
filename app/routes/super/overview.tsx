@@ -7,7 +7,7 @@ import { Link, useRevalidator } from 'react-router';
 import { OverviewStats } from '~/components/overview/OverviewStats';
 import { QuickLinks } from '~/components/overview/QuickLinks';
 import { RecentActivity } from '~/components/overview/RecentActivity';
-import { formatDateTime } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
 import type { Route } from './+types/overview';
 
 export function meta() {
@@ -21,6 +21,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export default function OverviewPage({ loaderData: data }: Route.ComponentProps) {
+  const { dateTime: formatDateTime } = useTimeFormat();
   const revalidator = useRevalidator();
   const warnings: Array<{ key: string; text: string; to: string }> = [];
   if (!data.rateLimits.config.enabled)

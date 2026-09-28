@@ -27,9 +27,12 @@ const MAX_DAYS = 365;
 // Correlated subqueries must qualify columns explicitly: drizzle renders bare
 // column names inside `sql` fragments, so `user_id = "id"` would compare the
 // inner table with itself.
-const lastLoginAt = sql<
-  string | null
->`(select max(l.created_at) from login_log l where l.user_id = "user".id)`;
+// mapWith: raw fragments skip the column decoder, so the driver would return a zone-less
+// "YYYY-MM-DD HH:MM:SS" string that browsers parse as local time.
+const lastLoginAt =
+  sql<Date | null>`(select max(l.created_at) from login_log l where l.user_id = "user".id)`.mapWith(
+    loginLog.createdAt,
+  );
 const loginCount = sql<number>`(select count(*)::int from login_log l where l.user_id = "user".id)`;
 const activeSessions = sql<number>`(select count(*)::int from session s where s.user_id = "user".id and s.expires_at > now())`;
 const providers = sql<

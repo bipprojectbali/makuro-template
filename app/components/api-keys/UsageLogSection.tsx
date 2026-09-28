@@ -30,7 +30,8 @@ import {
   type UsageLogRow,
   usageExportUrl,
 } from '~/lib/api-keys-usage-api';
-import { countryFlag, formatDateTime, formatRelative } from '~/lib/visits-format';
+import { useTimeFormat } from '~/lib/time-format';
+import { countryFlag } from '~/lib/visits-format';
 import { TruncatedText } from '../logs/TruncatedText';
 import { VisitEmptyState } from '../visits/VisitEmptyState';
 
@@ -65,6 +66,7 @@ function StatusBadge({ status }: { status: number }) {
 }
 
 function Rows({ rows, onKey }: { rows: UsageLogRow[]; onKey: (id: string) => void }) {
+  const { dateTime: formatDateTime, relative: formatRelative } = useTimeFormat();
   return (
     <>
       {rows.map((r) => (
