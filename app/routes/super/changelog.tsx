@@ -12,7 +12,8 @@ import {
   ThemeIcon,
   Title,
 } from '@mantine/core';
-import { changelogOverview, countItems, filterReleases } from '@server/changelog';
+import { changelogOverview } from '@server/changelog';
+import { countItems, filterReleases } from '@server/changelog-parse';
 import { requireRole } from '@server/guard';
 import { ROLES } from '@server/permissions';
 import { useMemo, useState } from 'react';

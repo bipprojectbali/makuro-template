@@ -1,10 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import {
-  filterReleases,
-  OTHER_SECTION,
-  parseChangelog,
-  summarizeChangelog,
-} from '../server/changelog';
+import { summarizeChangelog } from '../server/changelog';
+import { filterReleases, OTHER_SECTION, parseChangelog } from '../server/changelog-parse';
 
 const MD = `# Changelog
 
