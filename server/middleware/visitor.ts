@@ -60,7 +60,8 @@ function classifyBot(ua: string): string | null {
   if (/bingbot|bingpreview/.test(lower)) return 'search:bing';
   if (/googlebot|google-extended|google-inspectiontool/.test(lower)) return 'search:google';
   if (/ccbot/.test(lower)) return 'ai:cc';
-  if (/semrush|ahrefs|moz|dotbot/.test(lower)) return 'seo-crawler';
+  // Moz crawls as rogerbot/dotbot; a bare "moz" would also match every "Mozilla/5.0" UA.
+  if (/semrush|ahrefs|rogerbot|dotbot/.test(lower)) return 'seo-crawler';
   if (/uptimerobot|pingdom|statuspage/.test(lower)) return 'monitor';
   return match;
 }

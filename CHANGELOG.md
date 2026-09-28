@@ -20,6 +20,7 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 - Kolom "login terakhir" di `/dev/users` tidak lagi meleset beberapa jam ketika zona waktu server berbeda dengan zona waktu browser.
 - `/dev/changelog` tidak lagi error saat dibuka di browser.
 - Console browser tidak lagi menampilkan error hydration ketika ekstensi browser (VPN/keamanan) menandai elemen halaman dengan atribut `bis_*`/`__processed_*__`.
+- Visitor Logs tidak lagi salah menandai bot monitor (UptimeRobot, Pingdom) dan bot lain berawalan `Mozilla/5.0` sebagai `seo-crawler`. Kunjungan lama yang sudah tercatat tidak berubah.
 
 ## [0.1.0] - 2026-09-14
 
