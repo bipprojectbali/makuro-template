@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import type { ServerResponse } from 'node:http';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import { nodeToWebRequest, writeWebResponse } from '../server/http-bridge';
 
 function mockServerResponse() {
@@ -125,12 +125,12 @@ describe('nodeToWebRequest', () => {
     } else {
       setTimeout(() => em.emit('end'), 0);
     }
-    return em;
+    // Duck-typed: only the fields nodeToWebRequest reads are provided.
+    return em as unknown as IncomingMessage;
   }
 
   test('copies URL and method', async () => {
     const msg = makeIncomingMessage({ method: 'POST', url: '/api/test?foo=bar' });
-    // @ts-expect-error — duck-typed IncomingMessage
     const req = await nodeToWebRequest(msg);
     expect(req.method).toBe('POST');
     expect(new URL(req.url).pathname).toBe('/api/test');
@@ -144,7 +144,6 @@ describe('nodeToWebRequest', () => {
         'content-type': 'application/json',
       },
     });
-    // @ts-expect-error
     const req = await nodeToWebRequest(msg);
     expect(req.headers.get('cookie')).toBe('session=abc; csrf=def');
     expect(req.headers.get('content-type')).toBe('application/json');
@@ -152,14 +151,12 @@ describe('nodeToWebRequest', () => {
 
   test('GET request has no body', async () => {
     const msg = makeIncomingMessage({ method: 'GET' });
-    // @ts-expect-error
     const req = await nodeToWebRequest(msg);
     expect(req.body).toBeNull();
   });
 
   test('POST request body is readable', async () => {
     const msg = makeIncomingMessage({ method: 'POST', body: '{"x":1}' });
-    // @ts-expect-error
     const req = await nodeToWebRequest(msg);
     const text = await req.text();
     expect(text).toBe('{"x":1}');
