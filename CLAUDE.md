@@ -294,6 +294,13 @@ Saat bekerja dengan `bun build --compile --asset`:
 - **Dev server `--hot`** tidak selalu memuat ulang plugin Elysia baru — minta user restart `bun run dev` setelah menambah plugin/hook.
 - **Versi** hanya dari `package.json` (`server/app-info.ts`); jangan hardcode di tempat lain.
 
+## CHANGELOG.md — Ditulis Agent
+
+- Setiap merge/push fitur: tambahkan poin ke `## [Unreleased]` di `CHANGELOG.md` (section `Added`/`Changed`/`Fixed`/`Removed`, bahasa Indonesia, sudut pandang user) di commit yang sama.
+- Saat deploy: ganti `## [Unreleased]` menjadi `## [x.y.z] - YYYY-MM-DD` sesuai versi `package.json`. Badge `/dev/changelog` kuning = versi berjalan belum punya entry.
+- Halaman `/dev/changelog` mem-parse file ini (`server/changelog.ts`); baris yang tidak dikenali tetap tampil di section "Lainnya", jadi jaga formatnya.
+- Vite tidak bisa mengimpor `.md`: dev membaca file dari disk, `server/prod.ts` meng-embed dan mendaftarkannya ke `globalThis`. Perubahan CHANGELOG baru terlihat di prod setelah rebuild.
+
 ## Konvensi Halaman `/dev` & Error
 
 - **Menambah halaman `/dev` baru = lima tempat:** `app/routes.ts`, `NAV` di `app/routes/super/layout.tsx`, `QuickLinks` overview, `CONSOLE_PAGES` di `app/components/landing/landing.content.ts` + `CONSOLE_PAGE_COUNT` di `server/landing-stats.ts` (test menjaga ketiganya sinkron), dan badge di `server/sidebar-badges.ts` (nada `alert` untuk hal yang butuh tindakan, `info` untuk skala; satu query agregat murah, gagal lunak).

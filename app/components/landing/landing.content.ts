@@ -18,6 +18,7 @@ import {
   FiPackage,
   FiSettings,
   FiShield,
+  FiTag,
   FiTerminal,
   FiTool,
   FiUsers,
@@ -158,6 +159,12 @@ export const CONSOLE_PAGES: ConsolePage[] = [
     icon: FiTool,
     label: 'Tools & MCP',
     desc: 'Status proses, katalog tool agent, reset cache.',
+    group: 'Tools',
+  },
+  {
+    icon: FiTag,
+    label: 'Changelog',
+    desc: 'Riwayat perubahan per versi dari CHANGELOG.md, dengan filter dan pencarian.',
     group: 'Tools',
   },
   {
