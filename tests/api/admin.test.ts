@@ -220,6 +220,30 @@ describe('POST /admin/users/:id/ban', () => {
   });
 });
 
+describe('POST /admin/users/:id/unban', () => {
+  test('unknown target → 404', async () => {
+    asActor('actor-admin', 'admin');
+    const { status } = await req('POST', `/admin/users/ghost-${runId}/unban`);
+    expect(status).toBe(404);
+  });
+
+  test('admin cannot unban another admin → 403', async () => {
+    asActor('actor-admin', 'admin');
+    const { status } = await req('POST', `/admin/users/${adminId}/unban`);
+    expect(status).toBe(403);
+  });
+
+  test('admin unbans a regular user → ok via Better Auth', async () => {
+    asActor('actor-admin', 'admin');
+    const unban = spies[4];
+    unban.mockClear();
+    const { status, body } = await req('POST', `/admin/users/${regularId}/unban`);
+    expect(status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(unban).toHaveBeenCalledTimes(1);
+  });
+});
+
 // ─── DELETE /admin/users/:id ──────────────────────────────────────────────────
 
 describe('DELETE /admin/users/:id', () => {
