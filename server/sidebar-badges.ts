@@ -8,6 +8,7 @@ import { sql } from 'drizzle-orm';
 import { countRateLimitLastHour } from './api/analytics-ratelimits.stats.query';
 import { errorsLastHour, warningsLastHour } from './api/logs';
 import { keyStats } from './api-keys/query';
+import { changelogOverview } from './changelog';
 import { db } from './db';
 import { auditLog, loginLog, post, session, user, visitLog } from './db/schema';
 import { migrationStatus } from './db/schema-stats';
@@ -64,6 +65,7 @@ async function collect(): Promise<SidebarBadges> {
     migrations,
     files,
     settings,
+    changelog,
   ] = await Promise.all([
     safe({ total: 0, banned: 0 }, async () => {
       const [r] = await db
@@ -101,6 +103,7 @@ async function collect(): Promise<SidebarBadges> {
     safe(null, () => migrationStatus()),
     safe(null, () => scanFileHealth().then((r) => (r.available ? r.summary : null))),
     safe(null, () => settingsOverview()),
+    safe(null, () => changelogOverview()),
   ]);
   const errors = errorsLastHour();
   const warnings = warningsLastHour();
@@ -185,6 +188,13 @@ async function collect(): Promise<SidebarBadges> {
       'yellow',
       `${nf.format(files.over)} file melewati limit baris${files.danger ? ` · ${nf.format(files.danger)} berbahaya untuk konteks agent` : ''}`,
     );
+  if (changelog?.available)
+    badges['/dev/changelog'] = !changelog.currentHasEntry
+      ? alert(1, 'yellow', `Versi ${changelog.currentVersion} belum punya entry di CHANGELOG.md`)
+      : info(
+          changelog.unreleasedCount,
+          `${nf.format(changelog.unreleasedCount)} perubahan belum dirilis`,
+        );
   return badges;
 }
 

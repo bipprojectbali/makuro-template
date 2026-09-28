@@ -18,8 +18,10 @@ import { createRequestHandler, type ServerBuild } from 'react-router';
 // `bun build --compile` mode Bun follows this static import and bundles the SSR
 // module + all its dependencies (@react-router/node, react-dom, etc.) into the binary.
 import * as ssrBuild from '../build/server/index.js';
+import bundledChangelog from '../CHANGELOG.md' with { type: 'text' };
 import { api } from './api';
 import { newRequestId } from './api-error';
+import { registerBundledChangelog } from './changelog';
 import { env } from './env';
 import { errorResponse } from './error-page';
 import { isHttpProbe, probeResponse } from './http-probes';
@@ -29,6 +31,8 @@ import { recordVisit } from './middleware/visitor';
 import { agentDocResponse, isAgentDoc } from './readme';
 import { getBranding } from './settings-branding';
 import { maintenanceGate } from './settings-maintenance';
+
+registerBundledChangelog(bundledChangelog);
 
 const build = ssrBuild as unknown as ServerBuild;
 const handler = createRequestHandler(build, 'production');

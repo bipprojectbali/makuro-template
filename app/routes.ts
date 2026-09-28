@@ -25,5 +25,6 @@ export default [
     route('dev/file-health', 'routes/super/file-health.tsx'),
     route('dev/server-logs', 'routes/super/server-logs.tsx'),
     route('dev/audit', 'routes/super/audit.tsx'),
+    route('dev/changelog', 'routes/super/changelog.tsx'),
   ]),
 ] satisfies RouteConfig;

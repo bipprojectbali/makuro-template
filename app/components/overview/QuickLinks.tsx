@@ -8,6 +8,7 @@ import {
   FiLogIn,
   FiSettings,
   FiShield,
+  FiTag,
   FiUsers,
 } from 'react-icons/fi';
 import { Link } from 'react-router';
@@ -67,6 +68,13 @@ const LINKS: Array<{
     description: 'Diagram tabel dan relasi',
     icon: FiDatabase,
     color: 'grape',
+  },
+  {
+    to: '/dev/changelog',
+    label: 'Changelog',
+    description: 'Riwayat perubahan per versi',
+    icon: FiTag,
+    color: 'teal',
   },
   {
     to: '/dev/settings',
