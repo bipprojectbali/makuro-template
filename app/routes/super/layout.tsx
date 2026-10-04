@@ -1,5 +1,6 @@
 import { frameInfo } from '@server/app-info';
 import { requireRole } from '@server/guard';
+import { proxyHealth } from '@server/middleware/proxy-health';
 import { ROLES } from '@server/permissions';
 import { getSidebarCollapsed } from '@server/sidebar';
 import { devSidebarBadges } from '@server/sidebar-badges';
@@ -25,6 +26,7 @@ import {
 import { Outlet } from 'react-router';
 import { AppFrame, type NavGroup, type NavItem } from '~/components/AppFrame';
 import { AreaErrorBoundary } from '~/components/errors/AreaErrorBoundary';
+import { ProxySetupBanner } from '~/components/frame/ProxySetupBanner';
 import type { AppContext } from '~/lib/app-context';
 import type { Route } from './+types/layout';
 
@@ -152,7 +154,13 @@ export async function loader({ request }: Route.LoaderArgs) {
   const auth = await requireRole(request, ROLES.SUPER_ADMIN);
   // Sidebar counters — cached briefly server-side, every source fails soft.
   const navBadges = await devSidebarBadges();
-  return { ...auth, collapsed: getSidebarCollapsed(request), navBadges, ...(await frameInfo()) };
+  return {
+    ...auth,
+    collapsed: getSidebarCollapsed(request),
+    navBadges,
+    proxyHealth: proxyHealth(request.headers),
+    ...(await frameInfo()),
+  };
 }
 
 function Frame({
@@ -186,6 +194,7 @@ export default function SuperLayout({ loaderData }: Route.ComponentProps) {
   const ctx: AppContext = { user: loaderData.user, role: loaderData.role };
   return (
     <Frame data={loaderData}>
+      {loaderData.proxyHealth && <ProxySetupBanner health={loaderData.proxyHealth} />}
       <Outlet context={ctx} />
     </Frame>
   );

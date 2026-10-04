@@ -71,6 +71,8 @@ export function clientIpFrom(
   return normalizeIp(leftMost);
 }
 
+let warnedIgnoredForwarder = false;
+
 /** Resolve the client IP at the HTTP edge and stamp it for downstream handlers (Elysia, SSR). */
 export function stampClientIp(
   request: Request,
@@ -80,6 +82,13 @@ export function stampClientIp(
   const ip = clientIpFrom(request.headers, socketIp, isTrusted);
   if (ip) request.headers.set(CLIENT_IP_HEADER, ip);
   else request.headers.delete(CLIENT_IP_HEADER);
+  if (!warnedIgnoredForwarder && forwardedHeaderIgnored(request.headers)) {
+    warnedIgnoredForwarder = true;
+    logger.warn(
+      { peer: ip },
+      'X-Forwarded-For dari peer di luar TRUSTED_PROXIES diabaikan. Bila app di belakang proxy/Cloudflare, tambahkan IP proxy ke TRUSTED_PROXIES (panduan muncul di /dev); bila tidak, abaikan. Dicatat sekali per proses.',
+    );
+  }
 }
 
 /** The stamped client IP (falls back to `explicitIp`); never reads proxy headers. */

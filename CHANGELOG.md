@@ -7,6 +7,7 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 ## [Unreleased]
 
 ### Added
+- Banner peringatan di konsol `/dev` saat `TRUSTED_PROXIES` terdeteksi salah (proxy belum dipercaya, IP terbaca sebagai IP Cloudflare, atau ada entri `/0`), lengkap dengan panduan langkah demi langkah untuk Cloudflare, Cloudflare Tunnel, dan nginx beserta baris `.env` siap-salin. Banner bisa disembunyikan sampai server restart; server juga mencatat warning sekali per proses.
 - Kartu "Status proses" di `/dev/tools` menampilkan jumlah proxy tepercaya (`TRUSTED_PROXIES`) dan IP Anda menurut server, dengan peringatan bila request datang lewat proxy yang belum dipercaya atau ada entri `/0`.
 - Halaman `/dev/changelog` untuk membaca riwayat perubahan langsung dari konsol, lengkap dengan filter jenis perubahan, pencarian, dan peringatan bila versi yang berjalan belum tercatat.
 - Dev server menjalankan migrasi database otomatis saat boot, sehingga database lokal yang baru atau tertinggal tidak lagi memicu error `relation does not exist`.
