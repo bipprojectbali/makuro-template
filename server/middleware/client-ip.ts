@@ -28,7 +28,7 @@ if (catchAll.length > 0) {
 /** Canonical, human-readable form (IPv4-mapped → IPv4, IPv6 loopback → 127.0.0.1). */
 export function normalizeIp(raw: string | null | undefined): string | null {
   if (!raw) return null;
-  let ip = raw.trim();
+  let ip = raw.trim().toLowerCase();
   if (ip.startsWith('::ffff:')) ip = ip.slice(7);
   if (ip === '::1') ip = '127.0.0.1';
   return ip || null;

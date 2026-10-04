@@ -84,7 +84,8 @@ function msUntilRoom(s: KeyState, now: number, windowMs: number, limit: number):
     room >= 0
       ? windowMs * (1 - room / s.prev) - elapsed // prev decays enough within this window
       : windowMs - elapsed + windowMs * (1 - (limit - 1) / s.curr); // curr becomes next window's prev
-  return Math.max(0, Math.ceil(ms));
+  // −1e-6 drops float noise (e.g. 20000.000000000004) that would add a whole Retry-After second.
+  return Math.max(0, Math.ceil(ms - 1e-6));
 }
 
 export class RateLimiter {

@@ -182,6 +182,7 @@ describe('normalizeIp', () => {
   it('canonicalizes loopback and IPv4-mapped forms', () => {
     expect(normalizeIp('::1')).toBe('127.0.0.1');
     expect(normalizeIp('::ffff:1.2.3.4')).toBe('1.2.3.4');
+    expect(normalizeIp('::FFFF:7.7.7.7')).toBe('7.7.7.7');
     expect(normalizeIp('  ')).toBeNull();
   });
 });

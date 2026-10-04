@@ -55,6 +55,15 @@ describe('RateLimiter.check (sliding-window counter)', () => {
     expect(rl.check('n', 1_500).limited).toBe(false);
   });
 
+  it('Retry-After has no float overshoot at an exact boundary', () => {
+    const rl = new RateLimiter({ windowMs: 60_000, limit: 3 });
+    for (const t of [0, 1, 2]) rl.check('f', t);
+    // 60000 × (1 − 2/3) evaluates to 20000.000000000004 in floats
+    const blocked = rl.check('f', 60_000);
+    expect(blocked.retryAfterMs).toBe(20_000);
+    expect(rl.check('f', 80_000).limited).toBe(false);
+  });
+
   it('rejected requests are not counted', () => {
     const rl = new RateLimiter({ windowMs: 1_000, limit: 2 });
     rl.check('b', 100);
