@@ -30,6 +30,11 @@ export function invalidProxyEntries(entries: readonly string[]): string[] {
   return entries.filter((e) => parseEntry(e) === null);
 }
 
+/** Entries that trust every address (`/0`): any client could then spoof its IP. */
+export function catchAllProxyEntries(entries: readonly string[]): string[] {
+  return entries.filter((e) => parseEntry(e)?.prefix === 0);
+}
+
 /** Builds a matcher for IPs/CIDRs (IPv4, IPv6; IPv4-mapped IPv6 matches IPv4 rules). */
 export function createProxyMatcher(entries: readonly string[]): ProxyMatcher {
   if (entries.length === 0) return () => false;

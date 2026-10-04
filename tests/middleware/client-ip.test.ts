@@ -8,7 +8,11 @@ import {
   resolveClientIp,
   stampClientIp,
 } from '../../server/middleware/client-ip';
-import { createProxyMatcher, invalidProxyEntries } from '../../server/middleware/trusted-proxy';
+import {
+  catchAllProxyEntries,
+  createProxyMatcher,
+  invalidProxyEntries,
+} from '../../server/middleware/trusted-proxy';
 
 const NONE = createProxyMatcher([]);
 const LOCAL = createProxyMatcher(['127.0.0.1', '::1']);
@@ -39,9 +43,22 @@ describe('clientIpFrom — trusted proxy', () => {
     expect(clientIpFrom(h, '10.0.0.2', CHAIN)).toBe('203.0.113.5');
   });
 
-  it('skips garbage entries', () => {
+  it('stops at the first hop that is not an IP and falls back to the peer', () => {
+    expect(clientIpFrom(xff('6.6.6.6, unknown'), '127.0.0.1', LOCAL)).toBe('127.0.0.1');
     const h = xff('203.0.113.5, not-an-ip, , 1.2.3.4:80, 999.1.1.1');
-    expect(clientIpFrom(h, '127.0.0.1', LOCAL)).toBe('203.0.113.5');
+    expect(clientIpFrom(h, '127.0.0.1', LOCAL)).toBe('127.0.0.1');
+    expect(clientIpFrom(xff('6.6.6.6, 10.1.1.1, '), '10.0.0.2', CHAIN)).toBe('10.0.0.2');
+  });
+
+  it('strips ports and IPv6 brackets before judging a hop', () => {
+    expect(clientIpFrom(xff('6.6.6.6, 1.2.3.4:5678'), '127.0.0.1', LOCAL)).toBe('1.2.3.4');
+    expect(clientIpFrom(xff('6.6.6.6, [2001:dead::1]:80'), '127.0.0.1', LOCAL)).toBe(
+      '2001:dead::1',
+    );
+    expect(clientIpFrom(xff('6.6.6.6, [2001:dead::1]'), '127.0.0.1', LOCAL)).toBe('2001:dead::1');
+    expect(clientIpFrom(xff('6.6.6.6, 203.0.113.5, 10.1.2.3:443'), '10.0.0.2', CHAIN)).toBe(
+      '203.0.113.5',
+    );
   });
 
   it('handles IPv6 clients, IPv6 proxies and IPv4-mapped forms', () => {
@@ -52,13 +69,28 @@ describe('clientIpFrom — trusted proxy', () => {
     expect(clientIpFrom(xff('203.0.113.5'), '::1', LOCAL)).toBe('203.0.113.5');
   });
 
-  it('falls back to X-Real-IP, then the socket IP, when no untrusted hop exists', () => {
-    expect(clientIpFrom(xff('10.9.9.9', { 'x-real-ip': '203.0.113.8' }), '10.0.0.2', CHAIN)).toBe(
-      '203.0.113.8',
-    );
+  it('returns the left-most hop when every hop is trusted', () => {
+    expect(clientIpFrom(xff('10.9.9.9, 10.1.1.1'), '10.0.0.2', CHAIN)).toBe('10.9.9.9');
+  });
+
+  it('ignores X-Real-IP whenever X-Forwarded-For is present', () => {
+    const h = xff('10.9.9.9', { 'x-real-ip': '6.6.6.6' });
+    expect(clientIpFrom(h, '10.0.0.2', CHAIN)).toBe('10.9.9.9');
+  });
+
+  it('uses X-Real-IP only when X-Forwarded-For is absent and the peer is trusted', () => {
+    const real = new Headers({ 'x-real-ip': '203.0.113.8' });
+    expect(clientIpFrom(real, '10.0.0.2', CHAIN)).toBe('203.0.113.8');
+    expect(clientIpFrom(real, '203.0.113.50', CHAIN)).toBe('203.0.113.50');
     expect(clientIpFrom(new Headers({ 'x-real-ip': 'garbage' }), '10.0.0.2', CHAIN)).toBe(
       '10.0.0.2',
     );
+    expect(clientIpFrom(new Headers(), '10.0.0.2', CHAIN)).toBe('10.0.0.2');
+  });
+
+  it('ignores every proxy header from an untrusted peer', () => {
+    const h = xff('1.2.3.4', { 'x-real-ip': '5.6.7.8', [CLIENT_IP_HEADER]: '9.9.9.9' });
+    expect(clientIpFrom(h, '198.51.100.9', CHAIN)).toBe('198.51.100.9');
   });
 });
 
@@ -78,6 +110,13 @@ describe('createProxyMatcher', () => {
       invalidProxyEntries(['10.0.0.0/8', '::1', 'nope', '10.0.0.0/33', '::/129', '1.2.3.4/8/1']),
     ).toEqual(['nope', '10.0.0.0/33', '::/129', '1.2.3.4/8/1']);
     expect(() => createProxyMatcher(['nope'])).toThrow('nope');
+  });
+
+  it('flags catch-all /0 entries (boot warning)', () => {
+    expect(catchAllProxyEntries(['0.0.0.0/0', '10.0.0.0/8', '::/0', '::1', 'nope'])).toEqual([
+      '0.0.0.0/0',
+      '::/0',
+    ]);
   });
 });
 

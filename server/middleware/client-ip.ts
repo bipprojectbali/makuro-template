@@ -9,12 +9,21 @@
  */
 import { isIP } from 'node:net';
 import { env } from '../env';
-import { createProxyMatcher, type ProxyMatcher } from './trusted-proxy';
+import { logger } from '../logger';
+import { catchAllProxyEntries, createProxyMatcher, type ProxyMatcher } from './trusted-proxy';
 
 /** Set by the HTTP servers; always overwritten, never trusted from the wire. */
 export const CLIENT_IP_HEADER = 'x-makuro-client-ip';
 
 const envTrustedProxies = createProxyMatcher(env.TRUSTED_PROXIES);
+
+const catchAll = catchAllProxyEntries(env.TRUSTED_PROXIES);
+if (catchAll.length > 0) {
+  logger.warn(
+    { entries: catchAll },
+    'TRUSTED_PROXIES memercayai semua alamat (/0): setiap klien bisa memalsukan IP-nya lewat X-Forwarded-For. Isi hanya dengan IP/CIDR reverse proxy Anda.',
+  );
+}
 
 /** Canonical, human-readable form (IPv4-mapped → IPv4, IPv6 loopback → 127.0.0.1). */
 export function normalizeIp(raw: string | null | undefined): string | null {
@@ -25,9 +34,20 @@ export function normalizeIp(raw: string | null | undefined): string | null {
   return ip || null;
 }
 
+/** One proxy-header hop without `:port` / `[v6]` brackets; null when it is not an IP. */
+function parseHop(raw: string): string | null {
+  let hop = raw.trim();
+  const bracketed = /^\[([^\]]+)\](?::\d{1,5})?$/.exec(hop);
+  if (bracketed) hop = bracketed[1] ?? '';
+  else if (/^[\d.]+:\d{1,5}$/.test(hop)) hop = hop.slice(0, hop.lastIndexOf(':'));
+  return isIP(hop) ? hop : null;
+}
+
 /**
- * Socket IP, unless the peer is a trusted proxy: then the rightmost untrusted,
- * valid X-Forwarded-For hop (fallback X-Real-IP, then the socket IP).
+ * Socket IP, unless the peer is a trusted proxy: then X-Forwarded-For walked
+ * right-to-left — first untrusted hop wins, all-trusted → left-most hop, and a
+ * hop that is not an IP stops the walk at the peer (never trust what lies left
+ * of garbage). X-Real-IP only when X-Forwarded-For is absent.
  */
 export function clientIpFrom(
   headers: Headers,
@@ -37,13 +57,18 @@ export function clientIpFrom(
   const peer = socketIp?.trim() || null;
   if (!peer || !isTrusted(peer)) return normalizeIp(peer);
 
-  const hops = (headers.get('x-forwarded-for') ?? '').split(',').map((h) => h.trim());
+  const forwarded = headers.get('x-forwarded-for')?.trim();
+  if (!forwarded) return normalizeIp(parseHop(headers.get('x-real-ip') ?? '') ?? peer);
+
+  const hops = forwarded.split(',');
+  let leftMost = peer;
   for (let i = hops.length - 1; i >= 0; i--) {
-    const hop = hops[i] ?? '';
-    if (isIP(hop) && !isTrusted(hop)) return normalizeIp(hop);
+    const hop = parseHop(hops[i] ?? '');
+    if (!hop) return normalizeIp(peer);
+    if (!isTrusted(hop)) return normalizeIp(hop);
+    leftMost = hop;
   }
-  const realIp = headers.get('x-real-ip')?.trim() ?? '';
-  return normalizeIp(isIP(realIp) ? realIp : peer);
+  return normalizeIp(leftMost);
 }
 
 /** Resolve the client IP at the HTTP edge and stamp it for downstream handlers (Elysia, SSR). */
