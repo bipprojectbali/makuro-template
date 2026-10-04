@@ -1,14 +1,20 @@
 /**
- * Client IP resolution shared by rate limiting, visitor analytics and login logs.
+ * Client IP resolution shared by rate limiting, API-key allowlists, visitor
+ * analytics, login and audit logs.
  *
- * Order: proxy headers (X-Forwarded-For first hop, X-Real-IP) → the socket IP
- * that dev.ts / prod.ts stamp onto the request as an internal header → null.
- * The internal header is always overwritten server-side, so a client cannot
- * spoof it.
+ * The HTTP edge (dev.ts / prod.ts) computes the client IP once with
+ * `stampClientIp` and writes it to CLIENT_IP_HEADER. Proxy headers are honoured
+ * only when the socket peer is in TRUSTED_PROXIES; everything downstream reads
+ * the stamped header via `resolveClientIp`, never raw X-Forwarded-For.
  */
+import { isIP } from 'node:net';
+import { env } from '../env';
+import { createProxyMatcher, type ProxyMatcher } from './trusted-proxy';
 
-/** Set by the HTTP servers from the socket address; never trusted from the wire. */
+/** Set by the HTTP servers; always overwritten, never trusted from the wire. */
 export const CLIENT_IP_HEADER = 'x-makuro-client-ip';
+
+const envTrustedProxies = createProxyMatcher(env.TRUSTED_PROXIES);
 
 /** Canonical, human-readable form (IPv4-mapped → IPv4, IPv6 loopback → 127.0.0.1). */
 export function normalizeIp(raw: string | null | undefined): string | null {
@@ -19,16 +25,39 @@ export function normalizeIp(raw: string | null | undefined): string | null {
   return ip || null;
 }
 
-export function resolveClientIp(headers: Headers, socketIp?: string | null): string | null {
-  const forwarded = headers.get('x-forwarded-for')?.split(',')[0]?.trim();
-  return normalizeIp(
-    forwarded || headers.get('x-real-ip') || headers.get(CLIENT_IP_HEADER) || socketIp || null,
-  );
+/**
+ * Socket IP, unless the peer is a trusted proxy: then the rightmost untrusted,
+ * valid X-Forwarded-For hop (fallback X-Real-IP, then the socket IP).
+ */
+export function clientIpFrom(
+  headers: Headers,
+  socketIp: string | null | undefined,
+  isTrusted: ProxyMatcher = envTrustedProxies,
+): string | null {
+  const peer = socketIp?.trim() || null;
+  if (!peer || !isTrusted(peer)) return normalizeIp(peer);
+
+  const hops = (headers.get('x-forwarded-for') ?? '').split(',').map((h) => h.trim());
+  for (let i = hops.length - 1; i >= 0; i--) {
+    const hop = hops[i] ?? '';
+    if (isIP(hop) && !isTrusted(hop)) return normalizeIp(hop);
+  }
+  const realIp = headers.get('x-real-ip')?.trim() ?? '';
+  return normalizeIp(isIP(realIp) ? realIp : peer);
 }
 
-/** Stamp the socket IP onto a request so downstream handlers (Elysia) can read it. */
-export function stampClientIp(request: Request, socketIp: string | null | undefined): void {
-  const ip = normalizeIp(socketIp);
+/** Resolve the client IP at the HTTP edge and stamp it for downstream handlers (Elysia, SSR). */
+export function stampClientIp(
+  request: Request,
+  socketIp: string | null | undefined,
+  isTrusted: ProxyMatcher = envTrustedProxies,
+): void {
+  const ip = clientIpFrom(request.headers, socketIp, isTrusted);
   if (ip) request.headers.set(CLIENT_IP_HEADER, ip);
   else request.headers.delete(CLIENT_IP_HEADER);
+}
+
+/** The stamped client IP (falls back to `explicitIp`); never reads proxy headers. */
+export function resolveClientIp(headers: Headers, explicitIp?: string | null): string | null {
+  return normalizeIp(headers.get(CLIENT_IP_HEADER) || explicitIp || null);
 }

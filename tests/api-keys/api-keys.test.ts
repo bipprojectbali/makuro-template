@@ -11,6 +11,7 @@ import { createKey, revokeKey, rotateKey, updateKey } from '../../server/api-key
 import { flushUsage, usageRecent, usageSummary } from '../../server/api-keys/usage';
 import { db } from '../../server/db';
 import { apiKeyUsage, apikey, auditLog, user } from '../../server/db/schema';
+import { CLIENT_IP_HEADER } from '../../server/middleware/client-ip';
 
 const TAG = `key-${crypto.randomUUID().slice(0, 8)}`;
 const superId = `${TAG}-super`;
@@ -21,7 +22,7 @@ const app = new Elysia({ prefix: '/api' })
   .use(meApi)
   .use(apiKeysApi);
 const hdr = (key: string, extra: Record<string, string> = {}) => ({
-  headers: { 'x-api-key': key, 'x-forwarded-for': '203.0.113.9', 'cf-ipcountry': 'ID', ...extra },
+  headers: { 'x-api-key': key, [CLIENT_IP_HEADER]: '203.0.113.9', 'cf-ipcountry': 'ID', ...extra },
 });
 let superKey = '';
 let superKeyId = '';
