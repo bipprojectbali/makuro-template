@@ -25,7 +25,13 @@ const base = `http://localhost:${port}`;
 const BOOT_TIMEOUT_MS = 30_000;
 
 const child = Bun.spawn(cmd, {
-  env: { ...process.env, PORT: String(port), NODE_ENV: process.env.SMOKE_NODE_ENV ?? 'production' },
+  env: {
+    ...process.env,
+    PORT: String(port),
+    NODE_ENV: process.env.SMOKE_NODE_ENV ?? 'production',
+    // The spoof check needs a server that trusts no proxy, whatever .env/shell set.
+    TRUSTED_PROXIES: '',
+  },
   stdout: 'pipe',
   stderr: 'pipe',
 });
