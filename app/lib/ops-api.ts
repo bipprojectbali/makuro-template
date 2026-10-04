@@ -10,6 +10,12 @@ export type OpsStatus = {
   dbLatencyMs: number;
   limiter: { trackedClients: number; enabled: boolean };
   logBuffer: { size: number; capacity: number };
+  proxy: {
+    trustedEntries: number;
+    catchAll: boolean;
+    clientIp: string | null;
+    forwardedIgnored: boolean;
+  };
 };
 export type McpInfo = {
   enabled: boolean;

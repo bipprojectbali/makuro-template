@@ -8,20 +8,47 @@ import { SettingRow, SettingsCard } from '../settings/SettingsParts';
 
 const nf = new Intl.NumberFormat('id-ID');
 
-function Item({ label, value, hint }: { label: string; value: React.ReactNode; hint?: string }) {
+function Item({
+  label,
+  value,
+  hint,
+  warn,
+}: {
+  label: string;
+  value: React.ReactNode;
+  hint?: string;
+  warn?: boolean;
+}) {
   return (
     <Stack gap={2}>
       <Text size="xs" c="dimmed" tt="uppercase" fw={600} lts={0.3}>
         {label}
       </Text>
-      <Text fw={600}>{value}</Text>
+      <Text fw={600} c={warn ? 'orange' : undefined} style={{ overflowWrap: 'anywhere' }}>
+        {value}
+      </Text>
       {hint && (
-        <Text size="xs" c="dimmed">
+        <Text size="xs" c={warn ? 'orange' : 'dimmed'}>
           {hint}
         </Text>
       )}
     </Stack>
   );
+}
+
+function proxySummary(p: OpsStatus['proxy']): { value: string; hint: string; warn: boolean } {
+  const value = p.trustedEntries > 0 ? `${p.trustedEntries} entri` : 'Tidak ada';
+  if (p.catchAll)
+    return { value, hint: 'Berisi /0: setiap klien bisa memalsukan IP-nya', warn: true };
+  if (p.forwardedIgnored)
+    return {
+      value,
+      hint: 'Request ini lewat proxy yang tidak dipercaya: tambahkan IP proxy ke TRUSTED_PROXIES',
+      warn: true,
+    };
+  if (p.trustedEntries === 0)
+    return { value, hint: 'Akses langsung; X-Forwarded-For diabaikan', warn: false };
+  return { value, hint: 'X-Forwarded-For dibaca dari proxy ini', warn: false };
 }
 
 export function StatusCard({
@@ -71,6 +98,12 @@ export function StatusCard({
             value={`${nf.format(status.logBuffer.size)} / ${nf.format(status.logBuffer.capacity)}`}
           />
           <Item label="Versi" value={`v${status.version}`} hint={status.env} />
+          <Item label="Proxy tepercaya" {...proxySummary(status.proxy)} />
+          <Item
+            label="IP Anda"
+            value={status.proxy.clientIp ?? '—'}
+            hint="Menurut server; harus IP publik Anda, bukan IP proxy"
+          />
         </SimpleGrid>
       )}
     </SettingsCard>

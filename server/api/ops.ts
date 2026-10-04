@@ -9,7 +9,9 @@ import { resetFileHealthCache } from '../file-health/file-health.scan';
 import { requireRole } from '../guard';
 import { logBuffer } from '../mcp/log-buffer';
 import { MCP_TOOL_CATALOG } from '../mcp/tool-catalog';
+import { forwardedHeaderIgnored, resolveClientIp } from '../middleware/client-ip';
 import { rateLimiter } from '../middleware/rate-limiter';
+import { catchAllProxyEntries } from '../middleware/trusted-proxy';
 import { ROLES } from '../permissions';
 import { invalidateSettingsCache } from '../settings.core';
 
@@ -59,6 +61,12 @@ export const opsApi = new Elysia({ prefix: '/ops' })
       dbLatencyMs,
       limiter: { trackedClients: rateLimiter.size, enabled: rateLimiter.config.enabled },
       logBuffer: { size: logBuffer.size(), capacity: logBuffer.maxSize },
+      proxy: {
+        trustedEntries: env.TRUSTED_PROXIES.length,
+        catchAll: catchAllProxyEntries(env.TRUSTED_PROXIES).length > 0,
+        clientIp: resolveClientIp(request.headers),
+        forwardedIgnored: forwardedHeaderIgnored(request.headers),
+      },
     };
   })
   .get('/mcp', async ({ request }) => {

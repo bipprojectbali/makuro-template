@@ -4,6 +4,7 @@ import { TrustedProxiesSchema } from '../../server/env';
 import {
   CLIENT_IP_HEADER,
   clientIpFrom,
+  forwardedHeaderIgnored,
   normalizeIp,
   resolveClientIp,
   stampClientIp,
@@ -194,5 +195,35 @@ describe('Better Auth IP wiring', () => {
 
   it('keeps its own limiter production-only with memory storage', () => {
     expect(auth.options.rateLimit).toEqual({ enabled: false, storage: 'memory' });
+  });
+});
+
+describe('forwardedHeaderIgnored', () => {
+  const stamped = (ip: string, forwarded?: string) => {
+    const h = new Headers({ [CLIENT_IP_HEADER]: ip });
+    if (forwarded) h.set('x-forwarded-for', forwarded);
+    return h;
+  };
+  it('is false without X-Forwarded-For', () => {
+    expect(forwardedHeaderIgnored(stamped('203.0.113.9'))).toBe(false);
+  });
+  it('is true when the stamped IP is not a hop (peer not trusted)', () => {
+    expect(forwardedHeaderIgnored(stamped('172.68.1.1', '198.51.100.7'))).toBe(true);
+  });
+  it('is false when the stamped IP came from the header, ports and ::ffff: normalised', () => {
+    expect(forwardedHeaderIgnored(stamped('198.51.100.7', '198.51.100.7:5000, 10.0.0.1'))).toBe(
+      false,
+    );
+    expect(forwardedHeaderIgnored(stamped('198.51.100.7', '::FFFF:198.51.100.7'))).toBe(false);
+  });
+  it('matches what stampClientIp produced for trusted and untrusted peers', () => {
+    const viaProxy = new Request('http://x/', {
+      headers: { 'x-forwarded-for': '198.51.100.7' },
+    });
+    stampClientIp(viaProxy, '127.0.0.1', LOCAL);
+    expect(forwardedHeaderIgnored(viaProxy.headers)).toBe(false);
+    const direct = new Request('http://x/', { headers: { 'x-forwarded-for': '198.51.100.7' } });
+    stampClientIp(direct, '172.68.1.1', NONE);
+    expect(forwardedHeaderIgnored(direct.headers)).toBe(true);
   });
 });

@@ -86,3 +86,14 @@ export function stampClientIp(
 export function resolveClientIp(headers: Headers, explicitIp?: string | null): string | null {
   return normalizeIp(headers.get(CLIENT_IP_HEADER) || explicitIp || null);
 }
+
+/**
+ * True when the request carries X-Forwarded-For the edge did not use: the stamped IP is
+ * none of its hops, i.e. the peer is missing from TRUSTED_PROXIES (or a hop was garbage).
+ */
+export function forwardedHeaderIgnored(headers: Headers): boolean {
+  const forwarded = headers.get('x-forwarded-for');
+  const ip = resolveClientIp(headers);
+  if (!forwarded || !ip) return false;
+  return !forwarded.split(',').some((hop) => normalizeIp(parseHop(hop)) === ip);
+}
