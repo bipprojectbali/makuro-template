@@ -1,9 +1,9 @@
 /**
  * Sliding-window in-memory rate limiter + Elysia plugin.
  *
- * Limits are per client IP (see client-ip.ts). State lives in this process:
- * it resets on restart and is not shared between instances — use Redis for a
- * multi-instance deployment.
+ * Limits are per client IP bucket (IPv4 address / IPv6 /64, see rateLimitKey).
+ * State lives in this process: it resets on restart and is not shared between
+ * instances — use Redis for a multi-instance deployment.
  *
  * Every API response carries X-RateLimit-Limit / X-RateLimit-Remaining; a
  * blocked request gets 429 + Retry-After in the standard API error shape. Only
@@ -25,6 +25,7 @@ import {
   RateLimiter,
   type RateLimitResult,
   rateLimiter,
+  rateLimitKey,
 } from '../rate-limit';
 import { resolveClientIp } from './client-ip';
 import { describeClient } from './request-meta';
@@ -75,7 +76,7 @@ export function rateLimitPlugin(
     if (limiter.isExcluded(pathname)) return;
 
     const ip = resolveClientIp(request.headers);
-    const r = limiter.check(ip);
+    const r = limiter.check(rateLimitKey(ip));
     set.headers['x-ratelimit-limit'] = String(r.limit);
     set.headers['x-ratelimit-remaining'] = String(r.remaining);
     if (!r.limited) return;
