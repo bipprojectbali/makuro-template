@@ -141,7 +141,7 @@ export function RateLimitSettingsCard({ initial, rateLimit }: Props) {
       )}
       <SettingRow
         label="Aktifkan rate limiting"
-        description="Tolak request dengan 429 + Retry-After saat sebuah IP melewati batas."
+        description="Tolak request dengan 429 + Retry-After saat satu IP klien melewati batas. Di belakang proxy, set env TRUSTED_PROXIES agar IP klien asli terbaca — tanpa itu semua klien berbagi IP proxy."
         control={
           <Switch
             size="md"

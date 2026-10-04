@@ -14,6 +14,7 @@ import { buildAuditWhere, toAuditCsv } from '../../server/api/audit.query';
 import { AUDIT_ACTIONS, audit } from '../../server/audit';
 import { db } from '../../server/db';
 import { auditLog, user } from '../../server/db/schema';
+import { CLIENT_IP_HEADER } from '../../server/middleware/client-ip';
 
 const app = new Elysia().use(auditApi);
 const TAG = `aud-${crypto.randomUUID().slice(0, 8)}`;
@@ -42,7 +43,7 @@ beforeAll(async () => {
     targetId: `${TAG}-target`,
     summary: `${TAG} ban`,
     meta: { reason: 'spam' },
-    headers: new Headers({ 'x-forwarded-for': '77.7.7.7', 'user-agent': 'UA-test' }),
+    headers: new Headers({ [CLIENT_IP_HEADER]: '77.7.7.7', 'user-agent': 'UA-test' }),
   });
   await audit({
     actor: { id: actorId, email: `${actorId}@test.local` },

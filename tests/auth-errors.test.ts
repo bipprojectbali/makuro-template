@@ -15,6 +15,14 @@ describe('describeAuthError', () => {
     expect(raw.message).toBe('Server says no');
     expect(describeAuthError(null).message).toContain('gagal');
   });
+  test('Better Auth 429 (English message, no code) → Indonesian rate-limit notice', () => {
+    const n = describeAuthError({
+      status: 429,
+      message: 'Too many requests. Please try again later.',
+    });
+    expect(n.kind).toBe('error');
+    expect(n.message).toBe('Terlalu banyak percobaan masuk. Tunggu sebentar lalu coba lagi.');
+  });
 });
 
 describe('loginNotice', () => {

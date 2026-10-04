@@ -16,7 +16,19 @@ export type SmokeCheck = {
   bodyIncludes?: string;
   /** Header that must be present (value substring optional). */
   header?: { name: string; includes?: string };
+  /** Headers of a primer request sent first; both hits must land in one already-used bucket. */
+  sameBucketAs?: Record<string, string>;
 };
+
+const RATE_REMAINING = 'x-ratelimit-remaining';
+const RATE_LIMIT = 'x-ratelimit-limit';
+// test-only: documentation IPs. Literal x-makuro-client-ip (no server import here);
+// tests/smoke-server.test.ts pins it to CLIENT_IP_HEADER.
+const spoofHeaders = (ip: string) => ({
+  'x-forwarded-for': ip,
+  'x-real-ip': ip,
+  'x-makuro-client-ip': ip,
+});
 
 export const SMOKE_CHECKS: SmokeCheck[] = [
   {
@@ -137,6 +149,14 @@ export const SMOKE_CHECKS: SmokeCheck[] = [
     status: 200,
     header: { name: 'x-ratelimit-limit' },
   },
+  {
+    // Smoke server boots without TRUSTED_PROXIES: spoofed IP headers must not open a new bucket.
+    name: 'IP palsu dari klien tak tepercaya diabaikan',
+    path: '/api/hello',
+    headers: spoofHeaders('203.0.113.77'),
+    sameBucketAs: spoofHeaders('198.51.100.77'),
+    status: 200,
+  },
 ];
 
 export type SmokeResult = { name: string; ok: boolean; detail: string };
@@ -144,9 +164,21 @@ export type SmokeResult = { name: string; ok: boolean; detail: string };
 /** Evaluate one check against a response (body already read). */
 export function evaluate(
   check: SmokeCheck,
-  res: { status: number; headers: Headers; body: string },
+  res: { status: number; headers: Headers; body: string; primerHeaders?: Headers },
 ): SmokeResult {
   const problems: string[] = [];
+  if (check.sameBucketAs) {
+    // Drop of 0 is allowed (sliding-window decay across a window edge); a fresh spoof-made
+    // bucket would sit at exactly limit − 1, the shared one is already below it.
+    const before = Number(res.primerHeaders?.get(RATE_REMAINING) ?? Number.NaN);
+    const after = Number(res.headers.get(RATE_REMAINING) ?? Number.NaN);
+    const limit = Number(res.headers.get(RATE_LIMIT) ?? Number.NaN);
+    const drop = before - after;
+    if (!(drop >= 0 && drop <= 1 && after < limit - 1))
+      problems.push(
+        `${RATE_REMAINING} ${before} → ${after} (limit ${limit}): bukan satu bucket bersama (bucket terpisah?)`,
+      );
+  }
   const expected = Array.isArray(check.status) ? check.status : [check.status];
   if (!expected.includes(res.status)) problems.push(`status ${res.status} ≠ ${expected.join('|')}`);
   const ct = res.headers.get('content-type') ?? '';
@@ -171,13 +203,24 @@ export function evaluate(
 export async function runChecks(base: string, checks = SMOKE_CHECKS): Promise<SmokeResult[]> {
   const results: SmokeResult[] = [];
   for (const c of checks) {
-    const res = await fetch(base + c.path, {
-      method: c.method ?? 'GET',
-      headers: c.headers,
-      body: c.body,
-      redirect: 'manual',
-    });
-    results.push(evaluate(c, { status: res.status, headers: res.headers, body: await res.text() }));
+    const send = (headers: Record<string, string> | undefined) =>
+      fetch(base + c.path, {
+        method: c.method ?? 'GET',
+        headers,
+        body: c.body,
+        redirect: 'manual',
+      });
+    const primer = c.sameBucketAs ? await send(c.sameBucketAs) : null;
+    await primer?.body?.cancel();
+    const res = await send(c.headers);
+    results.push(
+      evaluate(c, {
+        status: res.status,
+        headers: res.headers,
+        body: await res.text(),
+        primerHeaders: primer?.headers,
+      }),
+    );
   }
   const html = await (await fetch(`${base}/`)).text();
   const asset = html.match(/\/assets\/[^"']+\.js/)?.[0];

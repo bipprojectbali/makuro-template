@@ -62,7 +62,7 @@ export async function getRateLimitStats() {
   };
 }
 
-/** Blocks in the last hour — powers the sidebar badge on "Rate Limits". */
+/** Blocking episodes (≤1 row per IP per window) in the last hour — sidebar badge on "Rate Limits". */
 export async function countRateLimitLastHour(): Promise<number> {
   const [row] = await db
     .select({ count })

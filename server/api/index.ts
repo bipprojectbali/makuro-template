@@ -49,8 +49,9 @@ const AUTH_BASE = '/api/auth';
 export const api = new Elysia({ prefix: '/api' })
   // Uniform JSON errors (404/422/500 + request id) must be registered before any route.
   .use(apiErrorPlugin())
-  // Rate limiting first: Elysia hooks only cover routes registered after them,
-  // so this must precede every plugin (auth + mcp are excluded inside the plugin).
+  // Rate limiting: an onRequest hook, and onRequest hooks run in registration order —
+  // so this order is a contract: the limiter rejects floods before apiKeyPlugin verifies
+  // keys (auth + mcp are excluded inside the plugin).
   .use(rateLimitPlugin())
   // Maintenance mode: 503 for everyone but the allowed roles (auth routes exempt).
   .use(maintenancePlugin())

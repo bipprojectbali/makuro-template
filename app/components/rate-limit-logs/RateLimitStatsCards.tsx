@@ -8,9 +8,9 @@ const nf = new Intl.NumberFormat('id-ID');
 export function RateLimitStatsCards({ stats }: { stats: RateLimitStats | undefined }) {
   const tiles: StatTileProps[] | undefined = stats && [
     {
-      label: 'Total diblokir',
+      label: 'Total episode blokir',
       value: nf.format(stats.total),
-      hint: 'semua waktu',
+      hint: 'semua waktu · 1 per IP per jendela',
       icon: FiShield,
       color: 'red',
     },

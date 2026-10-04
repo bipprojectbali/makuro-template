@@ -85,7 +85,7 @@ export async function recordVisit(request: Request, explicitIp?: string | null):
       userId = null;
     }
 
-    // Proxy headers first, then the socket IP stamped by dev.ts/prod.ts (or passed explicitly).
+    // Client IP stamped by dev.ts/prod.ts (TRUSTED_PROXIES-aware), else the explicit IP.
     const ip = resolveClientIp(request.headers, explicitIp);
 
     const device = parseUserAgent(ua, request.headers, bot);

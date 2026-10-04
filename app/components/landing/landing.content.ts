@@ -134,7 +134,7 @@ export const CONSOLE_PAGES: ConsolePage[] = [
   {
     icon: FiShield,
     label: 'Rate Limits',
-    desc: 'Request yang ditolak, IP dan endpoint tersering.',
+    desc: 'Episode blokir per IP, IP dan endpoint tersering.',
     group: 'Monitoring',
   },
   {
@@ -179,7 +179,7 @@ export const SECURITY_POINTS = [
   {
     icon: FiShield,
     title: 'Rate limiting per IP',
-    desc: 'Jendela geser dengan Retry-After, IP klien dibaca dari proxy atau socket, dikonfigurasi dari UI tanpa restart.',
+    desc: 'Jendela geser dengan Retry-After, IP klien tahan spoofing (X-Forwarded-For hanya dari proxy tepercaya), dikonfigurasi dari UI tanpa restart.',
   },
   {
     icon: FiClipboard,

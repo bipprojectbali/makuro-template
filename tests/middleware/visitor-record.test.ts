@@ -3,6 +3,7 @@ import { eq, like } from 'drizzle-orm';
 import { auth } from '../../server/auth';
 import { db } from '../../server/db';
 import { user, visitLog } from '../../server/db/schema';
+import { CLIENT_IP_HEADER } from '../../server/middleware/client-ip';
 import { recordVisit } from '../../server/middleware/visitor';
 
 const TAG = `vr-${crypto.randomUUID().slice(0, 8)}`;
@@ -47,7 +48,7 @@ describe('recordVisit', () => {
     ctx.userId = member;
     const row = await visit('/human', {
       'user-agent': CHROME,
-      'x-forwarded-for': '203.0.113.7, 10.0.0.1',
+      [CLIENT_IP_HEADER]: '203.0.113.7',
       'cf-ipcountry': 'ID',
       'accept-language': 'id-ID,id;q=0.9,en;q=0.8',
       referer: 'https://ref.example/page?token=secret',
@@ -66,9 +67,13 @@ describe('recordVisit', () => {
     expect(row.referer).not.toContain('secret');
   });
 
-  test('falls back to the explicit socket IP and survives a failing session lookup', async () => {
+  test('ignores raw proxy headers, falls back to the explicit socket IP and survives a failing session lookup', async () => {
     ctx.fail = true;
-    const row = await visit('/socket', { 'user-agent': CHROME }, '198.51.100.4');
+    const row = await visit(
+      '/socket',
+      { 'user-agent': CHROME, 'x-forwarded-for': '6.6.6.6', 'x-real-ip': '6.6.6.7' },
+      '198.51.100.4',
+    );
     ctx.fail = false;
     expect(row.ip).toBe('198.51.100.4');
     expect(row.userId).toBeNull();

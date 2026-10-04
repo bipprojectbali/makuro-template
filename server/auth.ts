@@ -5,10 +5,10 @@ import { admin, multiSession } from 'better-auth/plugins';
 import { AUDIT_ACTIONS, audit } from './audit';
 import { db } from './db';
 import * as schema from './db/schema';
-import { env, hasGoogleAuth } from './env';
+import { env, hasGoogleAuth, isProd } from './env';
 import { logger } from './logger';
+import { CLIENT_IP_HEADER, normalizeIp, resolveClientIp } from './middleware/client-ip';
 import { describeClient, loginMethodFromPath } from './middleware/request-meta';
-import { normalizeIp } from './middleware/visitor';
 import { ac, ROLES, roles } from './permissions';
 
 /** Public part of every key, e.g. mk_live_abc… — also how the header getter recognises a key. */
@@ -45,7 +45,8 @@ export const auth = betterAuth({
     apiKey({
       apiKeyHeaders: ['x-api-key', 'authorization'],
       customAPIKeyGetter: (ctx) => {
-        const header = ctx.request?.headers.get('x-api-key') ?? ctx.request?.headers.get('authorization');
+        const header =
+          ctx.request?.headers.get('x-api-key') ?? ctx.request?.headers.get('authorization');
         if (!header) return null;
         const raw = header.startsWith('Bearer ') ? header.slice(7) : header;
         return raw.startsWith(API_KEY_PREFIX) ? raw : null;
@@ -57,7 +58,11 @@ export const auth = betterAuth({
       maximumNameLength: 60,
       enableMetadata: true,
       // defaultExpiresIn is consumed in seconds by the plugin (getDate(..., 'sec')).
-      keyExpiration: { defaultExpiresIn: DEFAULT_KEY_TTL_SEC, minExpiresIn: 1, maxExpiresIn: MAX_KEY_TTL_DAYS },
+      keyExpiration: {
+        defaultExpiresIn: DEFAULT_KEY_TTL_SEC,
+        minExpiresIn: 1,
+        maxExpiresIn: MAX_KEY_TTL_DAYS,
+      },
       rateLimit: { enabled: true, timeWindow: 60_000, maxRequests: 600 },
       // Session for API keys is off: our middleware resolves the owner itself.
       enableSessionForAPIKeys: false,
@@ -73,7 +78,10 @@ export const auth = betterAuth({
             const method = loginMethodFromPath(ctx?.path);
             await db.insert(schema.loginLog).values({
               userId: session.userId,
-              ip: normalizeIp(session.ipAddress ?? null),
+              // Stamped full IP, like visit/audit logs; BA's session.ipAddress is /64-masked for IPv6.
+              ip:
+                (headers ? resolveClientIp(new Headers(headers)) : null) ??
+                normalizeIp(session.ipAddress ?? null),
               userAgent: session.userAgent ?? null,
               method,
               ...meta,
@@ -96,6 +104,15 @@ export const auth = betterAuth({
       },
     },
   },
+  // Same client IP the app limiter uses (stamped at the HTTP edge from
+  // TRUSTED_PROXIES); BA's default x-forwarded-for is spoofable, and with no IP
+  // it falls back to one bucket per path shared by every client.
+  advanced: {
+    ipAddress: { ipAddressHeaders: [CLIENT_IP_HEADER] },
+  },
+  // /api/auth/* skips the app limiter; BA's own per-IP limiter (default rules,
+  // stricter on sign-in) guards it in production.
+  rateLimit: { enabled: isProd, storage: 'memory' },
   emailAndPassword: {
     enabled: true,
   },

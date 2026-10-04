@@ -147,7 +147,7 @@ async function collect(): Promise<SidebarBadges> {
     '/dev/rate-limit-logs': alert(
       blocked,
       'red',
-      `${nf.format(blocked)} request diblokir dalam 1 jam terakhir`,
+      `${nf.format(blocked)} episode pemblokiran IP dalam 1 jam terakhir`,
     ),
     '/dev/server-logs':
       errors > 0

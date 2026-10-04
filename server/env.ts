@@ -1,4 +1,16 @@
 import { z } from 'zod';
+import { invalidProxyEntries, splitProxyList } from './middleware/trusted-proxy';
+
+/** Reverse proxies whose X-Forwarded-For is honoured (IPs/CIDRs). Empty = trust none. */
+export const TrustedProxiesSchema = z
+  .string()
+  .default('')
+  .transform(splitProxyList)
+  .superRefine((entries, ctx) => {
+    for (const bad of invalidProxyEntries(entries)) {
+      ctx.addIssue({ code: 'custom', message: `Bukan IP/CIDR yang valid: "${bad}"` });
+    }
+  });
 
 const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -19,6 +31,7 @@ const EnvSchema = z.object({
   // API rate limit per client IP (sliding window). Auth + MCP routes are excluded.
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  TRUSTED_PROXIES: TrustedProxiesSchema,
 });
 
 const parsed = EnvSchema.safeParse(process.env);

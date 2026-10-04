@@ -1,6 +1,7 @@
 /** The smoke checklist itself: well-formed entries and a correct evaluator (no server needed). */
 import { describe, expect, test } from 'bun:test';
 import { evaluate, SMOKE_CHECKS } from '../scripts/smoke-server.checks';
+import { CLIENT_IP_HEADER } from '../server/middleware/client-ip';
 
 const res = (status: number, headers: Record<string, string> = {}, body = '') => ({
   status,
@@ -43,5 +44,26 @@ describe('smoke checks', () => {
       res(302, { location: 'http://x/login' }),
     );
     expect(redirect.ok).toBe(true);
+  });
+  test('spoof check sends every proxy header and passes only when both hits share a bucket', () => {
+    const check = SMOKE_CHECKS.find((c) => c.sameBucketAs);
+    if (!check?.sameBucketAs || !check.headers) throw new Error('spoof check missing');
+    for (const h of ['x-forwarded-for', 'x-real-ip', CLIENT_IP_HEADER]) {
+      expect(check.headers[h]).toBeTruthy();
+      expect(check.sameBucketAs[h]).toBeTruthy();
+      expect(check.headers[h]).not.toBe(check.sameBucketAs[h]);
+    }
+    const remaining = (n: string) => new Headers({ 'x-ratelimit-remaining': n });
+    const run = (before: string, after: string) =>
+      evaluate(check, {
+        ...res(200, { 'x-ratelimit-remaining': after, 'x-ratelimit-limit': '100' }),
+        primerHeaders: remaining(before),
+      });
+    expect(run('90', '89').ok).toBe(true);
+    expect(run('90', '90').ok).toBe(true); // decay across a window edge
+    expect(run('99', '99').ok).toBe(false); // fresh spoof-made bucket sits at limit − 1
+    expect(run('90', '88').ok).toBe(false);
+    expect(run('89', '90').ok).toBe(false);
+    expect(evaluate(check, res(200, { 'x-ratelimit-remaining': '89' })).ok).toBe(false);
   });
 });
