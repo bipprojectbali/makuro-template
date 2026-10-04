@@ -277,7 +277,7 @@ Akses terprogram ke `/api/*` tanpa cookie sesi. Dikelola super-admin di `/dev/ap
 
 Setiap request `/api/*` dibatasi per IP klien dengan *sliding-window counter* (hitungan jendela sebelumnya + jendela berjalan, dibobot sisa waktu). IPv4 dihitung per alamat; IPv6 dihitung per prefix **/64** (mis. `2001:db8:1:2::/64`), karena satu pelanggan IPv6 biasanya memegang seluruh /64 dan bisa berganti alamat sesukanya — log tetap mencatat IP lengkap. Default 100 request / 60 detik dari env `RATE_LIMIT_MAX` dan `RATE_LIMIT_WINDOW_MS`; super-admin bisa menimpanya (batas, jendela, path yang dikecualikan, atau mematikan sementara) di `/dev/settings` tanpa restart — nilai tersimpan di `app_setting`, `NULL` berarti pakai default env. `/api/auth/*` (Better Auth) dan `/api/mcp` (API key/token) dikecualikan dari limiter ini. Setiap response membawa `X-RateLimit-Limit` / `X-RateLimit-Remaining`, dan request yang ditolak tidak ikut dihitung. Limiter berjalan di `onRequest`, **sebelum** verifikasi API key dan routing — banjir request dengan `x-api-key` palsu ditolak `429` tanpa menyentuh database, dan path `/api/*` yang tidak ada (404) ikut dihitung. Mengubah lama jendela di settings mereset semua hitungan; mengubah batas saja tidak.
 
-Request yang ditolak mendapat `429` dengan header `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-Request-Id`, dan body berformat error API standar:
+Request yang ditolak mendapat `429` dengan header `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-Request-Id`, dan body berformat error API standar (`Retry-After` = waktu tunggu tepat sampai satu request lagi diterima; dengan batas yang sangat kecil nilainya bisa melebihi lama jendela, paling lama ≈ jendela × (1 + 1/batas)):
 
 ```json
 {
@@ -302,7 +302,7 @@ IP klien dihitung **sekali** di tepi HTTP (`server/dev.ts`, `server/prod.ts`) la
 
 Setiap entri `X-Forwarded-For` dinormalisasi dulu: spasi dibuang, port dilepas (`1.2.3.4:5678`, `[2001:db8::1]:80`), kurung siku IPv6 dilepas, dan `::ffff:1.2.3.4` dibaca sebagai `1.2.3.4`. Entri yang **tetap bukan IP valid** (mis. `unknown`) menghentikan pembacaan dan IP socket yang dipakai — entri di kirinya bisa ditulis klien, jadi tidak pernah dipercaya.
 
-> **Proxy harus menimpa header:** proxy terpercaya wajib **menimpa** `X-Real-IP` dan menambahkan IP peer-nya sendiri ke `X-Forwarded-For` (perilaku default nginx `proxy_add_x_forwarded_for`, Caddy, dan load balancer cloud). Proxy yang meneruskan `X-Real-IP` dari klien apa adanya membuat IP bisa dipalsukan saat `X-Forwarded-For` tidak dikirim.
+> **Proxy harus menimpa header:** proxy terpercaya wajib **menimpa** `X-Real-IP` dan menambahkan IP peer-nya sendiri ke `X-Forwarded-For` (perilaku default nginx `proxy_add_x_forwarded_for`, Caddy, dan load balancer cloud). Proxy yang meneruskan `X-Real-IP` dari klien apa adanya membuat IP bisa dipalsukan saat `X-Forwarded-For` tidak dikirim. Bila proxy menyertakan port, alamat IPv6 wajib dikurung siku (`[2001:db8::1]:443`) — bentuk tanpa kurung bersifat ambigu (`2001:db8::1:443` sendiri adalah IPv6 valid) dan terbaca sebagai alamat lain.
 
 Nilainya dipisah koma, boleh campuran IPv4, IPv6, dan CIDR. Entri yang tidak valid membuat server **gagal boot** dengan pesan yang jelas. `0.0.0.0/0` atau `::/0` diterima tetapi memicu peringatan saat boot: semua peer dianggap proxy, sehingga setiap klien bisa memalsukan IP-nya. Contoh:
 
