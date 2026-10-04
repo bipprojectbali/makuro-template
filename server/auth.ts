@@ -7,9 +7,8 @@ import { db } from './db';
 import * as schema from './db/schema';
 import { env, hasGoogleAuth, isProd } from './env';
 import { logger } from './logger';
-import { CLIENT_IP_HEADER } from './middleware/client-ip';
+import { CLIENT_IP_HEADER, normalizeIp, resolveClientIp } from './middleware/client-ip';
 import { describeClient, loginMethodFromPath } from './middleware/request-meta';
-import { normalizeIp } from './middleware/visitor';
 import { ac, ROLES, roles } from './permissions';
 
 /** Public part of every key, e.g. mk_live_abc… — also how the header getter recognises a key. */
@@ -79,7 +78,10 @@ export const auth = betterAuth({
             const method = loginMethodFromPath(ctx?.path);
             await db.insert(schema.loginLog).values({
               userId: session.userId,
-              ip: normalizeIp(session.ipAddress ?? null),
+              // Stamped full IP, like visit/audit logs; BA's session.ipAddress is /64-masked for IPv6.
+              ip:
+                (headers ? resolveClientIp(new Headers(headers)) : null) ??
+                normalizeIp(session.ipAddress ?? null),
               userAgent: session.userAgent ?? null,
               method,
               ...meta,

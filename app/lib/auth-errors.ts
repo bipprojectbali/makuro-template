@@ -45,10 +45,22 @@ const SESSION_ENDED: AuthNotice = {
     'Anda dikeluarkan karena sesi kedaluwarsa, dicabut, atau akun tidak lagi tersedia. Masuk lagi untuk melanjutkan.',
 };
 
+// Better Auth's own limiter answers 429 with an English `message` and no code.
+const RATE_LIMITED: AuthNotice = {
+  kind: 'error',
+  title: 'Terlalu banyak percobaan',
+  message: 'Terlalu banyak percobaan masuk. Tunggu sebentar lalu coba lagi.',
+};
+
 /** Map a Better Auth error (or bare code) to a notice; unknown codes fall back to the raw message. */
 export function describeAuthError(
-  err: { code?: string | null; message?: string | null } | string | null | undefined,
+  err:
+    | { code?: string | null; message?: string | null; status?: number | null }
+    | string
+    | null
+    | undefined,
 ): AuthNotice {
+  if (typeof err === 'object' && err?.status === 429) return RATE_LIMITED;
   const code = (typeof err === 'string' ? err : err?.code) ?? '';
   if (code.toUpperCase() === 'BANNED_USER') return BANNED;
   const message =

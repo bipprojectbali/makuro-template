@@ -1,9 +1,10 @@
 import { afterAll, beforeAll, describe, expect, spyOn, test } from 'bun:test';
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { auth } from '../server/auth';
 import { db } from '../server/db';
 import { auditLog, loginLog, user } from '../server/db/schema';
 import { logger } from '../server/logger';
+import { CLIENT_IP_HEADER } from '../server/middleware/client-ip';
 
 const TAG = `ash-${crypto.randomUUID().slice(0, 8)}`;
 const target = `${TAG}-target`;
@@ -66,5 +67,18 @@ describe('session.create.after hook', () => {
     } finally {
       warn.mockRestore();
     }
+  });
+
+  test('prefers the stamped full client IP over the /64-masked session IP', async () => {
+    const stamped = '2001:db8:1:2:3:4:5:6';
+    await after(sessionFor({ ipAddress: '2001:0db8:0001:0002:0000:0000:0000:0000' }), {
+      path: '/sign-in/email',
+      headers: new Headers({ [CLIENT_IP_HEADER]: stamped }),
+    });
+    const rows = await db
+      .select()
+      .from(loginLog)
+      .where(and(eq(loginLog.userId, target), eq(loginLog.ip, stamped)));
+    expect(rows).toHaveLength(1);
   });
 });
