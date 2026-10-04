@@ -71,6 +71,8 @@ export function clientIpFrom(
   return normalizeIp(leftMost);
 }
 
+let warnedIgnoredForwarder = false;
+
 /** Resolve the client IP at the HTTP edge and stamp it for downstream handlers (Elysia, SSR). */
 export function stampClientIp(
   request: Request,
@@ -80,9 +82,27 @@ export function stampClientIp(
   const ip = clientIpFrom(request.headers, socketIp, isTrusted);
   if (ip) request.headers.set(CLIENT_IP_HEADER, ip);
   else request.headers.delete(CLIENT_IP_HEADER);
+  if (!warnedIgnoredForwarder && forwardedHeaderIgnored(request.headers)) {
+    warnedIgnoredForwarder = true;
+    logger.warn(
+      { peer: ip },
+      'X-Forwarded-For dari peer di luar TRUSTED_PROXIES diabaikan. Bila app di belakang proxy/Cloudflare, tambahkan IP proxy ke TRUSTED_PROXIES (panduan muncul di /dev); bila tidak, abaikan. Dicatat sekali per proses.',
+    );
+  }
 }
 
 /** The stamped client IP (falls back to `explicitIp`); never reads proxy headers. */
 export function resolveClientIp(headers: Headers, explicitIp?: string | null): string | null {
   return normalizeIp(headers.get(CLIENT_IP_HEADER) || explicitIp || null);
+}
+
+/**
+ * True when the request carries X-Forwarded-For the edge did not use: the stamped IP is
+ * none of its hops, i.e. the peer is missing from TRUSTED_PROXIES (or a hop was garbage).
+ */
+export function forwardedHeaderIgnored(headers: Headers): boolean {
+  const forwarded = headers.get('x-forwarded-for');
+  const ip = resolveClientIp(headers);
+  if (!forwarded || !ip) return false;
+  return !forwarded.split(',').some((hop) => normalizeIp(parseHop(hop)) === ip);
 }

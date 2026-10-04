@@ -12,6 +12,7 @@ import { eq } from 'drizzle-orm';
 import { opsApi, RESET_TARGETS } from '../../server/api/ops';
 import { db } from '../../server/db';
 import { auditLog } from '../../server/db/schema';
+import { env } from '../../server/env';
 import { logBuffer } from '../../server/mcp/log-buffer';
 import { rateLimiter } from '../../server/middleware/rate-limiter';
 
@@ -36,6 +37,16 @@ describe('ops API', () => {
     expect((body.dbLatencyMs as number) >= 0).toBe(true);
     expect((body.logBuffer as { capacity: number }).capacity).toBe(logBuffer.maxSize);
     expect(typeof body.bun).toBe('string');
+  });
+  test('status reports trusted-proxy config and the IP the server sees', async () => {
+    const { body } = await call('/ops/status', {
+      headers: { 'x-makuro-client-ip': '172.68.1.1', 'x-forwarded-for': '198.51.100.7' },
+    });
+    expect(body.proxy).toMatchObject({
+      trustedEntries: env.TRUSTED_PROXIES.length,
+      clientIp: '172.68.1.1',
+      forwardedIgnored: true,
+    });
   });
   test('mcp catalog never leaks the token', async () => {
     const { body } = await call('/ops/mcp');

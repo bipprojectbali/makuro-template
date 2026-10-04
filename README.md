@@ -314,7 +314,9 @@ TRUSTED_PROXIES=127.0.0.1,::1
 TRUSTED_PROXIES=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 ```
 
-Di belakang Cloudflare, isi dengan rentang IP Cloudflare yang dipublikasikan resmi (IPv4 + IPv6), ditambah proxy lokal bila ada.
+Di belakang Cloudflare (proxy oranye, origin menerima koneksi langsung dari edge), isi dengan rentang IP Cloudflare yang dipublikasikan resmi (IPv4 + IPv6), ditambah proxy lokal bila ada. Lewat **Cloudflare Tunnel** (`cloudflared`), peer origin adalah `cloudflared` itu sendiri: isi dengan IP-nya (`127.0.0.1,::1` bila satu host, atau IP/subnet container bila di Docker) — rentang IP Cloudflare tidak diperlukan.
+
+Cek hasilnya di **`/dev/tools` → Status proses**: "Proxy tepercaya" berwarna oranye bila request datang lewat proxy yang tidak dipercaya (atau ada entri `/0`), dan "IP Anda" harus menampilkan IP publik Anda, bukan IP proxy. Bila konfigurasinya terdeteksi salah, konsol `/dev` menampilkan banner berisi panduan sesuai setup yang terdeteksi (Cloudflare, Cloudflare Tunnel, atau nginx) beserta baris `.env` siap-salin, dan server mencatat warning sekali per proses.
 
 > **Wajib di belakang proxy:** bila app berjalan di belakang reverse proxy, load balancer, atau Cloudflare tanpa `TRUSTED_PROXIES`, semua klien terlihat sebagai IP proxy — semua orang berbagi satu bucket rate limit (dan satu bucket login), allow-list IP API key tidak berguna, dan log mencatat IP proxy.
 
