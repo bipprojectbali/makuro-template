@@ -89,7 +89,7 @@ bun run start
 | `bun run dev` | Dev server satu port (Elysia + Vite HMR + RR SSR) |
 | `bun run build` | Build client + server bundle |
 | `bun run start` | Production server (`server/prod.ts`, NODE_ENV=production) |
-| `bun run smoke:prod` | Build lalu boot `server/prod.ts` di port bebas dan jalankan 22 pemeriksaan black-box (`scripts/smoke-server.ts`) |
+| `bun run smoke:prod` | Build lalu boot `server/prod.ts` di port bebas dan jalankan 23 pemeriksaan black-box (`scripts/smoke-server.ts`) |
 | `bun run smoke:binary` | Sama, tetapi terhadap binary hasil `build:binary` |
 | `bun run build:binary` | Build binary native (platform saat ini) |
 | `bun run build:binary:linux` | Cross-compile ke Linux x64 glibc |
@@ -129,7 +129,7 @@ makuro-linux-x64   ← binary ~130 MB — semua embedded:
 
 Seperti Go binary: copy satu file ke server, langsung jalan. Tidak perlu `build/`, tidak perlu Node/Bun, tidak perlu `npm install`.
 
-**Verifikasi sebelum deploy:** `bun run smoke:binary` membangun binary, menjalankannya di port acak dengan `NODE_ENV=production`, lalu memeriksa versi, SSR landing/login, redirect guard, favicon, probe, halaman 404, JSON 404 API, Better Auth, penolakan API key palsu dan MCP anonim, `/README.md`, `/llms.txt`, meta OG landing, `/robots.txt`, `/sitemap.xml`, gambar OG, apple-touch-icon, header rate limit, dan aset client ber-cache immutable. `bun run smoke:prod` melakukan hal yang sama untuk mode skrip (`bun run start`). Keduanya keluar dengan kode ≠ 0 bila ada yang gagal.
+**Verifikasi sebelum deploy:** `bun run smoke:binary` membangun binary, menjalankannya di port acak dengan `NODE_ENV=production`, lalu memeriksa versi, SSR landing/login, redirect guard, favicon, probe, halaman 404, JSON 404 API, Better Auth, penolakan API key palsu dan MCP anonim, `/README.md`, `/llms.txt`, meta OG landing, `/robots.txt`, `/sitemap.xml`, gambar OG, apple-touch-icon, header rate limit, `X-Forwarded-For`/`X-Real-IP` palsu dari klien tak tepercaya yang diabaikan, dan aset client ber-cache immutable. `bun run smoke:prod` melakukan hal yang sama untuk mode skrip (`bun run start`). Keduanya keluar dengan kode ≠ 0 bila ada yang gagal.
 
 **NODE_ENV:** binary men-default `NODE_ENV=production`, tetapi Bun otomatis memuat `.env` dari direktori kerja — bila file itu berisi `NODE_ENV=development`, binary berjalan dalam mode development (detail error API terbuka, tanpa log file) dan mencetak peringatan saat start. Di server, gunakan `.env` tanpa `NODE_ENV` atau set `production`.
 
@@ -275,7 +275,7 @@ Akses terprogram ke `/api/*` tanpa cookie sesi. Dikelola super-admin di `/dev/ap
 
 ## Rate limiting
 
-Setiap request `/api/*` dibatasi per IP klien dengan jendela geser. Default 100 request / 60 detik dari env `RATE_LIMIT_MAX` dan `RATE_LIMIT_WINDOW_MS`; super-admin bisa menimpanya (batas, jendela, path yang dikecualikan, atau mematikan sementara) di `/dev/settings` tanpa restart — nilai tersimpan di `app_setting`, `NULL` berarti pakai default env. `/api/auth/*` (Better Auth) dan `/api/mcp` (API key/token) dikecualikan dari limiter ini. Setiap response membawa `X-RateLimit-Limit` / `X-RateLimit-Remaining`, dan request yang ditolak tidak memperpanjang jendela.
+Setiap request `/api/*` dibatasi per IP klien dengan *sliding-window counter* (hitungan jendela sebelumnya + jendela berjalan, dibobot sisa waktu). IPv4 dihitung per alamat; IPv6 dihitung per prefix **/64** (mis. `2001:db8:1:2::/64`), karena satu pelanggan IPv6 biasanya memegang seluruh /64 dan bisa berganti alamat sesukanya — log tetap mencatat IP lengkap. Default 100 request / 60 detik dari env `RATE_LIMIT_MAX` dan `RATE_LIMIT_WINDOW_MS`; super-admin bisa menimpanya (batas, jendela, path yang dikecualikan, atau mematikan sementara) di `/dev/settings` tanpa restart — nilai tersimpan di `app_setting`, `NULL` berarti pakai default env. `/api/auth/*` (Better Auth) dan `/api/mcp` (API key/token) dikecualikan dari limiter ini. Setiap response membawa `X-RateLimit-Limit` / `X-RateLimit-Remaining`, dan request yang ditolak tidak ikut dihitung. Limiter berjalan di `onRequest`, **sebelum** verifikasi API key dan routing — banjir request dengan `x-api-key` palsu ditolak `429` tanpa menyentuh database, dan path `/api/*` yang tidak ada (404) ikut dihitung. Mengubah lama jendela di settings mereset semua hitungan; mengubah batas saja tidak.
 
 Request yang ditolak mendapat `429` dengan header `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-Request-Id`, dan body berformat error API standar:
 
@@ -289,7 +289,7 @@ Request yang ditolak mendapat `429` dengan header `Retry-After`, `X-RateLimit-Li
 }
 ```
 
-**Login** (`/api/auth/*`) dibatasi oleh rate limit bawaan Better Auth, aktif di production (penyimpanan memori, aturan khusus default untuk sign-in). Better Auth membaca IP klien yang sama dengan limiter aplikasi (`advanced.ipAddress.ipAddressHeaders`), sehingga tiap klien punya bucket login sendiri.
+**Login** (`/api/auth/*`) dibatasi oleh rate limit bawaan Better Auth, aktif di production (penyimpanan memori, aturan khusus default untuk sign-in). Better Auth membaca IP klien yang sama dengan limiter aplikasi (`advanced.ipAddress.ipAddressHeaders`), sehingga tiap klien punya bucket login sendiri. Respons 429 Better Auth (`{ message }` + header `X-Retry-After`) ditampilkan di halaman login sebagai pesan berbahasa Indonesia.
 
 ### IP klien & `TRUSTED_PROXIES`
 
@@ -298,9 +298,13 @@ IP klien dihitung **sekali** di tepi HTTP (`server/dev.ts`, `server/prod.ts`) la
 | `TRUSTED_PROXIES` | Perilaku |
 |---|---|
 | kosong (default) | Tidak ada proxy yang dipercaya. `X-Forwarded-For` / `X-Real-IP` diabaikan; IP socket adalah IP klien. Cocok bila app langsung menerima koneksi dari internet. |
-| daftar IP/CIDR | Bila IP socket cocok dengan daftar, `X-Forwarded-For` dibaca dari kanan ke kiri dengan melewati entri yang juga terpercaya; IP valid pertama yang tidak terpercaya adalah klien (cadangan: `X-Real-IP`, lalu IP socket). |
+| daftar IP/CIDR | Bila IP socket cocok dengan daftar, `X-Forwarded-For` dibaca dari kanan ke kiri dengan melewati entri yang juga terpercaya; IP valid pertama yang tidak terpercaya adalah klien. Bila semua entri terpercaya, entri paling kiri yang dipakai. `X-Real-IP` hanya dipakai bila `X-Forwarded-For` tidak ada; tanpa keduanya, IP socket. |
 
-Nilainya dipisah koma, boleh campuran IPv4, IPv6, dan CIDR. Entri yang tidak valid membuat server **gagal boot** dengan pesan yang jelas. Contoh:
+Setiap entri `X-Forwarded-For` dinormalisasi dulu: spasi dibuang, port dilepas (`1.2.3.4:5678`, `[2001:db8::1]:80`), kurung siku IPv6 dilepas, dan `::ffff:1.2.3.4` dibaca sebagai `1.2.3.4`. Entri yang **tetap bukan IP valid** (mis. `unknown`) menghentikan pembacaan dan IP socket yang dipakai — entri di kirinya bisa ditulis klien, jadi tidak pernah dipercaya.
+
+> **Proxy harus menimpa header:** proxy terpercaya wajib **menimpa** `X-Real-IP` dan menambahkan IP peer-nya sendiri ke `X-Forwarded-For` (perilaku default nginx `proxy_add_x_forwarded_for`, Caddy, dan load balancer cloud). Proxy yang meneruskan `X-Real-IP` dari klien apa adanya membuat IP bisa dipalsukan saat `X-Forwarded-For` tidak dikirim.
+
+Nilainya dipisah koma, boleh campuran IPv4, IPv6, dan CIDR. Entri yang tidak valid membuat server **gagal boot** dengan pesan yang jelas. `0.0.0.0/0` atau `::/0` diterima tetapi memicu peringatan saat boot: semua peer dianggap proxy, sehingga setiap klien bisa memalsukan IP-nya. Contoh:
 
 ```bash
 # nginx/Caddy di mesin yang sama
@@ -318,9 +322,9 @@ Server menulis hasilnya ke header internal `x-makuro-client-ip` (selalu ditimpa,
 
 ### Log & batas memori
 
-Plugin `rateLimitPlugin()` harus didaftarkan **pertama** di `server/api/index.ts` — hook Elysia hanya berlaku untuk route yang didaftarkan setelahnya. Penolakan dicatat ke `rate_limit_log` (method, path, IP, geo, perangkat) per **episode**: paling banyak satu baris per IP per jendela rate limit (penolakan pertama), bukan setiap request yang ditolak — klien yang terus membanjiri API tidak ikut membanjiri database. Log ditampilkan di `/dev/rate-limit-logs` dengan API `/api/analytics/rate-limit-logs` (`search`, `ip`, `path`, `method`, `country`, `device`, `days`, `/stats`, `/export`, `DELETE` massal).
+Plugin `rateLimitPlugin()` harus didaftarkan **sebelum** `apiKeyPlugin()` di `server/api/index.ts` — hook `onRequest` berjalan sesuai urutan pendaftaran, jadi urutan itulah yang membuat limiter menolak sebelum verifikasi API key. Penolakan dicatat ke `rate_limit_log` (method, path, IP, geo, perangkat) per **episode**: paling banyak satu baris per IP per jendela rate limit (penolakan pertama), bukan setiap request yang ditolak — klien yang terus membanjiri API tidak ikut membanjiri database. Log ditampilkan di `/dev/rate-limit-logs` dengan API `/api/analytics/rate-limit-logs` (`search`, `ip`, `path`, `method`, `country`, `device`, `days`, `/stats`, `/export`, `DELETE` massal).
 
-State limiter ada di memori proses dengan batas `MAX_TRACKED_KEYS` (10.000 klien, `server/rate-limit.ts`); saat penuh, kunci yang sudah kedaluwarsa dibuang lebih dulu, lalu yang tertua (hitungannya ikut ter-reset). Karena per proses, batas berlaku per instance — untuk multi-instance gunakan store bersama seperti Redis.
+State limiter ada di memori proses: tiap klien hanya menyimpan dua hitungan (O(1), tidak bergantung pada nilai batas), dengan maksimum `MAX_TRACKED_KEYS` (10.000 klien, `server/rate-limit.ts`) sehingga memori terbatas apa pun batas yang diset. Urutan kunci LRU; saat penuh, sekumpulan kunci yang paling lama tidak dipakai (10% kapasitas) dikeluarkan tanpa memindai seluruh map, dan hitungannya ikut ter-reset. Kunci kedaluwarsa juga dibuang berkala. Karena per proses, batas berlaku per instance — untuk multi-instance gunakan store bersama seperti Redis.
 
 ## File health & penyelamat konteks agent
 
