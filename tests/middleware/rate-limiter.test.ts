@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, mock, setSystemTime, spyOn } from 'bun:test';
 import { Elysia } from 'elysia';
+import { apiErrorPlugin } from '../../server/api-error';
+import { apiKeyPlugin } from '../../server/api-keys/plugin';
+import { API_KEY_PREFIX, auth } from '../../server/auth';
 import { CLIENT_IP_HEADER } from '../../server/middleware/client-ip';
 import { RateLimiter, rateLimitPlugin } from '../../server/middleware/rate-limiter';
 import { rateLimitKey } from '../../server/rate-limit';
@@ -209,6 +212,29 @@ describe('rateLimitPlugin', () => {
     expect((await hit(app, '/api/own', '10.0.0.4')).status).toBe(429);
     limiter.configure({ enabled: false });
     expect((await hit(app, '/api/own', '10.0.0.4')).status).toBe(200);
+  });
+
+  it('runs before API-key verification (server/api/index.ts order)', async () => {
+    const verify = spyOn(auth.api, 'verifyApiKey').mockResolvedValue({
+      valid: false,
+      error: { code: 'INVALID_API_KEY', message: 'invalid' },
+      key: null,
+    } as never);
+    try {
+      const limiter = new RateLimiter({ windowMs: 60_000, limit: 1 });
+      const app = new Elysia({ prefix: '/api' })
+        .use(apiErrorPlugin())
+        .use(rateLimitPlugin(limiter, async () => {}))
+        .use(apiKeyPlugin())
+        .get('/posts', () => ({ ok: true }));
+      const key = { 'x-api-key': `${API_KEY_PREFIX}bogus` };
+      expect((await hit(app, '/api/posts', '10.0.0.9', key)).status).toBe(401);
+      expect(verify).toHaveBeenCalledTimes(1);
+      expect((await hit(app, '/api/posts', '10.0.0.9', key)).status).toBe(429);
+      expect(verify).toHaveBeenCalledTimes(1);
+    } finally {
+      verify.mockRestore();
+    }
   });
 });
 

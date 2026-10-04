@@ -10,9 +10,10 @@
  * the first rejection of a blocking episode (one per IP per window) is recorded
  * in `rate_limit_log`, with the same client enrichment as visit/login logs.
  *
- * The plugin must be registered BEFORE other plugins on the API instance —
- * Elysia hooks only cover routes registered after them (verified: a hook
- * added after `.use(plugin)` never runs for that plugin's routes).
+ * Runs as a global `request` hook: before routing, route `derive`s and the
+ * API-key plugin's onRequest (request hooks run in registration order), so a
+ * flood carrying bogus API keys is rejected before any key verification.
+ * Register it before apiKeyPlugin.
  */
 import { Elysia } from 'elysia';
 import { type ApiErrorBody, newRequestId } from '../api-error';
@@ -62,15 +63,13 @@ export async function logRateLimit(input: {
   }
 }
 
-/**
- * Elysia plugin: applies the limiter to every route of the instance it is
- * used on (and its later plugins). Register it first.
- */
+/** Elysia plugin: applies the limiter to every request of the instance it is used on. */
 export function rateLimitPlugin(
   limiter: RateLimiter = rateLimiter,
   log: typeof logRateLimit = logRateLimit,
 ) {
-  return new Elysia({ name: 'rate-limit' }).onBeforeHandle({ as: 'global' }, ({ request, set }) => {
+  // onRequest has no scope option in Elysia 1.4: it is always instance-wide (= `as: 'global'`).
+  return new Elysia({ name: 'rate-limit' }).onRequest(({ request, set }) => {
     if (!limiter.config.enabled) return;
     const pathname = new URL(request.url).pathname;
     if (limiter.isExcluded(pathname)) return;
