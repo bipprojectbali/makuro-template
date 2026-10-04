@@ -130,7 +130,7 @@ export default function RateLimitLogsPage({ loaderData }: Route.ComponentProps) 
     <Stack gap="md" p={{ base: 'sm', md: 'md' }}>
       <LogPageHeader
         title="Rate Limit Logs"
-        description="Setiap request API yang ditolak karena melampaui batas: siapa, endpoint mana, dari mana, dan perangkat apa."
+        description="Episode pemblokiran API (penolakan pertama per IP per jendela): siapa, endpoint mana, dari mana, dan perangkat apa."
         exportHref={exportRateLimitsUrl(filters)}
         exportMaxRows={10_000}
         canExport={total > 0}
@@ -154,7 +154,9 @@ export default function RateLimitLogsPage({ loaderData }: Route.ComponentProps) 
             Jendela geser per IP klien. Request yang ditolak tidak memperpanjang jendela, jadi klien
             yang menunggu sesuai header <code>Retry-After</code> pasti diterima kembali.
             Dikecualikan: <code>{cfg.excludePrefixes.join(', ')}</code>. Ubah lewat{' '}
-            <code>RATE_LIMIT_MAX</code> dan <code>RATE_LIMIT_WINDOW_MS</code> di env.
+            <code>RATE_LIMIT_MAX</code> dan <code>RATE_LIMIT_WINDOW_MS</code> di env. Di belakang
+            reverse proxy/LB/Cloudflare, set <code>TRUSTED_PROXIES</code> agar IP klien tidak
+            terbaca sebagai IP proxy.
           </Text>
         </Alert>
       )}

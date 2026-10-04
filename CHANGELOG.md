@@ -12,8 +12,17 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 - Tautan landing page kini tampil sebagai kartu bergambar saat dibagikan (WhatsApp, X, Slack, dll) lewat meta Open Graph/Twitter, gambar `/og.png`, dan URL `canonical`.
 - `/robots.txt` dan `/sitemap.xml` untuk mesin pencari, dibangun dari `APP_URL`; halaman login, konsol, dan API tidak diindeks.
 - Ikon home-screen iOS (`/apple-touch-icon.png`), web manifest, dan warna tema browser.
+- Env `TRUSTED_PROXIES` (daftar IP/CIDR IPv4 & IPv6, dipisah koma) untuk menentukan proxy mana yang boleh menyampaikan IP klien lewat `X-Forwarded-For`. Default kosong: header itu diabaikan dan IP koneksi langsung dipakai. Entri yang tidak valid membuat server gagal start dengan pesan yang jelas.
+
+### Changed
+- **Perlu tindakan saat deploy:** bila app berjalan di belakang reverse proxy, load balancer, atau Cloudflare, set `TRUSTED_PROXIES` ke IP/CIDR proxy tersebut. Tanpa itu semua pengunjung terlihat memakai IP proxy, sehingga berbagi satu batas rate limit dan satu batas login, dan log mencatat IP proxy.
+- Respons 429 rate limit kini memakai format error API standar `{ error, code: "RATE_LIMITED", status, requestId, retryAfterSeconds }` dengan pesan berbahasa Indonesia ("Terlalu banyak request. Coba lagi dalam N detik.") serta header `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`, dan `X-Request-Id`.
+- Rate Limit Logs kini mencatat satu episode blokir per IP per jendela rate limit (penolakan pertama), bukan setiap request yang ditolak, sehingga klien yang membanjiri API tidak ikut membanjiri database. Angka "diblokir" di konsol berarti jumlah episode pemblokiran.
+- Memori limiter kini dibatasi: saat jumlah klien yang dilacak mencapai batas, data yang sudah kedaluwarsa dibuang lebih dulu, lalu yang paling lama.
 
 ### Fixed
+- Rate limit dan allow-list IP pada API key tidak bisa lagi diakali dengan mengirim header `X-Forwarded-For` atau `X-Real-IP` palsu.
+- Rate limit login tidak lagi jatuh ke satu bucket bersama untuk semua pengunjung, yang sebelumnya memungkinkan siapa pun mengunci halaman masuk untuk semua orang. Better Auth kini membaca IP klien yang sama dengan rate limit aplikasi.
 - Beberapa project turunan template kini bisa menjalankan `bun run dev` bersamaan di port berbeda. HMR memakai port aplikasi itu sendiri, bukan port 24678 bersama, sehingga error `WebSocket server error: Port ... is already in use` hilang dan browser tidak lagi menerima hot reload dari project lain.
 - Server Logs tidak lagi menggeser posisi scroll setiap beberapa detik. Log baru kini datang langsung dari server (live, tanpa refresh berkala), dan saat kamu sedang membaca di bawah, daftar ditahan dengan tombol "N log baru" untuk kembali ke atas.
 - Layar konsol tidak lagi berkedip dan scroll sidebar tidak lagi melompat ke atas sesaat setelah halaman terbuka. Cache data kini terpisah per request dan per tab, sehingga data seorang user juga tidak bisa ikut terbawa ke render user lain di server.

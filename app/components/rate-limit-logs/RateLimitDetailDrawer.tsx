@@ -17,7 +17,7 @@ type Props = {
 
 const dash = (v: string | null | undefined) => v || '—';
 
-/** Full record for one blocked request, with "show everything from this IP" and delete actions. */
+/** Full record for one blocking episode (first rejected request), with "show everything from this IP" and delete actions. */
 export function RateLimitDetailDrawer({ row, onClose, onDelete, onFilterIp, deleting }: Props) {
   const { dateTime: formatDateTime, relative: formatRelative } = useTimeFormat();
   return (
@@ -26,7 +26,7 @@ export function RateLimitDetailDrawer({ row, onClose, onDelete, onFilterIp, dele
       onClose={onClose}
       position="right"
       size="md"
-      title="Detail request diblokir"
+      title="Detail episode blokir"
       padding="md"
     >
       {row && (

@@ -103,7 +103,7 @@ export function ApiCard() {
   return (
     <SettingsCard
       title="API"
-      description="Semua endpoint di bawah /api dibatasi per IP (X-RateLimit-Limit / -Remaining, 429 + Retry-After). /api/auth/* dan /api/mcp dikecualikan."
+      description="Semua endpoint di bawah /api dibatasi per IP klien (X-RateLimit-Limit / -Remaining, 429 RATE_LIMITED + Retry-After). IP klien = IP koneksi, atau X-Forwarded-For hanya dari proxy di TRUSTED_PROXIES. /api/auth/* memakai rate limit Better Auth; /api/mcp dikecualikan."
     >
       <Stack gap={6}>
         {rows.map((r) => (

@@ -73,7 +73,7 @@ export function RateLimitTable(props: Props) {
               </Group>
             </Table.Th>
             <Table.Th>Klien</Table.Th>
-            <Table.Th>Request diblokir</Table.Th>
+            <Table.Th>Request pertama ditolak</Table.Th>
             <Table.Th visibleFrom="md">Perangkat</Table.Th>
             <Table.Th visibleFrom="lg">User</Table.Th>
             <Table.Th w={84} />
