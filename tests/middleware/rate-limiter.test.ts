@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, mock } from 'bun:test';
 import { Elysia } from 'elysia';
 import { CLIENT_IP_HEADER } from '../../server/middleware/client-ip';
 import { RateLimiter, rateLimitPlugin } from '../../server/middleware/rate-limiter';
@@ -94,7 +94,39 @@ describe('rateLimitPlugin', () => {
     const blocked = await hit(app, '/api/child/x', '10.0.0.1');
     expect(blocked.status).toBe(429);
     expect(blocked.headers.get('retry-after')).toBe('60');
-    expect(((await blocked.json()) as { error: string }).error).toBe('Too many requests');
+  });
+
+  it('429 uses the standard API error shape plus retryAfterSeconds', async () => {
+    const { app } = build(1);
+    await hit(app, '/api/own', '10.0.0.5');
+    const res = await hit(app, '/api/own', '10.0.0.5');
+    expect(res.status).toBe(429);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.error).toBe('Terlalu banyak request. Coba lagi dalam 60 detik.');
+    expect(body.code).toBe('RATE_LIMITED');
+    expect(body.status).toBe(429);
+    expect(body.retryAfterSeconds).toBe(60);
+    expect(typeof body.requestId).toBe('string');
+    expect((body.requestId as string).length).toBeGreaterThan(0);
+    expect(res.headers.get('x-request-id')).toBe(body.requestId as string);
+    expect(res.headers.get('retry-after')).toBe('60');
+    expect(res.headers.get('x-ratelimit-limit')).toBe('1');
+    expect(res.headers.get('x-ratelimit-remaining')).toBe('0');
+  });
+
+  it('logs one row per blocking episode, not per rejected request', async () => {
+    const limiter = new RateLimiter({ windowMs: 60_000, limit: 1 });
+    const log = mock(async (_: { ip: string | null; path: string }) => {});
+    const app = new Elysia({ prefix: '/api' })
+      .use(rateLimitPlugin(limiter, log))
+      .get('/own', () => ({ ok: true }));
+    await hit(app, '/api/own', '10.0.0.6');
+    for (let i = 0; i < 5; i++) expect((await hit(app, '/api/own', '10.0.0.6')).status).toBe(429);
+    expect(log).toHaveBeenCalledTimes(1);
+    expect(log.mock.calls[0][0]).toMatchObject({ ip: '10.0.0.6', path: '/api/own' });
+    await hit(app, '/api/own', '10.0.0.7');
+    await hit(app, '/api/own', '10.0.0.7');
+    expect(log).toHaveBeenCalledTimes(2);
   });
 
   it('adds X-RateLimit headers and keys by client IP', async () => {
@@ -111,5 +143,42 @@ describe('rateLimitPlugin', () => {
     const { app } = build(1);
     for (let i = 0; i < 3; i++)
       expect((await hit(app, '/api/auth/session', '10.0.0.4')).status).toBe(200);
+  });
+});
+
+describe('RateLimiter episodes & memory bound', () => {
+  it('flags episodeStart once per window and again in the next window', () => {
+    const rl = new RateLimiter({ windowMs: 1_000, limit: 1 });
+    expect(rl.check('e', 0).episodeStart).toBe(false);
+    expect(rl.check('e', 100).episodeStart).toBe(true);
+    expect(rl.check('e', 500).episodeStart).toBe(false);
+    expect(rl.check('e', 1_050).limited).toBe(false);
+    expect(rl.check('e', 1_060).episodeStart).toBe(false); // still within 1s of the logged rejection
+    expect(rl.check('e', 1_200).episodeStart).toBe(true); // new window
+  });
+
+  it('prune keeps a key whose episode is still inside the window', () => {
+    const rl = new RateLimiter({ windowMs: 1_000, limit: 1 });
+    rl.check('k', 0);
+    rl.check('k', 900);
+    rl.prune(1_500);
+    expect(rl.size).toBe(1);
+    rl.prune(1_901);
+    expect(rl.size).toBe(0);
+  });
+
+  it('caps tracked keys: prunes expired first, then evicts the oldest', () => {
+    const rl = new RateLimiter({ windowMs: 1_000, limit: 1 }, 3);
+    rl.check('old', 0);
+    rl.check('a', 1_500);
+    rl.check('b', 1_600);
+    rl.check('c', 1_700); // 'old' expired → pruned, nothing live evicted
+    expect(rl.size).toBe(3);
+    expect(rl.check('a', 1_800).limited).toBe(true);
+    rl.check('d', 1_900); // all live → oldest ('a') evicted
+    expect(rl.size).toBe(3);
+    expect(rl.check('a', 1_950).limited).toBe(false); // counter reset by eviction
+    expect(rl.size).toBe(3);
+    expect(rl.check('c', 1_960).limited).toBe(true);
   });
 });

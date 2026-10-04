@@ -6,14 +6,16 @@
  * multi-instance deployment.
  *
  * Every API response carries X-RateLimit-Limit / X-RateLimit-Remaining; a
- * blocked request gets 429 + Retry-After and is recorded in `rate_limit_log`
- * with the same client enrichment as visit/login logs.
+ * blocked request gets 429 + Retry-After in the standard API error shape. Only
+ * the first rejection of a blocking episode (one per IP per window) is recorded
+ * in `rate_limit_log`, with the same client enrichment as visit/login logs.
  *
  * The plugin must be registered BEFORE other plugins on the API instance —
  * Elysia hooks only cover routes registered after them (verified: a hook
  * added after `.use(plugin)` never runs for that plugin's routes).
  */
 import { Elysia } from 'elysia';
+import { type ApiErrorBody, newRequestId } from '../api-error';
 import { db } from '../db';
 import { rateLimitLog } from '../db/schema';
 import { logger } from '../logger';
@@ -36,7 +38,7 @@ export {
   rateLimiter,
 };
 
-/** Persist a blocked request. Failures are logged, never thrown — must not cascade. */
+/** Persist a blocking episode. Failures are logged, never thrown — must not cascade. */
 export async function logRateLimit(input: {
   ip: string | null;
   path: string;
@@ -63,7 +65,10 @@ export async function logRateLimit(input: {
  * Elysia plugin: applies the limiter to every route of the instance it is
  * used on (and its later plugins). Register it first.
  */
-export function rateLimitPlugin(limiter: RateLimiter = rateLimiter) {
+export function rateLimitPlugin(
+  limiter: RateLimiter = rateLimiter,
+  log: typeof logRateLimit = logRateLimit,
+) {
   return new Elysia({ name: 'rate-limit' }).onBeforeHandle({ as: 'global' }, ({ request, set }) => {
     if (!limiter.config.enabled) return;
     const pathname = new URL(request.url).pathname;
@@ -75,16 +80,27 @@ export function rateLimitPlugin(limiter: RateLimiter = rateLimiter) {
     set.headers['x-ratelimit-remaining'] = String(r.remaining);
     if (!r.limited) return;
 
-    const retryAfterSec = Math.max(1, Math.ceil(r.retryAfterMs / 1000));
-    set.headers['retry-after'] = String(retryAfterSec);
+    const retryAfterSeconds = Math.max(1, Math.ceil(r.retryAfterMs / 1000));
+    const requestId = newRequestId();
+    set.headers['retry-after'] = String(retryAfterSeconds);
+    set.headers['x-request-id'] = requestId;
+    set.headers['cache-control'] = 'no-store';
     set.status = 429;
-    void logRateLimit({
-      ip,
-      path: pathname,
-      method: request.method,
-      userId: null,
-      headers: request.headers,
-    });
-    return { error: 'Too many requests', retryAfterSeconds: retryAfterSec };
+    if (r.episodeStart) {
+      void log({
+        ip,
+        path: pathname,
+        method: request.method,
+        userId: null,
+        headers: request.headers,
+      });
+    }
+    return {
+      error: `Terlalu banyak request. Coba lagi dalam ${retryAfterSeconds} detik.`,
+      code: 'RATE_LIMITED',
+      status: 429,
+      requestId,
+      retryAfterSeconds,
+    } satisfies ApiErrorBody & { retryAfterSeconds: number };
   });
 }
