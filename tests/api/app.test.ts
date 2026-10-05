@@ -26,6 +26,7 @@ describe('/api/app', () => {
     expect(status).toBe(401);
     expect(body.code).toBe('UNAUTHORIZED');
     expect(typeof body.error).toBe('string');
+    expect(typeof body.requestId).toBe('string');
   });
 
   test('signed-in user → 200 with own identity', async () => {
