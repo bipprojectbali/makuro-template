@@ -125,8 +125,8 @@ $ bun run dev
 🚀 ${appName} dev server on http://localhost:3005
    API + SSR + HMR — satu port, tanpa proxy
 
-$ bun run build:binary:linux
-✓ ${appName.toLowerCase()}-linux-x64  (runtime + SSR + assets)`}
+$ bun run build:binary -- --all
+✓ dist/  linux + macOS, x64 + arm64  (runtime + SSR + assets)`}
               </Code>
             </Paper>
             <Paper withBorder radius="lg" p="md">

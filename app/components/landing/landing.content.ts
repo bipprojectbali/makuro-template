@@ -239,7 +239,8 @@ bun run db:migrate
 bun run dev
 
 # 5. Produksi: satu binary, tanpa Bun di server
-bun run build:binary:linux && scp makuro-linux-x64 server:/srv/app/`;
+curl -fsSL https://raw.githubusercontent.com/bipprojectbali/makuro-template/main/install.sh | sh
+makuro-template init && makuro-template start`;
 
 export const ARCH = `Browser
   │
@@ -262,7 +263,7 @@ export const FAQ = [
   },
   {
     q: 'Bagaimana cara deploy?',
-    a: 'Tiga opsi: `bun run start` di server dengan Bun, Docker (Dockerfile disertakan), atau satu binary hasil `bun run build:binary:linux` yang tidak butuh Bun maupun npm di server. Yang wajib ada hanya PostgreSQL.',
+    a: 'Tiga opsi: `bun run start` di server dengan Bun, Docker (Dockerfile disertakan), atau satu binary (`install.sh` / `bun run build:binary`) yang tidak butuh Bun maupun npm di server. PostgreSQL bisa eksternal atau lokal otomatis lewat `init`.',
   },
   {
     q: 'Provider login apa yang didukung?',

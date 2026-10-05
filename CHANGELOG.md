@@ -7,6 +7,11 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 ## [Unreleased]
 
 ### Added
+- Postgres lokal otomatis: kosongkan `DATABASE_URL` dan app menjalankan PostgreSQL 18 sendiri (data di `./data/pg`, hanya `127.0.0.1`), lengkap dengan migrasi otomatis saat boot. Cocok untuk dev dan produksi kecil di satu VPS tanpa memasang Postgres atau Docker.
+- CLI pada binary `makuro-template` (dan `bun run cli` dari source): `start` (default), `version`, `init` (buat `.env` dengan secret acak, unduh runtime Postgres terverifikasi, siapkan database), `doctor` (periksa kesiapan, exit 1 bila ada masalah), `backup`, dan `upgrade` (self-update dengan verifikasi sha256).
+- Pemasangan satu baris `curl -fsSL …/install.sh | sh` dari GitHub Release, dengan verifikasi checksum dan opsi pin versi `MAKURO_VERSION`. Rilis untuk linux-x64, linux-arm64, darwin-arm64, dan darwin-x64 dibangun otomatis saat push tag `v*`.
+- `init --systemd` membuat unit systemd yang berjalan sebagai user biasa (bukan root).
+- Bagian README "Database: dari lokal ke produksi" berisi tahapan pertumbuhan dan cara pindah ke Postgres Docker/terkelola lewat `pg_dump`.
 - Area `/app` sebagai rumah default fitur produk: terbuka untuk semua user yang sudah masuk, punya halaman panduan cara menambah halaman dan endpoint, serta tautan **App** di sidebar semua role. Endpoint produk tinggal ditambahkan di `/api/app/*` (otomatis butuh login, contoh `GET /api/app/whoami`), dan API key bisa mengaksesnya dengan scope baru `app:read` / `app:write`.
 - Banner peringatan di konsol `/dev` saat `TRUSTED_PROXIES` terdeteksi salah (proxy belum dipercaya, IP terbaca sebagai IP Cloudflare, atau ada entri `/0`), lengkap dengan panduan langkah demi langkah untuk Cloudflare, Cloudflare Tunnel, dan nginx beserta baris `.env` siap-salin. Banner bisa disembunyikan sampai server restart; server juga mencatat warning sekali per proses.
 - Kartu "Status proses" di `/dev/tools` menampilkan jumlah proxy tepercaya (`TRUSTED_PROXIES`) dan IP Anda menurut server, dengan peringatan bila request datang lewat proxy yang belum dipercaya atau ada entri `/0`.
@@ -18,6 +23,8 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 - Env `TRUSTED_PROXIES` (daftar IP/CIDR IPv4 & IPv6, dipisah koma) untuk menentukan proxy mana yang boleh menyampaikan IP klien lewat `X-Forwarded-For`. Default kosong: header itu diabaikan dan IP koneksi langsung dipakai. Entri yang tidak valid membuat server gagal start dengan pesan yang jelas.
 
 ### Changed
+- Binary kini bernama sesuai `name` di `package.json` (`makuro-template`, sebelumnya `makuro`). `bun run build:binary -- --all` membangun keempat target sekaligus ke `dist/` beserta `checksums.txt`; script `build:binary:linux` dan `build:binary:linux-musl` dihapus.
+- Image Docker kini berjalan sebagai user `bun` (bukan root) dengan volume `/app/data`.
 - User biasa kini mendarat di `/app` setelah masuk (sebelumnya `/profile`). Halaman profil tetap di `/profile`.
 - **Perlu tindakan saat deploy:** bila app berjalan di belakang reverse proxy, load balancer, atau Cloudflare, set `TRUSTED_PROXIES` ke IP/CIDR proxy tersebut. Tanpa itu semua pengunjung terlihat memakai IP proxy, sehingga berbagi satu batas rate limit dan satu batas login, dan log mencatat IP proxy.
 - Respons 429 rate limit kini memakai format error API standar `{ error, code: "RATE_LIMITED", status, requestId, retryAfterSeconds }` dengan pesan berbahasa Indonesia ("Terlalu banyak request. Coba lagi dalam N detik.") serta header `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`, dan `X-Request-Id`.

@@ -1,0 +1,60 @@
+# Build single-file binaries per target and publish them + checksums.txt to a GitHub Release.
+# Asset names (<name>-<os>-<arch>) are the contract used by install.sh and `upgrade`.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  BUN_VERSION: 1.4.2
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: ubuntu-latest
+            targets: --target=bun-linux-x64 --target=bun-linux-arm64
+          # darwin builds run on macOS so binaries can be (ad-hoc) codesigned — arm64 macOS refuses unsigned code.
+          - os: macos-latest
+            targets: --target=bun-darwin-arm64 --target=bun-darwin-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bunx react-router build
+      - run: bun scripts/build-binary.ts ${{ matrix.targets }}
+      - if: runner.os == 'macOS'
+        run: for f in dist/*-darwin-*; do codesign --force --sign - "$f"; done
+      - uses: actions/upload-artifact@v7
+        with:
+          name: binaries-${{ matrix.os }}
+          path: dist/
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: checksums.txt
+        working-directory: dist
+        run: sha256sum * > checksums.txt && cat checksums.txt
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --generate-notes
