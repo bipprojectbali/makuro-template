@@ -1,0 +1,46 @@
+# Gate for every push/PR: lint, typecheck, and the test suite against a throwaway Postgres.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUN_VERSION: 1.4.2
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: makuro_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    # test-only values: ephemeral service container, not real credentials
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/makuro_test
+      DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5432/makuro_test
+      BETTER_AUTH_SECRET: ci-test-secret-not-used-anywhere-else
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+      - run: bun run typecheck
+      - run: bun run db:migrate
+      - run: bun run test
