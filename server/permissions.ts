@@ -39,13 +39,13 @@ export function canAccessDev(role: unknown): boolean {
 /**
  * Single source of truth for each role's home area. Strict isolation: a role
  * may only see its own area, so cross-area guards redirect here.
- *   user -> /profile, admin -> /dashboard, super-admin -> /dev
+ *   user -> /app, admin -> /dashboard, super-admin -> /dev
  */
 export function homeFor(role: unknown): string {
   const r = normalizeRole(role);
   if (r === ROLES.SUPER_ADMIN) return '/dev';
   if (r === ROLES.ADMIN) return '/dashboard';
-  return '/profile';
+  return '/app';
 }
 
 export function isSuperAdminEmail(email: string, superAdminEmails: ReadonlySet<string>): boolean {

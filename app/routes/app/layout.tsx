@@ -1,8 +1,7 @@
 import { frameInfo } from '@server/app-info';
-import { requireAnyRole } from '@server/guard';
-import { ROLES } from '@server/permissions';
+import { requireUser } from '@server/guard';
 import { getSidebarCollapsed } from '@server/sidebar';
-import { FiGrid, FiHome, FiUser } from 'react-icons/fi';
+import { FiGrid, FiHome, FiLayers, FiUser } from 'react-icons/fi';
 import { Outlet } from 'react-router';
 import { AppFrame, type NavItem } from '~/components/AppFrame';
 import { AreaErrorBoundary } from '~/components/errors/AreaErrorBoundary';
@@ -13,7 +12,10 @@ export function meta(_: Route.MetaArgs) {
   return [{ title: 'Makuro' }];
 }
 
-const NAV: NavItem[] = [{ to: '/profile', label: 'Profile', icon: FiUser }];
+const NAV: NavItem[] = [
+  { to: '/app', label: 'App', icon: FiLayers },
+  { to: '/profile', label: 'Profile', icon: FiUser },
+];
 
 const SECONDARY_NAV: Record<string, NavItem[]> = {
   admin: [{ to: '/dashboard', label: 'Dashboard', icon: FiHome }],
@@ -30,7 +32,7 @@ const BADGE_COLOR: Record<string, string> = {
 };
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const auth = await requireAnyRole(request, [ROLES.USER, ROLES.ADMIN, ROLES.SUPER_ADMIN]);
+  const auth = await requireUser(request);
   return { ...auth, collapsed: getSidebarCollapsed(request), ...(await frameInfo()) };
 }
 
@@ -48,7 +50,7 @@ function Frame({
       role={data.role}
       user={data.user}
       badgeColor={BADGE_COLOR[data.role] ?? 'gray'}
-      consoleLabel="Akun"
+      consoleLabel="App"
       env={data.env}
       branding={data.branding}
       maintenance={data.maintenance}
@@ -60,7 +62,7 @@ function Frame({
   );
 }
 
-export default function UserLayout({ loaderData }: Route.ComponentProps) {
+export default function AppLayout({ loaderData }: Route.ComponentProps) {
   const ctx: AppContext = { user: loaderData.user, role: loaderData.role };
   return (
     <Frame data={loaderData}>
@@ -71,7 +73,7 @@ export default function UserLayout({ loaderData }: Route.ComponentProps) {
 
 export function ErrorBoundary({ error, loaderData }: Route.ErrorBoundaryProps) {
   return (
-    <AreaErrorBoundary error={error} homePath="/profile" homeLabel="Ke profil">
+    <AreaErrorBoundary error={error} homePath="/app" homeLabel="Ke app">
       {loaderData ? (node) => <Frame data={loaderData}>{node}</Frame> : undefined}
     </AreaErrorBoundary>
   );

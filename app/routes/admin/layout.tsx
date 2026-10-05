@@ -2,7 +2,7 @@ import { frameInfo } from '@server/app-info';
 import { requireAnyRole } from '@server/guard';
 import { ROLES } from '@server/permissions';
 import { getSidebarCollapsed } from '@server/sidebar';
-import { FiGrid, FiHome, FiUser } from 'react-icons/fi';
+import { FiGrid, FiHome, FiLayers, FiUser } from 'react-icons/fi';
 import { Outlet } from 'react-router';
 import { AppFrame, type NavItem } from '~/components/AppFrame';
 import { AreaErrorBoundary } from '~/components/errors/AreaErrorBoundary';
@@ -14,11 +14,14 @@ export function meta(_: Route.MetaArgs) {
 }
 
 const NAV: NavItem[] = [{ to: '/dashboard', label: 'Dashboard', icon: FiHome }];
-const PROFILE: NavItem = { to: '/profile', label: 'Profile', icon: FiUser };
+const APP: NavItem[] = [
+  { to: '/app', label: 'App', icon: FiLayers },
+  { to: '/profile', label: 'Profile', icon: FiUser },
+];
 
 const SECONDARY: Record<string, NavItem[]> = {
-  admin: [PROFILE],
-  'super-admin': [{ to: '/dev', label: 'Dev Console', icon: FiGrid }, PROFILE],
+  admin: APP,
+  'super-admin': [{ to: '/dev', label: 'Dev Console', icon: FiGrid }, ...APP],
 };
 
 export async function loader({ request }: Route.LoaderArgs) {

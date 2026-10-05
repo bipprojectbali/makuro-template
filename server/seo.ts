@@ -7,7 +7,16 @@
 import { env } from './env';
 
 const PUBLIC_PATHS = ['/'];
-const PRIVATE_PREFIXES = ['/api/', '/login', '/go', '/banned', '/profile', '/dashboard', '/dev'];
+const PRIVATE_PREFIXES = [
+  '/api/',
+  '/login',
+  '/go',
+  '/banned',
+  '/app',
+  '/profile',
+  '/dashboard',
+  '/dev',
+];
 const CACHE_SECONDS = 86_400;
 
 const FILES = {

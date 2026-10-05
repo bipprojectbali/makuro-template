@@ -93,13 +93,13 @@ describe('canActOnTarget', () => {
 
 describe('homeFor', () => {
   test('each role maps to its own area', () => {
-    expect(homeFor('user')).toBe('/profile');
+    expect(homeFor('user')).toBe('/app');
     expect(homeFor('admin')).toBe('/dashboard');
     expect(homeFor('super-admin')).toBe('/dev');
   });
   test('unknown/null defaults to the user area', () => {
-    expect(homeFor(null)).toBe('/profile');
-    expect(homeFor('editor')).toBe('/profile');
+    expect(homeFor(null)).toBe('/app');
+    expect(homeFor('editor')).toBe('/app');
   });
 });
 

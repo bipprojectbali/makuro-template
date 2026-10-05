@@ -12,6 +12,7 @@ import { adminApi } from './admin';
 import { analyticsApi } from './analytics';
 import { apiKeysApi } from './api-keys';
 import { apiKeysUsageApi } from './api-keys-usage';
+import { appApi } from './app';
 import { auditApi } from './audit';
 import { fileHealthApi } from './file-health';
 import { logsApi } from './logs';
@@ -91,6 +92,8 @@ export const api = new Elysia({ prefix: '/api' })
   // Current-user endpoints (profile page) + personal API keys.
   .use(meApiKeysApi)
   .use(meApi)
+  // Product endpoints (/api/app/*, any signed-in role) — new app features go here.
+  .use(appApi)
   // Derive the session for downstream handlers.
   .derive(async ({ request }) => {
     const s = await getSession(request.headers);

@@ -12,6 +12,7 @@ import {
   FiGrid,
   FiHome,
   FiKey,
+  FiLayers,
   FiList,
   FiLogIn,
   FiMonitor,
@@ -146,6 +147,7 @@ const NAV: NavGroup[] = [
   },
 ];
 const OTHER: NavItem[] = [
+  { to: '/app', label: 'App', icon: FiLayers },
   { to: '/dashboard', label: 'Dashboard', icon: FiHome },
   { to: '/profile', label: 'Profile', icon: FiUser },
 ];

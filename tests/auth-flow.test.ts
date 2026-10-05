@@ -197,8 +197,8 @@ describe('redirectToHome', () => {
       expect(res.status).toBe(302);
       const location = res.headers.get('location') ?? '';
       expect(location).not.toBe('/login');
-      // New users (no SUPER_ADMIN_EMAILS entry) land on /profile
-      expect(['/profile', '/dashboard', '/dev']).toContain(location);
+      // New users (no SUPER_ADMIN_EMAILS entry) land on /app
+      expect(['/app', '/dashboard', '/dev']).toContain(location);
     }
   });
 });

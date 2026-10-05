@@ -1,8 +1,7 @@
 import { Stack, Text, Title } from '@mantine/core';
 import { listLogins } from '@server/api/analytics-logins.query';
 import { hasGoogleAuth } from '@server/env';
-import { requireAnyRole } from '@server/guard';
-import { ROLES } from '@server/permissions';
+import { requireUser } from '@server/guard';
 import { useQuery } from '@tanstack/react-query';
 import { ApiKeysCard } from '~/components/profile/ApiKeysCard';
 import { DangerZoneCard } from '~/components/profile/DangerZoneCard';
@@ -27,7 +26,7 @@ const HISTORY = 8;
 
 /** Own login history is server-rendered; sessions/accounts come from Better Auth on the client. */
 export async function loader({ request }: Route.LoaderArgs) {
-  const { user } = await requireAnyRole(request, [ROLES.USER, ROLES.ADMIN, ROLES.SUPER_ADMIN]);
+  const { user } = await requireUser(request);
   const logins = await listLogins({ userId: user.id, limit: String(HISTORY) });
   return {
     logins: toJson<{ rows: LoginRow[]; total: number }>(logins),
