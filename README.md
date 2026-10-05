@@ -64,16 +64,19 @@ bun install
 
 # 2. Konfigurasi env
 cp .env.example .env
-# Wajib: DATABASE_URL, BETTER_AUTH_SECRET (openssl rand -base64 32)
+# Wajib: BETTER_AUTH_SECRET (openssl rand -base64 32)
+# DATABASE_URL: isi untuk Postgres sendiri, atau KOSONGKAN untuk Postgres lokal otomatis
 # Opsional: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 # Wajib di belakang reverse proxy/LB/Cloudflare: TRUSTED_PROXIES (IP/CIDR proxy, lihat "Rate limiting")
 
-# 3. Buat database dan jalankan migrasi
-# Opsi A — pakai Postgres yang sudah ada:
-#   psql -c "CREATE DATABASE makuro;"
-# Opsi B — spin up lokal dengan Docker:
-#   docker compose --profile local-db up -d
-bun run db:migrate
+# 3. Database (pilih satu)
+# Opsi A — tanpa Postgres: biarkan DATABASE_URL kosong, unduh runtime sekali
+#   (migrasi otomatis saat boot, lihat "Database: dari lokal ke produksi"):
+#   bun run cli init --db=local
+# Opsi B — pakai Postgres yang sudah ada:
+#   psql -c "CREATE DATABASE makuro;" && bun run db:migrate
+# Opsi C — spin up lokal dengan Docker:
+#   docker compose --profile local-db up -d && bun run db:migrate
 
 # 4. Dev server (single port, HMR)
 bun run dev   # → http://localhost:3005
@@ -92,9 +95,9 @@ bun run start
 | `bun run start` | Production server (`server/prod.ts`, NODE_ENV=production) |
 | `bun run smoke:prod` | Build lalu boot `server/prod.ts` di port bebas dan jalankan 23 pemeriksaan black-box (`scripts/smoke-server.ts`) |
 | `bun run smoke:binary` | Sama, tetapi terhadap binary hasil `build:binary` |
-| `bun run build:binary` | Build binary native (platform saat ini) |
-| `bun run build:binary:linux` | Cross-compile ke Linux x64 glibc |
-| `bun run build:binary:linux-musl` | Cross-compile ke Linux x64 musl (Alpine/Docker) |
+| `bun run smoke:coldboot` | Boot binary dari folder kosong dengan Postgres lokal (init → migrasi → start) |
+| `bun run build:binary` | Build binary platform saat ini → `./makuro-template`; `-- --all` → `dist/` 4 target + `checksums.txt` |
+| `bun run cli <cmd>` | CLI dari source: `init`, `doctor`, `version`, `backup`, `start` |
 | `bun run typecheck` | `react-router typegen` + `tsc --noEmit` |
 | `bun run lint` | Biome check |
 | `bun run format` | Biome format --write |
@@ -107,25 +110,43 @@ bun run start
 ## Binary distribution (tanpa Bun di server)
 
 ```bash
-# Build binary untuk platform saat ini
-bun run build:binary          # → ./makuro
+# Pasang dari GitHub Release (deteksi OS/arch, verifikasi sha256, → ~/.local/bin)
+curl -fsSL https://raw.githubusercontent.com/bipprojectbali/makuro-template/main/install.sh | sh
+#   MAKURO_VERSION=v0.1.0   pin versi (default: rilis terbaru)
+#   MAKURO_INSTALL_DIR=…    folder tujuan (default: ~/.local/bin)
+#   MAKURO_REPO=owner/repo  untuk fork
 
-# Cross-compile ke Linux (dari Mac atau mana saja)
-bun run build:binary:linux      # → ./makuro-linux-x64     (Ubuntu/Debian)
-bun run build:binary:linux-musl # → ./makuro-linux-musl    (Alpine, Docker)
-
-# Jalankan di server — satu file, tanpa perlu install Bun atau build/ folder
-./makuro-linux-x64
+# Di folder app (jadi direktori kerja: .env, data/, backups/)
+makuro-template init      # buat .env (secret acak), unduh runtime Postgres, initdb + migrasi
+makuro-template doctor    # periksa kesiapan
+makuro-template           # = start
 ```
+
+Build sendiri: `bun run build:binary` → `./makuro-template` (platform saat ini), `bun run build:binary -- --all` → `dist/makuro-template-<os>-<arch>` untuk linux-x64, linux-arm64, darwin-arm64, darwin-x64 + `checksums.txt`. Push tag `v*` menjalankan `.github/workflows/release.yml` yang membangun dan mempublikasikan aset yang sama ke GitHub Release.
+
+| Perintah | Fungsi |
+|---|---|
+| `start` (default) | Jalankan server. Mode Postgres lokal: start PG + migrasi otomatis dulu; gagal dengan petunjuk `init` bila runtime belum diunduh |
+| `version [--json]` | Nama, versi, platform |
+| `init [--yes] [--db=local\|external] [--database-url=…] [--pg-archive=file.tgz] [--systemd] [--force]` | Siapkan `.env`, runtime PG (atau `--pg-archive` untuk offline), database, dan opsional unit systemd |
+| `doctor [--json]` | Cek lingkungan, `.env`, koneksi DB, runtime PG, migrasi pending, disk, port, umur backup; exit 1 bila ada ❌ |
+| `backup [--out=dir] [--keep=7]` | Backup cold folder data PG lokal (hentikan server dulu), simpan N terakhir |
+| `upgrade [--version=vX.Y.Z] [--check]` | Self-update dari GitHub Release dengan verifikasi sha256 |
+
+Dari source: `bun run cli <perintah>`.
+
+**systemd:** `makuro-template init --systemd` menulis `./makuro-template.service` (`User=` user saat ini, bukan root — Postgres menolak berjalan sebagai root) lalu mencetak langkah `sudo cp … /etc/systemd/system/` dan `sudo systemctl enable --now makuro-template`.
 
 **Satu file, tidak ada dependensi eksternal:**
 
 ```
-makuro-linux-x64   ← binary ~130 MB — semua embedded:
+makuro-template   ← binary ~130 MB — semua embedded:
                      • Bun runtime (JavaScriptCore)
                      • Server code (Elysia, Better Auth, Drizzle)
                      • React Router SSR bundle
                      • Seluruh static assets (CSS, JS, favicon, dll)
+                     • Migrasi database
+                    (runtime Postgres lokal tidak di-embed — diunduh saat init)
 ```
 
 Seperti Go binary: copy satu file ke server, langsung jalan. Tidak perlu `build/`, tidak perlu Node/Bun, tidak perlu `npm install`.
@@ -137,6 +158,35 @@ Seperti Go binary: copy satu file ke server, langsung jalan. Tidak perlu `build/
 > **Teknik:** SSR bundle di-embed via static `import * as ssrBuild from '../build/server/index.js'` — Bun bundler mengikuti static import dan mem-bundle seluruh dependensi (`@react-router/node`, `react-dom`, dll) ke dalam binary. `--asset ./build/client` embed seluruh direktori client ke VFS (tersedia di runtime sebagai `client/` — satu level parent directory di-strip). `inlineDynamicImports: true` di Vite memastikan SSR bundle adalah satu file tunggal tanpa dynamic chunk splits.
 
 > **Catatan:** Binary lebih besar (~130 MB) karena embed Bun runtime (JavaScriptCore). Trade-off yang sama dengan semua single-binary JS runtimes (Deno, Node SEA).
+
+## Database: dari lokal ke produksi
+
+Satu dialect (PostgreSQL) di semua tahap — yang berganti hanya siapa yang menjalankan Postgres.
+
+**Postgres lokal otomatis** aktif bila `DATABASE_URL` kosong atau `LOCAL_PG_DIR` diset. Bila `DATABASE_URL` diisi, perilaku sama seperti biasa.
+
+- Runtime PostgreSQL 18.4 dari paket npm `@embedded-postgres/<os>-<arch>` (MIT), diunduh sekali saat `init`, hash sha512 di-pin di binary. Disimpan di cache global `~/.cache/makuro-template/pg/18.4.0/<platform>` (`XDG_CACHE_HOME` dihormati), dipakai bersama semua folder app.
+- Data di `./data/pg` (`LOCAL_PG_DIR`), port `54329` (`LOCAL_PG_PORT`), hanya `127.0.0.1`, auth `trust` lokal. Migrasi berjalan otomatis saat boot (dev, `start`, binary).
+- Platform: linux-x64, linux-arm64 (glibc), darwin-arm64, darwin-x64. musl/Alpine tidak didukung untuk mode lokal.
+- Postgres menolak berjalan sebagai root — jalankan app sebagai user biasa.
+
+**Tangga pertumbuhan:**
+
+1. **Dev** — `bun run dev` dengan `DATABASE_URL` kosong: PG lokal start sendiri.
+2. **Produksi kecil** — satu VPS: binary + PG lokal + `init --systemd`, `backup` terjadwal (cold: hentikan service sebentar).
+3. **Membesar** — Postgres Docker atau terkelola: pindahkan data, isi `DATABASE_URL`, selesai.
+
+**Pindah ke Postgres Docker/terkelola** — pakai `pg_dump` dengan versi mayor yang sama (18), jangan salin folder data mentah (locale/glibc bisa berbeda):
+
+```bash
+# Saat PG lokal berjalan (app aktif)
+docker run --rm --network host postgres:18 \
+  pg_dump -h 127.0.0.1 -p 54329 -U postgres makuro-template > dump.sql
+# Restore ke tujuan, lalu set DATABASE_URL di .env dan restart
+psql "$DATABASE_URL" < dump.sql
+```
+
+**Docker:** image runtime berjalan sebagai `USER bun` dengan `VOLUME /app/data`; default tetap memakai `DATABASE_URL` eksternal.
 
 ## Struktur project
 

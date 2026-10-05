@@ -269,6 +269,16 @@ Saat bekerja dengan `bun build --compile --asset`:
   ```
 - SSR bundle di-embed via **static import** (`import * as ssrBuild from '../build/server/index.js'`) — Bun mengikuti static import dan mem-bundle seluruh deps ke binary.
 - `Bun.embeddedFiles` berguna untuk debug: menampilkan path dan ukuran semua file yang di-embed.
+- Build binary lewat `bun scripts/build-binary.ts` (nama output = `name` package.json; `--all` → `dist/` 4 target + `checksums.txt`). Script `build:binary:linux*` sudah dihapus.
+
+## CLI & Postgres Lokal — Catatan Agent
+
+- `server/local-pg/*` dan `server/cli/*` **tidak boleh** mengimpor `server/env.ts` / `server/db` di top-level — CLI (`version`, `init`, `doctor`) jalan sebelum `.env` valid. Pakai `server/pkg.ts` untuk nama/versi; impor env/db secara dinamis setelah PG lokal siap.
+- Subcommand = `server/cli/<cmd>.ts` dengan kontrak `run(argv: string[]): Promise<number>` (exit code), lalu daftarkan di `server/cli/index.ts`.
+- Versi PostgreSQL dan hash sha512 tarball di-pin di `server/local-pg/runtime.ts` — saat menaikkan versi, update **keempat** platform bersamaan (ambil `dist.integrity` dari registry npm).
+- Migrasi ter-embed di binary pada `/$bunfs/root/migrations`; di mode skrip dibaca dari `server/db/migrations`.
+- Menyentuh `local-pg/` atau `cli/` → jalankan `bun run smoke:coldboot` selain `smoke:prod`/`smoke:binary`.
+- PG lokal app memakai port `54329`. **Jangan** pkill/stop Postgres milik user (port 5432) — hentikan hanya PID yang kamu jalankan.
 
 ## Stack
 
