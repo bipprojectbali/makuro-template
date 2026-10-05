@@ -28,6 +28,7 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 - Bila `TRUSTED_PROXIES` berisi `0.0.0.0/0` atau `::/0`, server kini memberi peringatan saat start karena setiap klien bisa memalsukan IP-nya.
 
 ### Fixed
+- Semua respons error 4xx dari endpoint API (misalnya 401 "belum masuk", 403, 404 data tidak ditemukan) kini memakai format standar `{ error, code, status, requestId }` dan header `X-Request-Id`, sama seperti error lain. Sebelumnya sebagian hanya berisi `{ error }` tanpa `code` dan `requestId`, sehingga sulit dicocokkan dengan log saat dilaporkan.
 - Rate limit dan allow-list IP pada API key tidak bisa lagi diakali dengan mengirim header `X-Forwarded-For` atau `X-Real-IP` palsu, termasuk di belakang proxy yang menambahkan port (`1.2.3.4:5678`) atau entri bukan IP (`unknown`): port kini dilepas, dan entri yang tetap bukan IP menghentikan pembacaan alih-alih dilewati.
 - Klien yang membanjiri API dari banyak IP berbeda tidak lagi bisa memperlambat server atau menghabiskan memori. Tiap klien kini memakai memori tetap berapa pun batas rate limit yang diset, dan saat jumlah klien yang dilacak penuh, klien yang paling lama tidak aktif dikeluarkan.
 - Saat login terlalu sering dicoba, halaman masuk kini menampilkan pesan berbahasa Indonesia yang jelas, bukan teks bahasa Inggris dari Better Auth.

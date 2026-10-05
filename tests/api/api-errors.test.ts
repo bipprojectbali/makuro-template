@@ -21,7 +21,12 @@ const app = new Elysia({ prefix: '/api' })
   })
   .get('/redirect', () => {
     throw new Response(null, { status: 302, headers: { location: '/login' } });
-  });
+  })
+  .get('/forbidden', ({ status }) => status(403, { error: 'Tidak boleh', hint: 'x' }))
+  .get('/coded', ({ status }) => status(400, { error: 'Salah', code: 'BAD_INPUT' }))
+  .group('/guarded', (g) =>
+    g.onBeforeHandle(({ status }) => status(401, { error: 'Masuk dulu' })).get('/x', () => 'never'),
+  );
 
 async function call(path: string, init?: RequestInit) {
   const res = await app.handle(new Request(`http://localhost${path}`, init));
@@ -67,6 +72,23 @@ describe('apiErrorPlugin', () => {
     expect(redirect.status).toBe(302);
     expect(redirect.headers.get('location')).toBe('/login');
     expect((await call('/api/ok')).res.status).toBe(200);
+  });
+  test('handler status(4xx) returns get the uniform shape with a request id header', async () => {
+    const { res, body } = await call('/api/forbidden');
+    expect(res.status).toBe(403);
+    expect(body).toMatchObject({ error: 'Tidak boleh', code: 'FORBIDDEN', status: 403, hint: 'x' });
+    expect(typeof body?.requestId).toBe('string');
+    expect(res.headers.get('x-request-id')).toBe(body?.requestId as string);
+    expect(res.headers.get('cache-control')).toBe('no-store');
+  });
+  test('an explicit code is kept; beforeHandle status() is wrapped too', async () => {
+    const coded = await call('/api/coded');
+    expect(coded.res.status).toBe(400);
+    expect(coded.body?.code).toBe('BAD_INPUT');
+    const guarded = await call('/api/guarded/x');
+    expect(guarded.res.status).toBe(401);
+    expect(guarded.body).toMatchObject({ error: 'Masuk dulu', code: 'UNAUTHORIZED', status: 401 });
+    expect((await call('/api/ok')).body).toEqual({ ok: true });
   });
   test('the real API app answers unknown routes with the same JSON shape', async () => {
     const res = await api.handle(new Request('http://localhost/api/does-not-exist'));
