@@ -11,7 +11,6 @@
  */
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
-import { redirect } from 'react-router';
 import { api } from '../server/api';
 import { db } from '../server/db';
 import { loginLog, user } from '../server/db/schema';

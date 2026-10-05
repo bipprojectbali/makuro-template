@@ -85,7 +85,7 @@ describe('writeWebResponse — Set-Cookie handling', () => {
     const res = mockServerResponse();
     await writeWebResponse(res, webRes);
     expect(res.statusCode).toBe(302);
-    expect(res.headers['location']).toBe('/dev');
+    expect(res.headers.location).toBe('/dev');
   });
 
   test('response body is streamed', async () => {
@@ -117,9 +117,10 @@ describe('nodeToWebRequest', () => {
     em.headers = opts.headers ?? {};
     em.socket = {};
     // Emit body asynchronously so callers can await
-    if (opts.body) {
+    const body = opts.body;
+    if (body) {
       setTimeout(() => {
-        em.emit('data', Buffer.from(opts.body!));
+        em.emit('data', Buffer.from(body));
         em.emit('end');
       }, 0);
     } else {
