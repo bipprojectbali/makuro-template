@@ -8,7 +8,11 @@ export default [
   // Signed-in but banned users land here (see server/guard.ts).
   route('banned', 'routes/banned.tsx'),
   // Strict per-role areas. Each layout guards its role; children inherit it.
-  layout('routes/user/layout.tsx', [route('profile', 'routes/user/profile.tsx')]),
+  // Product area (any signed-in role). New product pages go here, not under /dev or /dashboard.
+  layout('routes/app/layout.tsx', [
+    route('app', 'routes/app/home.tsx'),
+    route('profile', 'routes/app/profile.tsx'),
+  ]),
   layout('routes/admin/layout.tsx', [route('dashboard', 'routes/admin/dashboard.tsx')]),
   layout('routes/super/layout.tsx', [
     route('dev', 'routes/super/overview.tsx'),

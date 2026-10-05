@@ -7,6 +7,7 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 ## [Unreleased]
 
 ### Added
+- Area `/app` sebagai rumah default fitur produk: terbuka untuk semua user yang sudah masuk, punya halaman panduan cara menambah halaman dan endpoint, serta tautan **App** di sidebar semua role. Endpoint produk tinggal ditambahkan di `/api/app/*` (otomatis butuh login, contoh `GET /api/app/whoami`), dan API key bisa mengaksesnya dengan scope baru `app:read` / `app:write`.
 - Banner peringatan di konsol `/dev` saat `TRUSTED_PROXIES` terdeteksi salah (proxy belum dipercaya, IP terbaca sebagai IP Cloudflare, atau ada entri `/0`), lengkap dengan panduan langkah demi langkah untuk Cloudflare, Cloudflare Tunnel, dan nginx beserta baris `.env` siap-salin. Banner bisa disembunyikan sampai server restart; server juga mencatat warning sekali per proses.
 - Kartu "Status proses" di `/dev/tools` menampilkan jumlah proxy tepercaya (`TRUSTED_PROXIES`) dan IP Anda menurut server, dengan peringatan bila request datang lewat proxy yang belum dipercaya atau ada entri `/0`.
 - Halaman `/dev/changelog` untuk membaca riwayat perubahan langsung dari konsol, lengkap dengan filter jenis perubahan, pencarian, dan peringatan bila versi yang berjalan belum tercatat.
@@ -17,6 +18,7 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 - Env `TRUSTED_PROXIES` (daftar IP/CIDR IPv4 & IPv6, dipisah koma) untuk menentukan proxy mana yang boleh menyampaikan IP klien lewat `X-Forwarded-For`. Default kosong: header itu diabaikan dan IP koneksi langsung dipakai. Entri yang tidak valid membuat server gagal start dengan pesan yang jelas.
 
 ### Changed
+- User biasa kini mendarat di `/app` setelah masuk (sebelumnya `/profile`). Halaman profil tetap di `/profile`.
 - **Perlu tindakan saat deploy:** bila app berjalan di belakang reverse proxy, load balancer, atau Cloudflare, set `TRUSTED_PROXIES` ke IP/CIDR proxy tersebut. Tanpa itu semua pengunjung terlihat memakai IP proxy, sehingga berbagi satu batas rate limit dan satu batas login, dan log mencatat IP proxy.
 - Respons 429 rate limit kini memakai format error API standar `{ error, code: "RATE_LIMITED", status, requestId, retryAfterSeconds }` dengan pesan berbahasa Indonesia ("Terlalu banyak request. Coba lagi dalam N detik.") serta header `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`, dan `X-Request-Id`.
 - Rate Limit Logs kini mencatat satu episode blokir per IP per jendela rate limit (penolakan pertama), bukan setiap request yang ditolak, sehingga klien yang membanjiri API tidak ikut membanjiri database. Angka "diblokir" di konsol berarti jumlah episode pemblokiran.

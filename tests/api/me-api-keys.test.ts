@@ -110,7 +110,7 @@ describe('/me/api-keys', () => {
     const list = await call('/');
     expect(list.status).toBe(200);
     const ids = (list.body.scopes as Array<{ id: string }>).map((s) => s.id);
-    expect(ids).toEqual(['posts:write', 'me:read']);
+    expect(ids).toEqual(['posts:write', 'me:read', 'app:read', 'app:write']);
     expect(list.body.max).toBe(MAX_PERSONAL_KEYS);
     const tooHigh = await call('/', json('POST', input('nope', ['users:read'])));
     expect(tooHigh.status).toBe(400);

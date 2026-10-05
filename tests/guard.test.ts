@@ -29,7 +29,7 @@ const roleSpy = spyOn(rolesMod, 'resolveUserRole').mockImplementation(
   async () => ctx.role as 'user',
 );
 
-import { requireAnyRole, requireRole } from '../server/guard';
+import { requireAnyRole, requireRole, requireUser } from '../server/guard';
 import { ROLES } from '../server/permissions';
 
 afterAll(() => {
@@ -92,7 +92,7 @@ describe('requireRole', () => {
     ctx.role = ROLES.USER; // a user hitting an admin-only area
     const res = await catchRedirect(() => requireRole(request(), ROLES.ADMIN));
     expect(res?.status).toBe(302);
-    expect(res?.headers.get('Location')).toBe('/profile');
+    expect(res?.headers.get('Location')).toBe('/app');
   });
 
   test('matching role → returns user and role', async () => {
@@ -123,5 +123,18 @@ describe('requireAnyRole', () => {
     const res = await catchRedirect(() => requireAnyRole(request(), [ROLES.SUPER_ADMIN]));
     expect(res?.status).toBe(302);
     expect(res?.headers.get('Location')).toBe('/dashboard');
+  });
+});
+
+describe('requireUser', () => {
+  test('anonymous → /login; every role passes', async () => {
+    const res = await catchRedirect(() => requireUser(request()));
+    expect(res?.headers.get('Location')).toBe('/login');
+    ctx.user = { id: 'u5', email: 'u5@test.local' };
+    for (const role of Object.values(ROLES)) {
+      ctx.role = role;
+      const out = (await requireUser(request())) as { role: string };
+      expect(out.role).toBe(role);
+    }
   });
 });

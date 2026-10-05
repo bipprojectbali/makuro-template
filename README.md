@@ -18,6 +18,7 @@ Dokumentasi ini adalah satu-satunya sumber dan bisa dibaca tanpa JavaScript:
 - `GET /llms.txt` — indeks singkat (judul, ringkasan, daftar bagian, endpoint untuk agent), dibangkitkan dari heading README.
 - `GET /api/version` — `{ name, version, env, bun }`, publik.
 - API dipakai dengan header `X-API-Key: mk_live_…` atau `Authorization: Bearer mk_live_…`; scope per route ada di bagian **API keys**. Semua error API berbentuk JSON `{ error, code, status, requestId }`.
+- Fitur produk dibangun di area `/app` (halaman) dan `/api/app/*` (endpoint), keduanya butuh login — lihat **Membangun fitur produk (`/app`)**. `/dev` khusus operasional, `/dashboard` khusus admin.
 - Server MCP di `/api/mcp` (Streamable HTTP) menerima API key ber-scope `mcp`; katalog tool ada di bagian **Dev console → Tools & MCP**.
 
 Untuk mesin pencari: `/robots.txt` (area login, konsol, dan API ditutup) dan `/sitemap.xml` dibangun dari `APP_URL`, sedangkan landing punya meta Open Graph/Twitter, `og:image` (`/og.png`, 1200×630), dan `canonical` — jadi set `APP_URL` ke origin publik di produksi.
@@ -147,7 +148,7 @@ app/                    React Router app (SSR)
   routes/
     home.tsx            Landing page (angka hidup dari server/landing-stats.ts)
     login.tsx  go.tsx   Login/signup, post-auth resolver ke home role
-    user/  admin/       Area /profile dan /dashboard (layout + ErrorBoundary ber-sidebar)
+    app/  admin/        Area /app + /profile dan /dashboard (layout + ErrorBoundary ber-sidebar)
     super/              Area /dev: 14 halaman konsol super-admin
   components/
     AppFrame.tsx frame/ Shell sidebar (nav model, badge, brand header)
@@ -196,9 +197,11 @@ Sistem role: `user` → `admin` → `super-admin`. Role tersimpan di tabel `user
 
 | Role | Home | Area |
 |---|---|---|
-| `user` | `/profile` | Profil, keamanan akun, sesi perangkat, API key pribadi |
+| `user` | `/app` | Fitur produk (`/app`), profil, keamanan akun, sesi perangkat, API key pribadi |
 | `admin` | `/dashboard` | Dashboard, manajemen user (ban, role change), API key pribadi |
 | `super-admin` | `/dev` | Overview, users, sessions, posts, DB schema, visitor/login/rate-limit/server/audit logs, file health, tools & MCP, settings |
+
+Area `/app` dan `/profile` terbuka untuk semua role yang sudah masuk; admin dan super-admin membukanya lewat tautan **App** di sidebar.
 
 Google OAuth: set `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`. Authorized redirect URI di Google Console: `${BETTER_AUTH_URL}/api/auth/callback/google`.
 
@@ -208,6 +211,15 @@ Google OAuth: set `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`. Authorized redire
 - Bila user yang diblokir masih memegang sesi (misalnya diblokir lewat jalur lain), guard (`server/guard.ts`) menolaknya dan mengarahkan ke **`/banned`**: halaman yang menampilkan alasan, apakah permanen atau sampai kapan (dengan hitung mundur), langkah yang bisa dilakukan, tautan dukungan dari branding, tombol keluar, dan ke beranda. Ban yang sudah lewat waktunya diperlakukan sebagai dicabut.
 - Saat mencoba masuk lagi, halaman login menerjemahkan kode Better Auth (`BANNED_USER`, `INVALID_EMAIL_OR_PASSWORD`, `USER_NOT_FOUND`, …) ke pesan bahasa Indonesia yang actionable; login Google yang ditolak kembali ke `/login?error=<kode>` (bukan halaman error mentah Better Auth) berkat `errorCallbackURL`.
 - User yang **dihapus permanen** kehilangan sesinya (cascade), sehingga perangkatnya mendapat notice "sesi berakhir" di login; mencoba masuk dengan email lama menghasilkan "akun tidak ditemukan", dan login Google akan membuat akun baru yang bersih. Tidak ada jejak yang disimpan tentang akun yang dihapus (selain audit log admin).
+
+## Membangun fitur produk (`/app`)
+
+Template ini dipakai sebagai dasar project lain, jadi fitur produk punya satu tempat default:
+
+- **Halaman** — `app/routes/app/<nama>.tsx`, didaftarkan sebagai child layout `routes/app/layout.tsx` di `app/routes.ts`, plus item `NAV` di layout itu. Setiap loader **wajib** memanggil `requireUser(request)` (`server/guard.ts`), atau `requireAnyRole(request, [...])` bila fitur khusus role tertentu — loader layout dan halaman berjalan paralel, jadi guard layout saja tidak melindungi data halaman. `tests/app-routes.test.ts` memeriksa ini.
+- **Endpoint** — tambahkan ke `server/api/app.ts` (prefix `/api/app`); semua route di sana otomatis menolak pemanggil tanpa sesi dengan `401 UNAUTHORIZED`. Contoh: `GET /api/app/whoami` → `{ userId, name, role }`. Batasan per role: cek `actor.role` di handler dan kembalikan 403. Dari client pakai Eden: `client.api.app.whoami.get()` (`app/lib/eden.ts`).
+- **API key** — `/api/app/*` dipetakan ke scope `app:read` (GET/HEAD) dan `app:write` (lainnya), tersedia untuk semua role.
+- `/dev` untuk operasional dan `/dashboard` untuk admin — jangan taruh fitur produk di sana.
 
 ## Visitor analytics
 
@@ -252,7 +264,7 @@ Menambah halaman `/dev` baru berarti menyentuh lima tempat sekaligus: `app/route
 
 Semua kegagalan punya wajah yang konsisten, di UI maupun API:
 
-- **Halaman** — `ErrorBoundary` root (`app/components/errors/ErrorPage.tsx`) merender 404/401/403/5xx dengan judul, penjelasan, langkah berikutnya, path, kode referensi, dan aksi yang relevan (kembali, muat ulang, beranda, masuk). Di dalam area ber-sidebar (`/dev`, `/dashboard`, `/profile`) halaman yang gagal tetap menampilkan sidebar (boundary di tiap layout). Detail teknis hanya tampil di development. Judul tab ikut kode status (`404 Halaman tidak ditemukan — Makuro`) dan `noindex`.
+- **Halaman** — `ErrorBoundary` root (`app/components/errors/ErrorPage.tsx`) merender 404/401/403/5xx dengan judul, penjelasan, langkah berikutnya, path, kode referensi, dan aksi yang relevan (kembali, muat ulang, beranda, masuk). Di dalam area ber-sidebar (`/dev`, `/dashboard`, `/app`, `/profile`) halaman yang gagal tetap menampilkan sidebar (boundary di tiap layout). Detail teknis hanya tampil di development. Judul tab ikut kode status (`404 Halaman tidak ditemukan — Makuro`) dan `noindex`.
 - **API** — `server/api-error.ts` menyeragamkan semua error `/api/*` menjadi `{ error, code, status, requestId, method, path }`: 404 JSON untuk route/method tak dikenal (termasuk yang tadinya ditelan mount Better Auth), 422 dengan `issues[{ path, message }]` untuk validasi (tanpa dump skema), 400 body tak terbaca, 500 dengan pesan generik di produksi. Setiap 5xx dicatat sekali ke log dengan `requestId` yang sama seperti header `X-Request-Id`, jadi laporan user bisa langsung dicocokkan.
 - **Fallback tanpa React** — bila SSR sendiri gagal, `server/error-page.ts` mengirim HTML statis (500/503, dark-mode aware, dengan kode referensi) baik di dev maupun prod; halaman pemeliharaan (503) memakai pola yang sama.
 
@@ -265,7 +277,7 @@ Versi aplikasi punya satu sumber: `version` di `package.json` (dibaca `server/ap
 Akses terprogram ke `/api/*` tanpa cookie sesi. Dikelola super-admin di `/dev/api-keys`; dibangun di atas plugin `@better-auth/api-key` (kunci di-hash, hanya prefix yang disimpan terbaca).
 
 - **Format & header** — kunci `mk_live_…`, dikirim lewat `X-API-Key: <key>` atau `Authorization: Bearer <key>`. Nilai asli hanya ditampilkan **sekali** saat dibuat/dirotasi.
-- **Scope** — tiap route memetakan ke satu scope (`server/api-keys/scopes.ts`, mis. `users:read`, `analytics:write`, `me:read`). Kunci tidak pernah melebihi role pemiliknya: scope di atas role ditolak saat dibuat, dan jika role pemilik turun belakangan request mendapat `403 ROLE_TOO_LOW`. Route auth dan manajemen kunci tidak bisa diakses dengan kunci; MCP butuh scope `mcp`.
+- **Scope** — tiap route memetakan ke satu scope (`server/api-keys/scopes.ts`, mis. `users:read`, `analytics:write`, `me:read`, `app:read`). Kunci tidak pernah melebihi role pemiliknya: scope di atas role ditolak saat dibuat, dan jika role pemilik turun belakangan request mendapat `403 ROLE_TOO_LOW`. Route auth dan manajemen kunci tidak bisa diakses dengan kunci; MCP butuh scope `mcp`.
 - **Kedaluwarsa & rotasi** — default 90 hari, maksimum 1 tahun; tanpa kedaluwarsa hanya untuk pemilik super-admin. Rotasi membuat kunci baru dengan pengaturan sama dan memberi kunci lama masa tenggang 24 jam. Cabut = permanen tapi riwayat tetap; hapus = baris dan riwayatnya hilang.
 - **Pembatasan** — rate limit per kunci (opsional, `429 RATE_LIMITED`), daftar IP/prefix yang diizinkan (`403 IP_NOT_ALLOWED`, dicocokkan dengan IP klien hasil `TRUSTED_PROXIES` sehingga tidak bisa dipalsukan lewat `X-Forwarded-For`), nonaktifkan sementara (`401 KEY_DISABLED`).
 - **Jejak pemakaian** — tiap request dicatat ke `api_key_usage` (method, path, status, IP, negara, UA, durasi) secara batch, lalu digulung per hari ke `api_key_usage_daily` (job tiap jam, upsert monoton) sehingga grafik 90 hari dan total seumur kunci tetap murah dan tidak hilang saat retensi menghapus baris mentah. Halaman detail menampilkan total, harian 90 hari, endpoint/IP/negara tersering, request terakhir, dan penanda anomali (negara baru, lonjakan 4xx/5xx). Tab **Log penggunaan** di `/dev/api-keys` menampilkan log lintas kunci dengan filter dan export CSV. Retensi baris mentah diatur di Settings → Retensi log.

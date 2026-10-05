@@ -5,7 +5,7 @@ import { auth } from './auth';
 import { isBanActive } from './ban';
 import { db } from './db';
 import { user as userTable } from './db/schema';
-import { homeFor, type Role } from './permissions';
+import { homeFor, ROLES, type Role } from './permissions';
 import { resolveUserRole } from './roles';
 
 /**
@@ -27,6 +27,11 @@ export async function requireAnyRole(request: Request, allowed: readonly Role[])
   if (!actor) throw redirect(signedOutTarget(request));
   if (!allowed.includes(actor.role)) throw redirect(homeFor(actor.role));
   return actor;
+}
+
+/** Any signed-in role — the guard for every /app page loader (loaders run in parallel with the layout's). */
+export async function requireUser(request: Request) {
+  return requireAnyRole(request, Object.values(ROLES));
 }
 
 const SESSION_COOKIE = /(^|;\s*)(__Secure-)?better-auth\.session_token=/;

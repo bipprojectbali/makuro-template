@@ -17,6 +17,9 @@ describe('requiredScope', () => {
     expect(requiredScope('PUT', '/api/settings/rate-limit')).toBe('settings:write');
     expect(requiredScope('POST', '/api/posts')).toBe('posts:write');
     expect(requiredScope('GET', '/api/me/logins')).toBe('me:read');
+    expect(requiredScope('GET', '/api/app/whoami')).toBe('app:read');
+    expect(requiredScope('POST', '/api/app/items')).toBe('app:write');
+    expect(requiredScope('GET', '/api/apps')).toBeNull();
     expect(requiredScope('POST', '/api/mcp')).toBe('mcp');
     expect(requiredScope('GET', '/api/mcp')).toBe('mcp');
   });
@@ -43,6 +46,6 @@ describe('role ceiling', () => {
     expect(roleAllowsScope('super-admin', 'settings:write')).toBe(true);
     expect(roleAllowsScope('admin', 'mcp')).toBe(false);
     expect(roleAllowsScope('super-admin', 'mcp')).toBe(true);
-    expect(scopesForRole('user')).toEqual(['posts:write', 'me:read']);
+    expect(scopesForRole('user')).toEqual(['posts:write', 'me:read', 'app:read', 'app:write']);
   });
 });

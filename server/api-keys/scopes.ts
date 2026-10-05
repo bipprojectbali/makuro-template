@@ -99,6 +99,18 @@ export const SCOPES = [
     description: 'Data dan riwayat login akun pemilik kunci',
     minRole: ROLES.USER,
   },
+  {
+    id: 'app:read',
+    label: 'App (baca)',
+    description: 'Endpoint produk /api/app/* — baca',
+    minRole: ROLES.USER,
+  },
+  {
+    id: 'app:write',
+    label: 'App (tulis)',
+    description: 'Endpoint produk /api/app/* — buat, ubah, hapus',
+    minRole: ROLES.USER,
+  },
 ] as const;
 
 export const SCOPE_IDS = SCOPES.map((s) => s.id) as readonly string[];
@@ -151,6 +163,7 @@ export function requiredScope(method: string, pathname: string): Scope | null {
   if (p.startsWith('/api/ops/reset')) return null;
   if (p.startsWith('/api/ops')) return read ? 'ops:read' : null;
   if (p.startsWith('/api/me')) return read ? 'me:read' : null;
+  if (p.startsWith('/api/app/') || p === '/api/app') return read ? 'app:read' : 'app:write';
   if (p.startsWith('/api/posts')) return read ? null : 'posts:write';
   return null;
 }
