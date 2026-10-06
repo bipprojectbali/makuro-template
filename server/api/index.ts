@@ -18,6 +18,7 @@ import { fileHealthApi } from './file-health';
 import { logsApi } from './logs';
 import { meApi } from './me';
 import { meApiKeysApi } from './me-api-keys';
+import { openapiApi } from './openapi';
 import { opsApi } from './ops';
 import { postsApi } from './posts';
 import { sessionsApi } from './sessions';
@@ -108,5 +109,8 @@ export const api = new Elysia({ prefix: '/api' })
   .get('/me', ({ user }) => ({ user }))
   // Posts (public reads, session writes, admin moderation) live in posts.ts.
   .use(postsApi);
+
+// Registered after the chain so the spec route can describe `api` without a self-referential type.
+api.use(openapiApi(() => api));
 
 export type Api = typeof api;

@@ -9,6 +9,7 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 ### Added
 - Server Logs kini punya pagination (50 entri per halaman) dengan total entri yang cocok dengan filter. Halaman 2 dan seterusnya tidak bergeser saat log baru masuk, dan tombol "N log baru" membawa kembali ke halaman pertama yang live.
 - Nama database Postgres lokal kini bisa diatur lewat `LOCAL_PG_DB` di `.env` (default tetap nama package, mis. `makuro_template`). Database test ikut menjadi `<nama>_test`.
+- Dokumentasi API yang bisa langsung dibaca AI agent dan tool seperti Postman: `GET /api/openapi.json` mengembalikan spec OpenAPI 3 dengan API key apa pun. Isinya hanya endpoint yang boleh dipanggil key tersebut, lengkap dengan scope yang dibutuhkan tiap endpoint. Tautannya juga tercantum di `/llms.txt`.
 
 ### Changed
 - Workflow rilis kini menolak tag yang tidak sama dengan `v<version>` di `package.json` atau versi yang belum punya entry di CHANGELOG, sebelum build dimulai. Catatan rilis di GitHub Release diambil dari bagian versi tersebut di CHANGELOG, bukan daftar commit otomatis.
