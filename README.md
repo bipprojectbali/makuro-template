@@ -166,7 +166,7 @@ Satu dialect (PostgreSQL) di semua tahap — yang berganti hanya siapa yang menj
 **Postgres lokal otomatis** aktif bila `DATABASE_URL` kosong atau `LOCAL_PG_DIR` diset. Bila `DATABASE_URL` diisi, perilaku sama seperti biasa.
 
 - Runtime PostgreSQL 18.4 dari paket npm `@embedded-postgres/<os>-<arch>` (MIT), diunduh sekali saat `init`, hash sha512 di-pin di binary. Disimpan di cache global `~/.cache/makuro-template/pg/18.4.0/<platform>` (`XDG_CACHE_HOME` dihormati), dipakai bersama semua folder app.
-- Data di `./data/pg` (`LOCAL_PG_DIR`), port `54329` (`LOCAL_PG_PORT`). Tanpa listener TCP: koneksi hanya lewat unix socket di direktori 0700 milik user (`/tmp/makuro_template-pg-<uid>`, ubah dengan `LOCAL_PG_SOCKET_DIR`), sehingga user lain di mesin yang sama tidak bisa masuk. Zona waktu database selalu UTC. Postmaster yatim dari proses yang di-`kill -9` dihentikan otomatis saat start berikutnya. Migrasi berjalan otomatis saat boot (dev, `start`, binary).
+- Data di `./data/pg` (`LOCAL_PG_DIR`), port `54329` (`LOCAL_PG_PORT`), nama database = nama package `makuro_template` (ubah dengan `LOCAL_PG_DB`; test memakai `<nama>_test`). Tanpa listener TCP: koneksi hanya lewat unix socket di direktori 0700 milik user (`/tmp/makuro_template-pg-<uid>`, ubah dengan `LOCAL_PG_SOCKET_DIR`), sehingga user lain di mesin yang sama tidak bisa masuk. Zona waktu database selalu UTC. Postmaster yatim dari proses yang di-`kill -9` dihentikan otomatis saat start berikutnya. Migrasi berjalan otomatis saat boot (dev, `start`, binary).
 - Platform: linux-x64, linux-arm64 (glibc), darwin-arm64, darwin-x64. musl/Alpine tidak didukung untuk mode lokal.
 - Postgres menolak berjalan sebagai root — jalankan app sebagai user biasa.
 
@@ -403,11 +403,13 @@ Agent bisa mengecek sendiri lewat tool MCP `check_file_health` (server `makuro-d
 ## Testing
 
 ```bash
-# Pastikan DATABASE_URL_TEST di .env
 bun run test
 ```
 
-Semua test ada di root `tests/` (mirror struktur `server/`). Gunakan `bun run test` — script inilah yang men-set `NODE_ENV=test`; menjalankan `bun test tests` langsung tidak akan memakai test database. Test database dipisah dari dev/prod (`DATABASE_URL_TEST`); migrasi baru harus dijalankan ke keduanya.
+Semua test ada di root `tests/` (mirror struktur `server/`). Test **selalu** memakai database terpisah dari dev/prod. Preload `tests/preload.ts` (didaftarkan di `bunfig.toml`, jadi berlaku juga untuk `bun test` langsung) memaksa `NODE_ENV=test` lalu mengarahkan `DATABASE_URL` ke database test:
+
+- **Mode Postgres lokal** (`DATABASE_URL` kosong): database `<nama package>_test` dibuat dan dimigrasi otomatis di cluster lokal. Cluster yang sedang dipakai `bun run dev` ikut dipakai; kalau belum jalan, cluster dinyalakan selama test.
+- **Postgres eksternal:** set `DATABASE_URL_TEST` di `.env`. Tanpa variabel ini, `server/db` menolak dimuat saat test agar data dev tidak terhapus. Migrasi baru harus dijalankan ke kedua database.
 
 Pola autentikasi di integration test: stub `auth.api.getSession` dan `resolveUserRole` dengan `spyOn` lalu pakai guard asli (lihat `tests/api/posts.test.ts`, `tests/api/me-api-keys.test.ts`). `mock.module('../../server/guard', …)` hanya aman untuk route yang cuma memakai `requireRole`; mock yang mengganti `resolveActor` bocor ke file test lain dalam satu run. Identitas API key bisa disimulasikan dengan `setApiKeyIdentity(request, …)`. Hook `onAfterResponse` (log pemakaian) berjalan setelah `app.handle()` selesai — tunggu sejenak sebelum `flushUsage()`.
 

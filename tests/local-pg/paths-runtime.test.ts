@@ -7,8 +7,8 @@ import {
   DEFAULT_LOCAL_PG_PORT,
   dataDir,
   isLocalMode,
-  LOCAL_PG_DB,
   localDatabaseUrl,
+  localPgDb,
   localPgPort,
   migrationsFolder,
   runtimeDir,
@@ -24,7 +24,13 @@ import {
 
 const saved = { ...process.env };
 afterEach(() => {
-  for (const k of ['XDG_CACHE_HOME', 'LOCAL_PG_DIR', 'LOCAL_PG_PORT', 'LOCAL_PG_SOCKET_DIR']) {
+  for (const k of [
+    'XDG_CACHE_HOME',
+    'LOCAL_PG_DIR',
+    'LOCAL_PG_PORT',
+    'LOCAL_PG_SOCKET_DIR',
+    'LOCAL_PG_DB',
+  ]) {
     if (saved[k] === undefined) delete process.env[k];
     else process.env[k] = saved[k];
   }
@@ -52,19 +58,30 @@ describe('local-pg paths', () => {
     process.env.LOCAL_PG_PORT = '55001';
     expect(dataDir()).toBe('/srv/app/pg');
     delete process.env.LOCAL_PG_SOCKET_DIR;
-    const sock = `/tmp/${LOCAL_PG_DB}-pg-${process.getuid?.()}`;
+    delete process.env.LOCAL_PG_DB;
+    const sock = `/tmp/makuro_template-pg-${process.getuid?.()}`;
     expect(socketDir()).toBe(sock);
     expect(localDatabaseUrl()).toBe(
-      `postgres://postgres@localhost:55001/${LOCAL_PG_DB}?host=${encodeURIComponent(sock)}`,
+      `postgres://postgres@localhost:55001/makuro_template?host=${encodeURIComponent(sock)}`,
     );
+    // LOCAL_PG_DB renames the database only; the socket stays tied to the cluster.
+    process.env.LOCAL_PG_DB = 'shop';
+    expect(socketDir()).toBe(sock);
+    expect(localDatabaseUrl()).toContain('/shop?host=');
     process.env.LOCAL_PG_SOCKET_DIR = '/run/app-pg';
     expect(localDatabaseUrl(1, 'postgres')).toBe(
       'postgres://postgres@localhost:1/postgres?host=%2Frun%2Fapp-pg',
     );
   });
 
-  it('LOCAL_PG_DB is a safe unquoted identifier and migrations resolve to the source tree', () => {
-    expect(LOCAL_PG_DB).toMatch(/^[a-z0-9_]+$/);
+  it('localPgDb: package name by default, LOCAL_PG_DB override, both sanitized', () => {
+    expect(localPgDb({})).toBe('makuro_template');
+    expect(localPgDb({ LOCAL_PG_DB: '' })).toBe('makuro_template');
+    expect(localPgDb({ LOCAL_PG_DB: 'My-App.db' })).toBe('my_app_db');
+    expect(localPgDb({ LOCAL_PG_DB: 'x"; drop' })).toMatch(/^[a-z0-9_]+$/);
+  });
+
+  it('migrations resolve to the source tree', () => {
     expect(existsSync(path.join(migrationsFolder(), 'meta/_journal.json'))).toBe(true);
   });
 

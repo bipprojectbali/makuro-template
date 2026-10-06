@@ -7,8 +7,8 @@ import { pgClient } from './client';
 import {
   dataDir as defaultDataDir,
   socketDir as defaultSocketDir,
-  LOCAL_PG_DB,
   localDatabaseUrl,
+  localPgDb,
   localPgPort,
   runtimeDir,
 } from './paths';
@@ -93,7 +93,8 @@ async function reclaimLocks(data: string, sockLock: string, runtime: string): Pr
   if (!lockHolder(sockLock)) rmSync(sockLock, { force: true });
 }
 
-async function boot(opts: StartLocalPgOptions): Promise<LocalPg> {
+/** Start a cluster without the process singleton (tests reuse `startLocalPg` for their own throwaway clusters). */
+export async function boot(opts: StartLocalPgOptions): Promise<LocalPg> {
   if (process.getuid?.() === 0) {
     throw new Error(
       'Postgres menolak berjalan sebagai root — jalankan aplikasi sebagai user biasa (non-root).',
@@ -107,6 +108,7 @@ async function boot(opts: StartLocalPgOptions): Promise<LocalPg> {
   }
   const data = opts.dataDir ?? defaultDataDir();
   const port = opts.port ?? localPgPort();
+  const dbName = localPgDb();
   const sockDir = opts.socketDir ?? defaultSocketDir();
   const timeoutMs = opts.timeoutMs ?? DEFAULT_START_TIMEOUT_MS;
 
@@ -201,8 +203,8 @@ async function boot(opts: StartLocalPgOptions): Promise<LocalPg> {
     const sql = pgClient(adminUrl, { max: 1, connect_timeout: 1, onnotice: () => {} });
     try {
       await sql`select 1`;
-      const exists = await sql`select 1 from pg_database where datname = ${LOCAL_PG_DB}`;
-      if (exists.length === 0) await sql`create database ${sql(LOCAL_PG_DB)}`;
+      const exists = await sql`select 1 from pg_database where datname = ${dbName}`;
+      if (exists.length === 0) await sql`create database ${sql(dbName)}`;
       ready = true;
     } catch (err) {
       lastErr = err;
@@ -211,5 +213,5 @@ async function boot(opts: StartLocalPgOptions): Promise<LocalPg> {
       await sql.end({ timeout: 1 });
     }
   }
-  return { url: localDatabaseUrl(port, LOCAL_PG_DB, sockDir), stop };
+  return { url: localDatabaseUrl(port, dbName, sockDir), stop };
 }

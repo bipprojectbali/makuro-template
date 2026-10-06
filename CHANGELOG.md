@@ -8,6 +8,7 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 
 ### Added
 - Server Logs kini punya pagination (50 entri per halaman) dengan total entri yang cocok dengan filter. Halaman 2 dan seterusnya tidak bergeser saat log baru masuk, dan tombol "N log baru" membawa kembali ke halaman pertama yang live.
+- Nama database Postgres lokal kini bisa diatur lewat `LOCAL_PG_DB` di `.env` (default tetap nama package, mis. `makuro_template`). Database test ikut menjadi `<nama>_test`.
 
 ### Changed
 - Workflow rilis kini menolak tag yang tidak sama dengan `v<version>` di `package.json` atau versi yang belum punya entry di CHANGELOG, sebelum build dimulai. Catatan rilis di GitHub Release diambil dari bagian versi tersebut di CHANGELOG, bukan daftar commit otomatis.
@@ -15,6 +16,8 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 - **Keamanan, Postgres lokal:** Postgres lokal tidak lagi membuka port TCP `127.0.0.1`. Sebelumnya auth `trust` di TCP membuat user lain di mesin yang sama bisa masuk sebagai superuser. Koneksi kini hanya lewat unix socket di direktori 0700 milik user (default `/tmp/makuro_template-pg-<uid>`, bisa diubah dengan `LOCAL_PG_SOCKET_DIR`). Format `DATABASE_URL` lokal berubah menjadi `postgres://postgres@localhost:54329/makuro_template?host=<dir socket>`. Perintah `pg_dump` di README sudah disesuaikan.
 
 ### Fixed
+- Variabel `.env` yang dibiarkan kosong (mis. `DATABASE_URL_TEST=` atau `MCP_ADMIN_TOKEN=`) kini dianggap tidak di-set, sehingga `bun run dev` tidak lagi gagal dengan "Invalid environment variables".
+- **Keamanan data:** test tidak lagi diam-diam memakai database dev saat `DATABASE_URL_TEST` kosong. Sebelumnya hal itu bisa menghapus data dev. Di mode Postgres lokal, `bun run test` kini otomatis menyiapkan database `<nama>_test` terpisah. Dengan Postgres eksternal, test menolak berjalan sampai `DATABASE_URL_TEST` di-set.
 - Postgres lokal kini selalu berjalan dalam zona waktu UTC, berapa pun zona waktu mesinnya.
 - Postgres lokal kini bisa start lagi setelah proses app di-`kill -9`. Postmaster yatim dari run sebelumnya dihentikan otomatis, termasuk saat app berjalan di bawah `systemd --user` atau di container dengan tini/dumb-init.
 - Postgres lokal dan `backup` tidak lagi salah mengira proses lain yang kebetulan memakai PID lama sebagai Postgres yang masih berjalan.
