@@ -36,7 +36,11 @@ async function storedRole(id: string): Promise<string | null> {
 }
 
 afterEach(async () => {
-  for (const id of created.splice(0)) await db.delete(user).where(eq(user.id, id)).catch(() => {});
+  for (const id of created.splice(0))
+    await db
+      .delete(user)
+      .where(eq(user.id, id))
+      .catch(() => {});
 });
 
 describe('resolveUserRole', () => {

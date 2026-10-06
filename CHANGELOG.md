@@ -21,6 +21,7 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 - `/robots.txt` dan `/sitemap.xml` untuk mesin pencari, dibangun dari `APP_URL`; halaman login, konsol, dan API tidak diindeks.
 - Ikon home-screen iOS (`/apple-touch-icon.png`), web manifest, dan warna tema browser.
 - Env `TRUSTED_PROXIES` (daftar IP/CIDR IPv4 & IPv6, dipisah koma) untuk menentukan proxy mana yang boleh menyampaikan IP klien lewat `X-Forwarded-For`. Default kosong: header itu diabaikan dan IP koneksi langsung dipakai. Entri yang tidak valid membuat server gagal start dengan pesan yang jelas.
+- Workflow CI GitHub Actions (`.github/workflows/ci.yml`) menjalankan lint, typecheck, migrasi, dan seluruh test terhadap Postgres 18 sementara di setiap push ke `main` dan setiap pull request.
 
 ### Changed
 - Binary kini bernama sesuai `name` di `package.json` (`makuro-template`, sebelumnya `makuro`). `bun run build:binary -- --all` membangun keempat target sekaligus ke `dist/` beserta `checksums.txt`; script `build:binary:linux` dan `build:binary:linux-musl` dihapus.
