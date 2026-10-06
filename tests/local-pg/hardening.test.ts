@@ -7,7 +7,12 @@ import path from 'node:path';
 import postgres from 'postgres';
 import { pgClient } from '../../server/local-pg/client';
 import { localDatabaseUrl } from '../../server/local-pg/paths';
-import { dataDirHolder, lockHolder } from '../../server/local-pg/postmaster';
+import {
+  claimOwner,
+  dataDirHolder,
+  lockHolder,
+  releaseOwner,
+} from '../../server/local-pg/postmaster';
 import { runtimeInstalled } from '../../server/local-pg/runtime';
 import { startLocalPg, stopLocalPg } from '../../server/local-pg/server';
 import { fakePostgres } from './fake-postgres';
@@ -62,7 +67,7 @@ describe('lockHolder', () => {
     const pg = await fakePostgres();
     try {
       await Bun.write(file, `${pg.pid}\n${dir}\n`);
-      expect(lockHolder(file)).toMatchObject({ pid: pg.pid, orphan: false });
+      expect(lockHolder(file)).toMatchObject({ pid: pg.pid, ppid: process.pid });
       expect(dataDirHolder(dir)?.pid).toBe(pg.pid);
       await Bun.write(file, `${pg.pid}\n${os.tmpdir()}\n`); // postgres, but another cluster
       expect(dataDirHolder(dir)).toBeNull();
@@ -71,6 +76,23 @@ describe('lockHolder', () => {
     }
     await Bun.write(file, `${pg.pid}\n${dir}\n`);
     expect(lockHolder(file)).toBeNull();
+  });
+
+  it('flags an orphan by its claimed owner, not by ppid 1 (subreaper: systemd --user, tini)', async () => {
+    const dir = await mkTmp('own-');
+    const pg = await fakePostgres(); // parent = this test process, ppid !== 1
+    try {
+      await Bun.write(path.join(dir, 'postmaster.pid'), `${pg.pid}\n${dir}\n`);
+      expect(dataDirHolder(dir)?.orphan).toBe(false); // no claim: ppid 1 rule
+      claimOwner(dir);
+      expect(dataDirHolder(dir)?.orphan).toBe(false); // parent is the live owner
+      await Bun.write(path.join(dir, 'postmaster.owner'), '999999\n'); // owner SIGKILLed, child reparented elsewhere
+      expect(dataDirHolder(dir)?.orphan).toBe(true);
+      releaseOwner(dir);
+      expect(await Bun.file(path.join(dir, 'postmaster.owner')).exists()).toBe(false);
+    } finally {
+      await pg.kill();
+    }
   });
 });
 
@@ -128,6 +150,7 @@ describe.skipIf(!installed)('local Postgres hardening (real runtime)', () => {
   it('starts over lock files whose PID was reused by a non-postgres process', async () => {
     const opts = await setup();
     await (await startLocalPg(opts)).stop();
+    expect(await Bun.file(path.join(opts.dataDir, 'postmaster.owner')).exists()).toBe(false);
     const sleeper = Bun.spawn(['sleep', '60']);
     try {
       const lock = `${sleeper.pid}\n${opts.dataDir}\n`;

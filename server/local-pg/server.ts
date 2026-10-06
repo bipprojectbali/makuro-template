@@ -12,7 +12,7 @@ import {
   localPgPort,
   runtimeDir,
 } from './paths';
-import { dataDirHolder, lockHolder } from './postmaster';
+import { claimOwner, dataDirHolder, lockHolder, releaseOwner } from './postmaster';
 import { pgBin, runtimeInstalled } from './runtime';
 
 export type LocalPg = { url: string; stop: () => Promise<void> };
@@ -83,7 +83,6 @@ async function reclaimLocks(data: string, sockLock: string, runtime: string): Pr
     );
   }
   if (holder) {
-    // ponytail: orphan = reparented to init after our parent was SIGKILLed; under a subreaper (systemd --user, tini) it looks owned and is refused above.
     console.warn(
       `[local-pg] menghentikan postmaster yatim (pid ${holder.pid}) dari run sebelumnya`,
     );
@@ -131,6 +130,7 @@ async function boot(opts: StartLocalPgOptions): Promise<LocalPg> {
   }
   ensureSocketDir(sockDir, port);
   await reclaimLocks(data, path.join(sockDir, `.s.PGSQL.${port}.lock`), runtime);
+  claimOwner(data);
 
   // No TCP listener: trust over 127.0.0.1 would let any local user in as superuser. UTC keeps tests host-independent.
   const proc = Bun.spawn(
@@ -181,6 +181,7 @@ async function boot(opts: StartLocalPgOptions): Promise<LocalPg> {
         await proc.exited;
       }
     }
+    releaseOwner(data);
     g.__makuroLocalPg = undefined;
   };
 
