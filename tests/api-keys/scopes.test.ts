@@ -34,9 +34,9 @@ describe('requiredScope', () => {
     expect(isPublicRead('GET', '/api/posts')).toBe(true);
     expect(isPublicRead('POST', '/api/posts')).toBe(false);
     expect(isPublicRead('GET', '/api/version')).toBe(true);
-    expect(requiredScope('GET', '/api/openapi/json')).toBeNull();
-    expect(isPublicRead('GET', '/api/openapi/json')).toBe(true);
-    expect(isPublicRead('POST', '/api/openapi/json')).toBe(false);
+    expect(requiredScope('GET', '/api/openapi.json')).toBeNull();
+    expect(isPublicRead('GET', '/api/openapi.json')).toBe(true);
+    expect(isPublicRead('POST', '/api/openapi.json')).toBe(false);
   });
 });
 

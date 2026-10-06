@@ -1,5 +1,5 @@
 /**
- * GET /api/openapi/json — OpenAPI 3 spec for API-key callers (AI agents, scripts).
+ * GET /api/openapi.json — OpenAPI 3 spec for API-key callers (AI agents, scripts).
  * Generated from the routes' own `t.Object` validation; each operation carries the
  * scope it needs (`x-required-scope`, from scopes.ts) and the spec only lists what
  * the calling key may actually call.
@@ -11,7 +11,7 @@ import { isPublicRead, requiredScope, roleAllowsScope } from '../api-keys/scopes
 import { APP_NAME, APP_VERSION } from '../app-info';
 import { env } from '../env';
 
-export const OPENAPI_PATH = '/api/openapi/json';
+export const OPENAPI_PATH = '/api/openapi.json';
 
 const METHODS = new Set(['get', 'put', 'post', 'delete', 'patch', 'head', 'options']);
 const SECURITY = [{ apiKeyHeader: [] }, { bearer: [] }];
@@ -68,7 +68,7 @@ export function specForKey(base: BaseSpec, key: Pick<ApiKeyIdentity, 'scopes' | 
 /** Takes a getter so the route can describe the router it is registered on. */
 export function openapiApi(getApp: () => AnyElysia) {
   let base: BaseSpec | null = null;
-  return new Elysia().get('/openapi/json', ({ request, status }) => {
+  return new Elysia().get('/openapi.json', ({ request, status }) => {
     const key = getApiKeyIdentity(request);
     if (!key)
       return status(401, {
