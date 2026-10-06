@@ -3,8 +3,9 @@ import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { livePostmasterPid, run } from '../../server/cli/backup';
+import { run } from '../../server/cli/backup';
 import { PKG_NAME } from '../../server/pkg';
+import { fakePostgres } from '../local-pg/fake-postgres';
 
 const saved = { ...process.env };
 let root: string;
@@ -41,16 +42,21 @@ describe('backup', () => {
     expect(list).toContain('pg/base/1/data');
   });
 
-  test('refuses while postmaster.pid points at a live process', async () => {
-    await Bun.write(path.join(pgDir, 'postmaster.pid'), `${process.pid}\n${pgDir}\n`);
-    expect(await livePostmasterPid(pgDir)).toBe(process.pid);
-    expect(await run([])).toBe(1);
-    expect(await readdir(root)).not.toContain('backups');
+  test('refuses while a postgres process holds this data dir', async () => {
+    const pg = await fakePostgres();
+    try {
+      await Bun.write(path.join(pgDir, 'postmaster.pid'), `${pg.pid}\n${pgDir}\n`);
+      expect(await run([])).toBe(1);
+      expect(await readdir(root)).not.toContain('backups');
+    } finally {
+      await pg.kill();
+    }
   });
 
-  test('ignores a stale postmaster.pid', async () => {
+  test('ignores a stale postmaster.pid (dead PID, or PID reused by a non-postgres process)', async () => {
     await Bun.write(path.join(pgDir, 'postmaster.pid'), '999999\n');
-    expect(await livePostmasterPid(pgDir)).toBeNull();
+    expect(await run([])).toBe(0);
+    await Bun.write(path.join(pgDir, 'postmaster.pid'), `${process.pid}\n${pgDir}\n`);
     expect(await run([])).toBe(0);
   });
 

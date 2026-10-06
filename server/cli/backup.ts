@@ -4,24 +4,10 @@ import { mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { backupDir, dataDir, isLocalMode } from '../local-pg/paths';
+import { dataDirHolder } from '../local-pg/postmaster';
 import { PKG_NAME } from '../pkg';
 
 export const DEFAULT_KEEP = 7;
-
-/** PID from `postmaster.pid` when that process is still alive, else null. */
-export async function livePostmasterPid(dir: string): Promise<number | null> {
-  const file = path.join(dir, 'postmaster.pid');
-  if (!existsSync(file)) return null;
-  const pid = Number((await Bun.file(file).text()).split('\n')[0]);
-  if (!Number.isInteger(pid) || pid <= 0) return null;
-  try {
-    process.kill(pid, 0);
-    return pid;
-  } catch (err) {
-    // EPERM = alive but owned by another user; ESRCH = stale pid file.
-    return (err as NodeJS.ErrnoException).code === 'EPERM' ? pid : null;
-  }
-}
 
 /** `YYYYMMDD-HHMMSS` in local time. */
 export function stamp(d = new Date()): string {
@@ -63,9 +49,9 @@ export async function run(argv: string[]): Promise<number> {
     return 1;
   }
   // ponytail: cold backup (server must be stopped → short downtime); hot backup = pg_dump via Postgres Docker or pg_basebackup.
-  const pid = await livePostmasterPid(data);
-  if (pid !== null) {
-    console.error(`Postgres lokal sedang berjalan (PID ${pid}). Hentikan server dulu:`);
+  const holder = dataDirHolder(data);
+  if (holder) {
+    console.error(`Postgres lokal sedang berjalan (PID ${holder.pid}). Hentikan server dulu:`);
     console.error(
       `  systemctl stop ${PKG_NAME} && ${PKG_NAME} backup && systemctl start ${PKG_NAME}`,
     );

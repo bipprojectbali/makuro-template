@@ -34,7 +34,7 @@ export function backupDir(): string {
   return path.resolve(process.cwd(), process.env.BACKUP_DIR ?? './backups');
 }
 
-/** TCP port of the local Postgres (127.0.0.1 only). */
+/** Port of the local Postgres; it only names the unix socket (`.s.PGSQL.<port>`), no TCP listener. */
 export function localPgPort(): number {
   return Number(process.env.LOCAL_PG_PORT ?? DEFAULT_LOCAL_PG_PORT);
 }
@@ -47,9 +47,21 @@ export function isLocalMode(env: Record<string, string | undefined> = process.en
   return !env.DATABASE_URL || Boolean(env.LOCAL_PG_DIR);
 }
 
-/** Connection URL of the local cluster (trust auth on loopback). */
-export function localDatabaseUrl(port = localPgPort()): string {
-  return `postgres://postgres@127.0.0.1:${port}/${LOCAL_PG_DB}`;
+/** Unix socket dir: fixed short path (sun_path is 104 bytes on macOS) shared by `start`, `doctor` and `pg_dump`. */
+export function socketDir(): string {
+  const dir = process.env.LOCAL_PG_SOCKET_DIR;
+  return dir
+    ? path.resolve(process.cwd(), dir)
+    : `/tmp/${LOCAL_PG_DB}-pg-${process.getuid?.() ?? 0}`;
+}
+
+/** libpq-style URL over the unix socket (`?host=<dir>`); open it with `pgClient`, plain postgres-js ignores `host`. */
+export function localDatabaseUrl(
+  port = localPgPort(),
+  db = LOCAL_PG_DB,
+  dir = socketDir(),
+): string {
+  return `postgres://postgres@localhost:${port}/${db}?host=${encodeURIComponent(dir)}`;
 }
 
 /** Drizzle migrations folder: embedded in the binary VFS, or the source tree. */

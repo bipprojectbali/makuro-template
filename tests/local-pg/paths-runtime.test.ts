@@ -12,6 +12,7 @@ import {
   localPgPort,
   migrationsFolder,
   runtimeDir,
+  socketDir,
 } from '../../server/local-pg/paths';
 import {
   ensureRuntime,
@@ -23,7 +24,7 @@ import {
 
 const saved = { ...process.env };
 afterEach(() => {
-  for (const k of ['XDG_CACHE_HOME', 'LOCAL_PG_DIR', 'LOCAL_PG_PORT']) {
+  for (const k of ['XDG_CACHE_HOME', 'LOCAL_PG_DIR', 'LOCAL_PG_PORT', 'LOCAL_PG_SOCKET_DIR']) {
     if (saved[k] === undefined) delete process.env[k];
     else process.env[k] = saved[k];
   }
@@ -50,7 +51,16 @@ describe('local-pg paths', () => {
     process.env.LOCAL_PG_DIR = '/srv/app/pg';
     process.env.LOCAL_PG_PORT = '55001';
     expect(dataDir()).toBe('/srv/app/pg');
-    expect(localDatabaseUrl()).toBe(`postgres://postgres@127.0.0.1:55001/${LOCAL_PG_DB}`);
+    delete process.env.LOCAL_PG_SOCKET_DIR;
+    const sock = `/tmp/${LOCAL_PG_DB}-pg-${process.getuid?.()}`;
+    expect(socketDir()).toBe(sock);
+    expect(localDatabaseUrl()).toBe(
+      `postgres://postgres@localhost:55001/${LOCAL_PG_DB}?host=${encodeURIComponent(sock)}`,
+    );
+    process.env.LOCAL_PG_SOCKET_DIR = '/run/app-pg';
+    expect(localDatabaseUrl(1, 'postgres')).toBe(
+      'postgres://postgres@localhost:1/postgres?host=%2Frun%2Fapp-pg',
+    );
   });
 
   it('LOCAL_PG_DB is a safe unquoted identifier and migrations resolve to the source tree', () => {
