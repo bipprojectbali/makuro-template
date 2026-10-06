@@ -8,6 +8,7 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 
 ### Changed
 - Workflow rilis kini menolak tag yang tidak sama dengan `v<version>` di `package.json` atau versi yang belum punya entry di CHANGELOG, sebelum build dimulai. Catatan rilis di GitHub Release diambil dari bagian versi tersebut di CHANGELOG, bukan daftar commit otomatis.
+- CI dan build binary Linux kini berjalan di runner `ubuntu-24.04` yang dipatok, sehingga tidak ikut berpindah otomatis saat `ubuntu-latest` beralih ke Ubuntu 26.04 (mulai 19 Oktober 2026).
 
 ## [0.2.0] - 2026-10-06
 
