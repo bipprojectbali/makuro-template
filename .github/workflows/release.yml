@@ -14,7 +14,26 @@ env:
   BUN_VERSION: 1.4.2
 
 jobs:
+  # Fails fast (before the expensive builds) unless the tag equals v<package.json version> with a CHANGELOG entry.
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - name: Release notes from CHANGELOG.md
+        env:
+          TAG: ${{ github.ref_name }}
+        run: bun scripts/release-notes.ts "$TAG" > notes.md && cat notes.md
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-notes
+          path: notes.md
+          if-no-files-found: error
+
   build:
+    needs: verify
     strategy:
       fail-fast: true
       matrix:
@@ -48,8 +67,12 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
+          pattern: binaries-*
           path: dist
           merge-multiple: true
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-notes
       - name: checksums.txt
         working-directory: dist
         run: sha256sum * > checksums.txt && cat checksums.txt
@@ -57,4 +80,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
-        run: gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --generate-notes
+        run: gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --notes-file notes.md
