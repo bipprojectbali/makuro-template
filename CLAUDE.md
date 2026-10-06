@@ -291,9 +291,11 @@ Saat bekerja dengan `bun build --compile --asset`:
 
 ## Test
 
-- Jalankan: `bun run test` — script ini yang men-set `NODE_ENV=test`. **Jangan** jalankan `bun test tests` langsung: tanpa `NODE_ENV=test`, `server/db/index.ts` memakai `DATABASE_URL` (dev/prod), bukan test DB.
+- Jalankan: `bun run test` (atau `bun test <file>` — preload di `bunfig.toml` tetap memaksa `NODE_ENV=test`).
 - Lokasi test: semua di root `tests/**/*.test.ts`, mirror struktur `server/` (`tests/api/`, `tests/db/`, `tests/mcp/`, `tests/middleware/`, sisanya di `tests/`). Import ke source relatif ke `server/` (mis. `../../server/api/admin` dari `tests/api/`, `../server/roles` dari `tests/`).
-- **Test database:** set `DATABASE_URL_TEST` di `.env` — ketika `NODE_ENV=test`, `server/db/index.ts` otomatis pakai `DATABASE_URL_TEST` bukan `DATABASE_URL`. Jika tidak di-set, fallback ke `DATABASE_URL` (berbahaya untuk data produksi).
+- **Test database:** preload `tests/preload.ts` (via `bunfig.toml`) memaksa `NODE_ENV=test` dan mengarahkan `DATABASE_URL` ke `DATABASE_URL_TEST`. Mode PG lokal → `server/local-pg/test-db.ts` membuat + memigrasi `<db>_test` otomatis (memakai cluster `bun dev` bila jalan). PG eksternal → set `DATABASE_URL_TEST` di `.env`; tanpa itu `server/db` **melempar error** di mode test (tidak ada lagi fallback ke DB dev).
+- Nilai env kosong (`KEY=`) diperlakukan sebagai tidak di-set oleh `server/env.ts`.
+- `smoke:prod` (`server/prod.ts`) tidak menyalakan PG lokal — di mode lokal arahkan `DATABASE_URL` ke DB test; `smoke:binary` saat `bun dev` jalan butuh `LOCAL_PG_DIR`/`LOCAL_PG_PORT` terpisah (data dir dikunci dev server).
 - Migrasi test DB: `DATABASE_URL=<url_test> bun run db:migrate`
 - Migrasi baru wajib dijalankan ke **dua** DB sebelum test: `bun run db:migrate` (dev) dan `DATABASE_URL=$DATABASE_URL_TEST bun run db:migrate` (test).
 - **Autentikasi di integration test — pakai `spyOn`, bukan `mock.module`:** stub `spyOn(auth.api, 'getSession')` + `spyOn(rolesMod, 'resolveUserRole')` lalu biarkan guard asli bekerja (pola: `tests/api/posts.test.ts`, `tests/api/me-api-keys.test.ts`). `mock.module('../../server/guard', …)` hanya boleh untuk route yang semata memakai `requireRole` (pola: `tests/api/api-keys-api.test.ts`); mock yang mengganti `resolveActor` **bocor ke file test lain** dalam satu run dan membuat test tak terkait gagal. Faktor pada `mock.module` juga tidak boleh merujuk variabel modul (hoisting) — pakai literal atau `globalThis`.

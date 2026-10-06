@@ -34,7 +34,10 @@ const EnvSchema = z.object({
   TRUSTED_PROXIES: TrustedProxiesSchema,
 });
 
-const parsed = EnvSchema.safeParse(process.env);
+// `KEY=` in .env arrives as "", which `.optional()` would reject — treat it as unset.
+const parsed = EnvSchema.safeParse(
+  Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== '')),
+);
 
 if (!parsed.success) {
   console.error('\u274c Invalid environment variables:');

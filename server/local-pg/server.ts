@@ -93,7 +93,8 @@ async function reclaimLocks(data: string, sockLock: string, runtime: string): Pr
   if (!lockHolder(sockLock)) rmSync(sockLock, { force: true });
 }
 
-async function boot(opts: StartLocalPgOptions): Promise<LocalPg> {
+/** Start a cluster without the process singleton (tests reuse `startLocalPg` for their own throwaway clusters). */
+export async function boot(opts: StartLocalPgOptions): Promise<LocalPg> {
   if (process.getuid?.() === 0) {
     throw new Error(
       'Postgres menolak berjalan sebagai root — jalankan aplikasi sebagai user biasa (non-root).',
