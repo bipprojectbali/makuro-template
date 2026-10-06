@@ -39,8 +39,13 @@ export function localPgPort(): number {
   return Number(process.env.LOCAL_PG_PORT ?? DEFAULT_LOCAL_PG_PORT);
 }
 
-/** Database name inside the local cluster (package name, sanitized to an unquoted identifier). */
-export const LOCAL_PG_DB = PKG_NAME.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+const toIdent = (s: string) => s.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+const PKG_IDENT = toIdent(PKG_NAME);
+
+/** Database name inside the local cluster: LOCAL_PG_DB, else the package name (sanitized to an unquoted identifier). */
+export function localPgDb(env: Record<string, string | undefined> = process.env): string {
+  return env.LOCAL_PG_DB ? toIdent(env.LOCAL_PG_DB) : PKG_IDENT;
+}
 
 /** Local mode = no external DATABASE_URL, or LOCAL_PG_DIR forces it. */
 export function isLocalMode(env: Record<string, string | undefined> = process.env): boolean {
@@ -50,15 +55,13 @@ export function isLocalMode(env: Record<string, string | undefined> = process.en
 /** Unix socket dir: fixed short path (sun_path is 104 bytes on macOS) shared by `start`, `doctor` and `pg_dump`. */
 export function socketDir(): string {
   const dir = process.env.LOCAL_PG_SOCKET_DIR;
-  return dir
-    ? path.resolve(process.cwd(), dir)
-    : `/tmp/${LOCAL_PG_DB}-pg-${process.getuid?.() ?? 0}`;
+  return dir ? path.resolve(process.cwd(), dir) : `/tmp/${PKG_IDENT}-pg-${process.getuid?.() ?? 0}`; // per cluster, so not tied to LOCAL_PG_DB
 }
 
 /** libpq-style URL over the unix socket (`?host=<dir>`); open it with `pgClient`, plain postgres-js ignores `host`. */
 export function localDatabaseUrl(
   port = localPgPort(),
-  db = LOCAL_PG_DB,
+  db = localPgDb(),
   dir = socketDir(),
 ): string {
   return `postgres://postgres@localhost:${port}/${db}?host=${encodeURIComponent(dir)}`;

@@ -1,10 +1,8 @@
 /** Point the test run at a dedicated database so tests never touch dev data (env-free: runs before `.env` is validated). */
 import { runMigrations } from './boot';
 import { pgClient } from './client';
-import { isLocalMode, LOCAL_PG_DB, localDatabaseUrl, localPgPort } from './paths';
+import { isLocalMode, localDatabaseUrl, localPgDb, localPgPort } from './paths';
 import { boot } from './server';
-
-export const LOCAL_TEST_DB = `${LOCAL_PG_DB}_test`;
 
 async function reachable(url: string): Promise<boolean> {
   const client = pgClient(url, { max: 1, connect_timeout: 2, onnotice: () => {} });
@@ -24,14 +22,15 @@ export async function ensureLocalTestDb(): Promise<string> {
   const port = localPgPort();
   const admin = localDatabaseUrl(port, 'postgres');
   if (!(await reachable(admin))) await boot({}); // stopped by boot's own exit hook
+  const name = `${localPgDb()}_test`;
   const client = pgClient(admin, { max: 1, onnotice: () => {} });
   try {
-    const rows = await client`select 1 from pg_database where datname = ${LOCAL_TEST_DB}`;
-    if (rows.length === 0) await client.unsafe(`create database "${LOCAL_TEST_DB}"`);
+    const rows = await client`select 1 from pg_database where datname = ${name}`;
+    if (rows.length === 0) await client`create database ${client(name)}`;
   } finally {
     await client.end({ timeout: 5 });
   }
-  const url = localDatabaseUrl(port, LOCAL_TEST_DB);
+  const url = localDatabaseUrl(port, name);
   await runMigrations(url);
   return url;
 }

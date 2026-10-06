@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { bootLocalPg, runMigrations } from '../../server/local-pg/boot';
 import { pgClient } from '../../server/local-pg/client';
-import { LOCAL_PG_DB, localDatabaseUrl } from '../../server/local-pg/paths';
+import { localDatabaseUrl, localPgDb } from '../../server/local-pg/paths';
 import { runtimeInstalled } from '../../server/local-pg/runtime';
 import { startLocalPg, stopLocalPg } from '../../server/local-pg/server';
 
@@ -46,7 +46,7 @@ describe.skipIf(!installed)('local Postgres (real runtime)', () => {
     const pg = await a;
     expect(pg.url).toBe(localDatabaseUrl(port));
     expect(await scalar(pg.url, 'select 1 as one')).toBe(1);
-    expect(await scalar(pg.url, 'select current_database()')).toBe(LOCAL_PG_DB);
+    expect(await scalar(pg.url, 'select current_database()')).toBe(localPgDb());
 
     await pg.stop();
     await expect(scalar(pg.url, 'select 1')).rejects.toThrow();
