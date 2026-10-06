@@ -318,6 +318,7 @@ Saat bekerja dengan `bun build --compile --asset`:
 
 - Setiap merge/push fitur: tambahkan poin ke `## [Unreleased]` di `CHANGELOG.md` (section `Added`/`Changed`/`Fixed`/`Removed`, bahasa Indonesia, sudut pandang user) di commit yang sama.
 - Saat deploy: ganti `## [Unreleased]` menjadi `## [x.y.z] - YYYY-MM-DD` sesuai versi `package.json`. Badge `/dev/changelog` kuning = versi berjalan belum punya entry.
+- Urutan rilis: bump `version` + entry CHANGELOG di satu commit → tag `v<version>`. Workflow `release` menolak tag yang tidak cocok atau versi tanpa entry (`scripts/release-notes.ts`; cek lokal `bun scripts/release-notes.ts v<version>`) dan memakai section itu sebagai catatan rilis.
 - Halaman `/dev/changelog` mem-parse file ini (`server/changelog.ts`); baris yang tidak dikenali tetap tampil di section "Lainnya", jadi jaga formatnya.
 - Vite tidak bisa mengimpor `.md`: dev membaca file dari disk, `server/prod.ts` meng-embed dan mendaftarkannya ke `globalThis`. Perubahan CHANGELOG baru terlihat di prod setelah rebuild.
 
