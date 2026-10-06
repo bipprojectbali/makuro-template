@@ -3,6 +3,7 @@ import { and, desc, eq, gte, ilike, or, type SQL, sql } from 'drizzle-orm';
 import { t } from 'elysia';
 import { db } from '../db';
 import { post, user } from '../db/schema';
+import { parsePaging } from './analytics-paging';
 
 export const PostListQuery = t.Object({
   page: t.Optional(t.String()),
@@ -15,8 +16,6 @@ export const PostListQuery = t.Object({
 });
 export type PostListQueryType = typeof PostListQuery.static;
 
-const PAGE_SIZE = 25;
-const MAX_PAGE_SIZE = 100;
 const MAX_DAYS = 365;
 export const TITLE_MAX = 200;
 export const CONTENT_MAX = 20_000;
@@ -65,8 +64,7 @@ function orderFor(sort: string | undefined) {
 }
 
 export async function listPosts(q: PostListQueryType) {
-  const page = Math.max(1, Number(q.page ?? 1) || 1);
-  const limit = Math.min(Math.max(1, Number(q.limit ?? PAGE_SIZE) || PAGE_SIZE), MAX_PAGE_SIZE);
+  const { page, limit } = parsePaging(q);
   const where = buildPostWhere(q);
   const [rows, [totals]] = await Promise.all([
     db

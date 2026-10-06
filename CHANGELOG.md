@@ -6,6 +6,9 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 
 ## [Unreleased]
 
+### Added
+- Server Logs kini punya pagination (50 entri per halaman) dengan total entri yang cocok dengan filter. Halaman 2 dan seterusnya tidak bergeser saat log baru masuk, dan tombol "N log baru" membawa kembali ke halaman pertama yang live.
+
 ### Changed
 - Workflow rilis kini menolak tag yang tidak sama dengan `v<version>` di `package.json` atau versi yang belum punya entry di CHANGELOG, sebelum build dimulai. Catatan rilis di GitHub Release diambil dari bagian versi tersebut di CHANGELOG, bukan daftar commit otomatis.
 - CI dan build binary Linux kini berjalan di runner `ubuntu-24.04` yang dipatok, sehingga tidak ikut berpindah otomatis saat `ubuntu-latest` beralih ke Ubuntu 26.04 (mulai 19 Oktober 2026).
@@ -15,6 +18,7 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 - Postgres lokal kini selalu berjalan dalam zona waktu UTC, berapa pun zona waktu mesinnya.
 - Postgres lokal kini bisa start lagi setelah proses app di-`kill -9`. Postmaster yatim dari run sebelumnya dihentikan otomatis, termasuk saat app berjalan di bawah `systemd --user` atau di container dengan tini/dumb-init.
 - Postgres lokal dan `backup` tidak lagi salah mengira proses lain yang kebetulan memakai PID lama sebagai Postgres yang masih berjalan.
+- Daftar di konsol (visitor, login, rate limit, audit, user, sesi, posts, API key, pemakaian API key, File Health) tidak lagi error 500 saat parameter `page`/`limit` di URL berisi teks, angka negatif, atau pecahan. Nilai yang tidak valid kini kembali ke halaman 1 dan ukuran halaman default.
 
 ## [0.2.0] - 2026-10-06
 

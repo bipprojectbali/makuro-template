@@ -27,7 +27,14 @@ export const LEVEL_NAMES: Record<number, string> = {
   60: 'fatal',
 };
 
-export type LogFilter = { level?: string; search?: string; since?: number; after?: number };
+export type LogFilter = {
+  level?: string;
+  search?: string;
+  since?: number;
+  after?: number;
+  /** Only entries with seq <= before: pins a page while new entries keep arriving. */
+  before?: number;
+};
 
 export class LogBuffer {
   private entries: LogEntry[] = [];
@@ -54,6 +61,7 @@ export class LogBuffer {
     if (f.level && e.level < (LEVEL_NUMBERS[f.level] ?? 0)) return false;
     if (f.since && e.time < f.since) return false;
     if (f.after && (e.seq ?? 0) <= f.after) return false;
+    if (f.before && (e.seq ?? 0) > f.before) return false;
     if (f.search && !JSON.stringify(e).toLowerCase().includes(f.search.toLowerCase())) return false;
     return true;
   }
@@ -93,6 +101,13 @@ export class LogBuffer {
 
   query(opts: LogFilter & { limit?: number }): LogEntry[] {
     return this.entries.filter((e) => this.matches(e, opts)).slice(-(opts.limit ?? 50));
+  }
+
+  /** Newest-first page (1-based) of matching entries, plus the total match count. */
+  page(f: LogFilter, page: number, limit: number): { rows: LogEntry[]; total: number } {
+    const all = this.entries.filter((e) => this.matches(e, f));
+    const end = Math.max(0, all.length - (page - 1) * limit);
+    return { rows: all.slice(Math.max(0, end - limit), end).reverse(), total: all.length };
   }
 
   size() {

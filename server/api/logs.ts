@@ -9,7 +9,9 @@ import {
   logBuffer,
 } from '../mcp/log-buffer';
 import { ROLES } from '../permissions';
+import { parsePaging } from './analytics-paging';
 
+const DEFAULT_LIMIT = 200;
 const MAX_LIMIT = 500;
 const HOUR_MS = 3_600_000;
 // Below Bun.serve idleTimeout (60s in prod.ts) so idle streams are not cut.
@@ -64,23 +66,27 @@ export const logsApi = new Elysia({ prefix: '/logs' })
     '/',
     async ({ request, query }) => {
       await requireRole(request, ROLES.SUPER_ADMIN);
-      const limit = Math.min(Math.max(1, Number(query.limit ?? 200) || 200), MAX_LIMIT);
+      const { page, limit } = parsePaging(query, DEFAULT_LIMIT, MAX_LIMIT);
+      const before = Math.floor(Number(query.before));
       const since = query.since ? Date.parse(query.since) : undefined;
-      const rows = logBuffer.query({
+      const { rows, total } = logBuffer.page(
+        {
+          level: levelFilter(query.level),
+          search: query.search?.trim() || undefined,
+          since: since && !Number.isNaN(since) ? since : undefined,
+          before: before > 0 ? before : undefined,
+        },
+        page,
         limit,
-        level: levelFilter(query.level),
-        search: query.search?.trim() || undefined,
-        since: since && !Number.isNaN(since) ? since : undefined,
-      });
-      // Newest first for the console.
-      return {
-        rows: rows.slice().reverse().map(withLevelName),
-        buffered: logBuffer.size(),
-      };
+      );
+      return { rows: rows.map(withLevelName), total, page, limit, buffered: logBuffer.size() };
     },
     {
       query: t.Object({
         limit: t.Optional(t.String()),
+        page: t.Optional(t.String()),
+        /** Seq anchor: pages beyond the first stay stable while new logs stream in. */
+        before: t.Optional(t.String()),
         level: t.Optional(t.String()),
         search: t.Optional(t.String()),
         since: t.Optional(t.String()),

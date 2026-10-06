@@ -31,11 +31,21 @@ async function request<T>(url: string): Promise<T> {
   return res.json();
 }
 
+export type ServerLogPage = {
+  rows: ServerLogRow[];
+  total: number;
+  page: number;
+  limit: number;
+  buffered: number;
+};
+
+/** One newest-first page; `before` (seq) pins pages beyond the first against new entries. */
 export function fetchServerLogs(
   f: ServerLogFilters,
-  limit = 300,
-): Promise<{ rows: ServerLogRow[]; buffered: number }> {
-  const q = new URLSearchParams({ limit: String(limit) });
+  p: { page: number; limit: number; before?: number | null },
+): Promise<ServerLogPage> {
+  const q = new URLSearchParams({ page: String(p.page), limit: String(p.limit) });
+  if (p.before) q.set('before', String(p.before));
   if (f.level !== 'all') q.set('level', f.level);
   if (f.search.trim()) q.set('search', f.search.trim());
   return request(`${BASE}?${q}`);

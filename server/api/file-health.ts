@@ -16,6 +16,7 @@ import {
 import { scanFileHealth } from '../file-health/file-health.scan';
 import { requireRole } from '../guard';
 import { ROLES } from '../permissions';
+import { parsePaging } from './analytics-paging';
 
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 500;
@@ -35,9 +36,7 @@ export const fileHealthApi = new Elysia({ prefix: '/file-health' })
         search: query.search,
         sort: query.sort as 'ratio' | 'lines' | 'tokens' | 'path' | undefined,
       });
-      const page = Math.max(1, Number(query.page ?? 1));
-      const limit = Math.min(Math.max(1, Number(query.limit ?? DEFAULT_LIMIT)), MAX_LIMIT);
-      const offset = (page - 1) * limit;
+      const { page, limit, offset } = parsePaging(query, DEFAULT_LIMIT, MAX_LIMIT);
       return {
         available: report.available,
         reason: report.reason,

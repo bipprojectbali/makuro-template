@@ -60,6 +60,16 @@ describe('pageParams', () => {
     expect(pageParams({ sort: 'asc' }).order).toBe(asc);
   });
 
+  test('non-numeric, negative and fractional input → positive integers', () => {
+    expect(pageParams({ page: 'abc', limit: 'x' })).toMatchObject({ page: 1, limit: 25 });
+    expect(pageParams({ page: '-2', limit: '-5' })).toMatchObject({ page: 1, limit: 25 });
+    expect(pageParams({ page: '2.9', limit: '10.7' })).toMatchObject({
+      page: 2,
+      limit: 10,
+      offset: 10,
+    });
+  });
+
   test('page=0 clamps to 1', () => {
     const p = pageParams({ page: '0' });
     expect(p.page).toBe(1);
@@ -98,6 +108,18 @@ describe('GET /analytics/visits', () => {
     expect(Array.isArray(body.rows)).toBe(true);
     expect(typeof body.total).toBe('number');
     expect(body.page).toBe(1);
+  });
+
+  test.each([
+    { page: 'abc', limit: 'x' },
+    { page: '-2', limit: '-5' },
+    { page: '2.5', limit: '10.7' },
+  ])('malformed paging %o falls back instead of 500', async (params) => {
+    const { status, body } = await get('/analytics/visits', params);
+    expect(status).toBe(200);
+    expect(Number.isInteger(body.page)).toBe(true);
+    expect(Number.isInteger(body.limit)).toBe(true);
+    expect(body.limit as number).toBeGreaterThan(0);
   });
 
   test('search by IP filters results', async () => {

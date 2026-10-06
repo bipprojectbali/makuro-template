@@ -1,32 +1,20 @@
-import {
-  Affix,
-  Alert,
-  Button,
-  CloseButton,
-  Group,
-  Paper,
-  SegmentedControl,
-  Stack,
-  Switch,
-  Text,
-  TextInput,
-  Title,
-} from '@mantine/core';
+import { Affix, Alert, Button, Group, Paper, Stack, Switch, Text, Title } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { requireRole } from '@server/guard';
 import { ROLES } from '@server/permissions';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { FiAlertCircle, FiArrowUp, FiRefreshCw, FiSearch } from 'react-icons/fi';
+import { FiAlertCircle, FiArrowUp, FiRefreshCw } from 'react-icons/fi';
 import { TruncatedText } from '~/components/logs/TruncatedText';
+import { ServerLogFilterBar } from '~/components/server-logs/ServerLogFilterBar';
 import { ServerLogList } from '~/components/server-logs/ServerLogList';
+import { ServerLogPager } from '~/components/server-logs/ServerLogPager';
 import { ServerLogStatsCards } from '~/components/server-logs/ServerLogStatsCards';
-import { useLiveServerLogs } from '~/components/server-logs/useLiveServerLogs';
+import { LOG_PAGE_SIZE, useLiveServerLogs } from '~/components/server-logs/useLiveServerLogs';
 import { VisitEmptyState } from '~/components/visits/VisitEmptyState';
 import {
   DEFAULT_LOG_FILTERS,
   fetchServerLogStats,
-  type LogLevelFilter,
   type ServerLogFilters,
 } from '~/lib/server-logs-api';
 import type { Route } from './+types/server-logs';
@@ -45,7 +33,10 @@ export default function ServerLogsPage() {
   const [live, setLive] = useState(true);
   const [debouncedSearch] = useDebouncedValue(filters.search, 300);
   const effective = { ...filters, search: debouncedSearch };
-  const { logs, rows, pending, connected, showNewest } = useLiveServerLogs(effective, live);
+  const { logs, rows, page, total, pending, connected, goTo, showNewest } = useLiveServerLogs(
+    effective,
+    live,
+  );
   const stats = useQuery({ queryKey: ['server-logs-stats'], queryFn: fetchServerLogStats });
   const filtered = filters.level !== 'all' || filters.search.trim() !== '';
 
@@ -84,39 +75,10 @@ export default function ServerLogsPage() {
       <ServerLogStatsCards stats={stats.data} />
 
       <Paper withBorder radius="md" p="sm">
-        <Group gap="xs" wrap="wrap">
-          <TextInput
-            placeholder="Cari pesan atau field (mis. userId, path)…"
-            leftSection={<FiSearch size={14} />}
-            rightSection={
-              filters.search ? (
-                <CloseButton
-                  size="sm"
-                  aria-label="Bersihkan"
-                  onClick={() => setFilters({ ...filters, search: '' })}
-                />
-              ) : null
-            }
-            value={filters.search}
-            onChange={(e) => setFilters({ ...filters, search: e.currentTarget.value })}
-            size="sm"
-            style={{ flex: '1 1 260px', minWidth: 0 }}
-          />
-          <SegmentedControl
-            size="sm"
-            value={filters.level}
-            onChange={(v) => setFilters({ ...filters, level: v as LogLevelFilter })}
-            data={[
-              { value: 'all', label: 'Semua' },
-              { value: 'info', label: 'Info+' },
-              { value: 'warn', label: 'Warn+' },
-              { value: 'error', label: 'Error' },
-            ]}
-          />
-        </Group>
+        <ServerLogFilterBar filters={filters} onChange={setFilters} />
         {logs.data && (
           <TruncatedText size="xs" c="dimmed" mt="xs">
-            {`${rows.length} entri ditampilkan dari ${logs.data.buffered} di buffer`}
+            {`${total} entri cocok dari ${logs.data.buffered} di buffer`}
           </TruncatedText>
         )}
       </Paper>
@@ -133,6 +95,14 @@ export default function ServerLogsPage() {
         empty={
           <VisitEmptyState filtered={filtered} onReset={() => setFilters(DEFAULT_LOG_FILTERS)} />
         }
+      />
+
+      <ServerLogPager
+        page={page}
+        pageSize={LOG_PAGE_SIZE}
+        shown={rows.length}
+        total={total}
+        onChange={goTo}
       />
 
       {pending > 0 && (

@@ -1,12 +1,11 @@
 /** API key read side: list/get/stats rows shared by the management API, sidebar badge and services. */
 import { and, desc, eq, gt, ilike, isNull, lte, or, type SQL, sql } from 'drizzle-orm';
+import { parsePaging } from '../api/analytics-paging';
 import { db } from '../db';
 import { apiKeyUsage, apikey, user } from '../db/schema';
 import { SCOPE_IDS, type Scope } from './scopes';
 
 export const EXPIRING_SOON_DAYS = 7;
-const PAGE_SIZE = 25;
-const MAX_PAGE_SIZE = 100;
 const count = sql<number>`count(*)::int`;
 
 export function parseScopes(permissions: string | null): Scope[] {
@@ -117,8 +116,7 @@ function toRow(r: RawKey, rotatedIds: Set<string>): KeyRow {
 }
 
 export async function listKeys(q: KeyListQuery) {
-  const page = Math.max(1, Number(q.page ?? 1) || 1);
-  const limit = Math.min(Math.max(1, Number(q.limit ?? PAGE_SIZE) || PAGE_SIZE), MAX_PAGE_SIZE);
+  const { page, limit } = parsePaging(q);
   const where = buildWhere(q);
   const [rows, [totals], rotated] = await Promise.all([
     selectKeys()
