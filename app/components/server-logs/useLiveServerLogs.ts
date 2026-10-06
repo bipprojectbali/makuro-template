@@ -9,26 +9,34 @@ import {
   serverLogStreamUrl,
 } from '~/lib/server-logs-api';
 
-const MAX_ROWS = 300;
+export const LOG_PAGE_SIZE = 50;
 /** Same as the server ring buffer; streamed rows beyond it are gone server-side anyway. */
 const STREAM_CAP = 1000;
 /** Past this scroll offset the list is frozen so new rows never push what is being read. */
 const FREEZE_OFFSET_PX = 160;
 const STATS_REFRESH_MS = 2_000;
 
+type Paging = { key: string; page: number; anchor: number | null };
+
 /**
- * Snapshot from GET /api/logs plus live rows over SSE. While the page is scrolled
- * down the visible list is frozen and new rows are only counted (`pending`).
+ * Page 1 = snapshot from GET /api/logs plus live rows over SSE; frozen while scrolled
+ * down, new rows only counted (`pending`). Leaving page 1 pins an anchor seq so later
+ * pages stay put; live rows then only count toward `pending`. Filter change → page 1.
  */
 export function useLiveServerLogs(filters: ServerLogFilters, live: boolean) {
   const queryClient = useQueryClient();
+  const key = JSON.stringify(filters);
+  const [paging, setPaging] = useState<Paging>({ key, page: 1, anchor: null });
+  const { page, anchor } = paging.key === key ? paging : { page: 1, anchor: null };
+
   const logs = useQuery({
-    queryKey: ['server-logs', filters],
-    queryFn: () => fetchServerLogs(filters, MAX_ROWS),
+    queryKey: ['server-logs', filters, page, anchor],
+    queryFn: () => fetchServerLogs(filters, { page, limit: LOG_PAGE_SIZE, before: anchor }),
     placeholderData: keepPreviousData,
   });
   const snapshot = logs.isPlaceholderData ? undefined : logs.data;
-  const url = snapshot ? serverLogStreamUrl(filters, snapshot.rows[0]?.seq ?? 0) : null;
+  const after = page === 1 ? snapshot && (snapshot.rows[0]?.seq ?? 0) : anchor;
+  const url = after === undefined || after === null ? null : serverLogStreamUrl(filters, after);
   // Keyed by stream URL: a new snapshot or filter starts from an empty list without a reset effect.
   const [stream, setStream] = useState<{ url: string | null; rows: ServerLogRow[] }>({
     url: null,
@@ -63,7 +71,8 @@ export function useLiveServerLogs(filters: ServerLogFilters, live: boolean) {
   }, [live, url, queryClient]);
 
   const streamed = stream.url === url ? stream.rows : [];
-  const merged = mergeLogRows(streamed, logs.data?.rows ?? []);
+  const snapRows = logs.data?.rows ?? [];
+  const merged = page === 1 ? mergeLogRows(streamed, snapRows) : snapRows;
 
   const [{ y }, scrollTo] = useWindowScroll();
   const scrolled = y > FREEZE_OFFSET_PX;
@@ -74,12 +83,30 @@ export function useLiveServerLogs(filters: ServerLogFilters, live: boolean) {
     setFrozenAt(scrolled ? topSeq.current : null);
   }, [scrolled]);
 
-  const visible = frozenAt === null ? merged : merged.filter((r) => (r.seq ?? 0) <= frozenAt);
+  const visible =
+    page !== 1 || frozenAt === null ? merged : merged.filter((r) => (r.seq ?? 0) <= frozenAt);
+  const rows = visible.slice(0, LOG_PAGE_SIZE);
+  const pending = page === 1 ? merged.length - visible.length : streamed.length;
+  // Page 1 grows with live rows the snapshot did not count.
+  const total = (logs.data?.total ?? 0) + (page === 1 ? visible.length - snapRows.length : 0);
+
+  const goTo = (next: number) => {
+    setPaging({
+      key,
+      page: next,
+      anchor: next === 1 ? null : (anchor ?? rows[0]?.seq ?? null),
+    });
+    scrollTo({ y: 0 });
+  };
+
   return {
     logs,
-    rows: visible.slice(0, MAX_ROWS),
-    pending: merged.length - visible.length,
+    rows,
+    page,
+    total,
+    pending,
     connected,
-    showNewest: () => scrollTo({ y: 0 }),
+    goTo,
+    showNewest: () => goTo(1),
   };
 }
