@@ -15,6 +15,7 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 - Postgres lokal kini selalu berjalan dalam zona waktu UTC, berapa pun zona waktu mesinnya.
 - Postgres lokal kini bisa start lagi setelah proses app di-`kill -9`. Postmaster yatim dari run sebelumnya dihentikan otomatis, termasuk saat app berjalan di bawah `systemd --user` atau di container dengan tini/dumb-init.
 - Postgres lokal dan `backup` tidak lagi salah mengira proses lain yang kebetulan memakai PID lama sebagai Postgres yang masih berjalan.
+- Daftar di konsol (visitor, login, rate limit, audit, user, sesi, posts, API key, pemakaian API key, File Health) tidak lagi error 500 saat parameter `page`/`limit` di URL berisi teks, angka negatif, atau pecahan. Nilai yang tidak valid kini kembali ke halaman 1 dan ukuran halaman default.
 
 ## [0.2.0] - 2026-10-06
 

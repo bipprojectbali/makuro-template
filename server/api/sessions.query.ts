@@ -3,6 +3,7 @@ import { and, desc, eq, gt, ilike, isNotNull, lte, or, type SQL, sql } from 'dri
 import { t } from 'elysia';
 import { db } from '../db';
 import { session, user } from '../db/schema';
+import { parsePaging } from './analytics-paging';
 
 export const SessionListQuery = t.Object({
   page: t.Optional(t.String()),
@@ -15,8 +16,6 @@ export const SessionListQuery = t.Object({
 });
 export type SessionListQueryType = typeof SessionListQuery.static;
 
-const PAGE_SIZE = 25;
-const MAX_PAGE_SIZE = 100;
 const SOON_HOURS = 24;
 const count = sql<number>`count(*)::int`;
 
@@ -60,8 +59,7 @@ export const sessionSelect = {
 };
 
 export async function listSessions(q: SessionListQueryType) {
-  const page = Math.max(1, Number(q.page ?? 1) || 1);
-  const limit = Math.min(Math.max(1, Number(q.limit ?? PAGE_SIZE) || PAGE_SIZE), MAX_PAGE_SIZE);
+  const { page, limit } = parsePaging(q);
   const where = buildSessionWhere(q);
   const [rows, [totals]] = await Promise.all([
     db

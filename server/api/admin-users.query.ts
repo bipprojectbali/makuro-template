@@ -4,6 +4,7 @@ import { t } from 'elysia';
 import { db } from '../db';
 import { loginLog, user } from '../db/schema';
 import { ROLES } from '../permissions';
+import { parsePaging } from './analytics-paging';
 
 export const UserListQuery = t.Object({
   page: t.Optional(t.String()),
@@ -20,8 +21,6 @@ export const UserListQuery = t.Object({
 });
 export type UserListQueryType = typeof UserListQuery.static;
 
-const PAGE_SIZE = 25;
-const MAX_PAGE_SIZE = 100;
 const MAX_DAYS = 365;
 
 // Correlated subqueries must qualify columns explicitly: drizzle renders bare
@@ -79,8 +78,7 @@ function orderFor(sort: string | undefined) {
 
 /** One page of users with login/session/provider enrichment. */
 export async function listAdminUsers(q: UserListQueryType) {
-  const page = Math.max(1, Number(q.page ?? 1) || 1);
-  const limit = Math.min(Math.max(1, Number(q.limit ?? PAGE_SIZE) || PAGE_SIZE), MAX_PAGE_SIZE);
+  const { page, limit } = parsePaging(q);
   const where = buildUserWhere(q);
   const [rows, [totals]] = await Promise.all([
     db

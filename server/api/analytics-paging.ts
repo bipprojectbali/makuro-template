@@ -1,4 +1,4 @@
-/** Shared pagination helpers for the analytics list endpoints. */
+/** Shared pagination helpers for the console list endpoints. */
 import { asc, desc } from 'drizzle-orm';
 import { t } from 'elysia';
 
@@ -13,10 +13,24 @@ export const ListQuery = t.Object({
   search: t.Optional(t.String()),
 });
 
-/** Parse page/limit/sort query params into clamped offset pagination. */
+/** Positive integer from a query string; anything else (NaN, ≤0, fractional junk) → fallback. */
+const positiveInt = (raw: string | undefined, fallback: number) => {
+  const n = Math.trunc(Number(raw));
+  return n >= 1 ? n : fallback;
+};
+
+/** Clamped offset pagination from raw `page`/`limit` query strings. */
+export function parsePaging(
+  query: { page?: string; limit?: string },
+  defaultLimit = PAGE_SIZE,
+  maxLimit = MAX_PAGE_SIZE,
+) {
+  const page = positiveInt(query.page, 1);
+  const limit = Math.min(positiveInt(query.limit, defaultLimit), maxLimit);
+  return { page, limit, offset: (page - 1) * limit };
+}
+
+/** parsePaging plus the `sort` direction used by the analytics lists. */
 export function pageParams(query: { page?: string; limit?: string; sort?: string }) {
-  const page = Math.max(1, Number(query.page ?? 1));
-  const limit = Math.min(Number(query.limit ?? PAGE_SIZE), MAX_PAGE_SIZE);
-  const order = query.sort === 'asc' ? asc : desc;
-  return { page, limit, offset: (page - 1) * limit, order };
+  return { ...parsePaging(query), order: query.sort === 'asc' ? asc : desc };
 }

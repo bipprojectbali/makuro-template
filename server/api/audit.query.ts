@@ -3,6 +3,7 @@ import { and, desc, eq, gte, ilike, or, type SQL, sql } from 'drizzle-orm';
 import { t } from 'elysia';
 import { db } from '../db';
 import { auditLog, user } from '../db/schema';
+import { parsePaging } from './analytics-paging';
 
 export const AuditListQuery = t.Object({
   page: t.Optional(t.String()),
@@ -16,8 +17,6 @@ export const AuditListQuery = t.Object({
 });
 export type AuditListQueryType = typeof AuditListQuery.static;
 
-const PAGE_SIZE = 25;
-const MAX_PAGE_SIZE = 100;
 const MAX_DAYS = 365;
 const TOP_N = 5;
 const count = sql<number>`count(*)::int`;
@@ -61,8 +60,7 @@ export const auditSelect = {
 };
 
 export async function listAudit(q: AuditListQueryType) {
-  const page = Math.max(1, Number(q.page ?? 1) || 1);
-  const limit = Math.min(Math.max(1, Number(q.limit ?? PAGE_SIZE) || PAGE_SIZE), MAX_PAGE_SIZE);
+  const { page, limit } = parsePaging(q);
   const where = buildAuditWhere(q);
   const [rows, [totals]] = await Promise.all([
     db

@@ -1,11 +1,10 @@
 /** Cross-key usage log: filtered list + CSV export for /dev/api-keys → Log penggunaan. */
 import { and, desc, eq, gte, ilike, type SQL, sql } from 'drizzle-orm';
 import { t } from 'elysia';
+import { parsePaging } from '../api/analytics-paging';
 import { db } from '../db';
 import { apiKeyUsage, apikey, user } from '../db/schema';
 
-const PAGE_SIZE = 25;
-const MAX_PAGE_SIZE = 100;
 export const USAGE_EXPORT_MAX_ROWS = 10_000;
 const DEFAULT_DAYS = 7;
 const MAX_DAYS = 90;
@@ -71,8 +70,7 @@ function selectUsage() {
 }
 
 export async function listUsage(q: UsageListQueryType) {
-  const page = Math.max(1, Number(q.page ?? 1) || 1);
-  const limit = Math.min(Math.max(1, Number(q.limit ?? PAGE_SIZE) || PAGE_SIZE), MAX_PAGE_SIZE);
+  const { page, limit } = parsePaging(q);
   const where = buildUsageWhere(q);
   const [rows, [totals]] = await Promise.all([
     selectUsage()
