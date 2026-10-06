@@ -68,6 +68,7 @@ export function llmsIndex(readme: string, appUrl: string, version = APP_VERSION)
     '## Endpoint untuk agent',
     '',
     `- [Versi build](${base}/api/version): JSON { name, version, env, bun }, publik`,
+    `- [OpenAPI spec](${base}/api/openapi/json): OpenAPI 3, butuh API key; hanya endpoint yang boleh dipanggil key itu`,
     `- [MCP server](${base}/api/mcp): Streamable HTTP, autentikasi Authorization: Bearer <API key ber-scope mcp>`,
     `- [API](${base}/api): header X-API-Key atau Authorization: Bearer mk_live_…; error selalu JSON { error, code, status, requestId }`,
     '',

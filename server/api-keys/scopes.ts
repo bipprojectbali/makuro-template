@@ -168,11 +168,17 @@ export function requiredScope(method: string, pathname: string): Scope | null {
   return null;
 }
 
-/** Public reads (e.g. GET /api/posts, /api/hello, /api/version) need no scope but may still carry a key for tracking. */
+/**
+ * Public reads (e.g. GET /api/posts, /api/hello, /api/version) need no scope but may still carry a key for tracking.
+ * /api/openapi/json is listed so any valid key passes the plugin; its handler then rejects callers without a key.
+ */
 export function isPublicRead(method: string, pathname: string): boolean {
   return (
     READ.has(method.toUpperCase()) &&
-    (pathname.startsWith('/api/posts') || pathname === '/api/hello' || pathname === '/api/version')
+    (pathname.startsWith('/api/posts') ||
+      pathname === '/api/hello' ||
+      pathname === '/api/version' ||
+      pathname === '/api/openapi/json')
   );
 }
 
