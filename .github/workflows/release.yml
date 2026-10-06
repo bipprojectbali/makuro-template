@@ -16,7 +16,7 @@ env:
 jobs:
   # Fails fast (before the expensive builds) unless the tag equals v<package.json version> with a CHANGELOG entry.
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
@@ -38,7 +38,7 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             targets: --target=bun-linux-x64 --target=bun-linux-arm64
           # darwin builds run on macOS so binaries can be (ad-hoc) codesigned — arm64 macOS refuses unsigned code.
           - os: macos-latest
@@ -63,7 +63,7 @@ jobs:
 
   release:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/download-artifact@v8
         with:
