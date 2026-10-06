@@ -4,7 +4,7 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan versi mengikuti
 [Semantic Versioning](https://semver.org/lang/id/).
 
-## [Unreleased]
+## [0.2.0] - 2026-10-06
 
 ### Added
 - Postgres lokal otomatis: kosongkan `DATABASE_URL` dan app menjalankan PostgreSQL 18 sendiri (data di `./data/pg`, hanya `127.0.0.1`), lengkap dengan migrasi otomatis saat boot. Cocok untuk dev dan produksi kecil di satu VPS tanpa memasang Postgres atau Docker.
