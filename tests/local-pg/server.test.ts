@@ -3,9 +3,9 @@ import { afterAll, describe, expect, it } from 'bun:test';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import postgres from 'postgres';
 import { bootLocalPg, runMigrations } from '../../server/local-pg/boot';
-import { LOCAL_PG_DB } from '../../server/local-pg/paths';
+import { pgClient } from '../../server/local-pg/client';
+import { LOCAL_PG_DB, localDatabaseUrl } from '../../server/local-pg/paths';
 import { runtimeInstalled } from '../../server/local-pg/runtime';
 import { startLocalPg, stopLocalPg } from '../../server/local-pg/server';
 
@@ -16,7 +16,7 @@ const journal = (await Bun.file('server/db/migrations/meta/_journal.json').json(
 };
 
 async function scalar(url: string, q: string): Promise<unknown> {
-  const sql = postgres(url, { max: 1, onnotice: () => {} });
+  const sql = pgClient(url, { max: 1, onnotice: () => {} });
   try {
     const rows = await sql.unsafe(q);
     return Object.values(rows[0] ?? {})[0];
@@ -44,7 +44,7 @@ describe.skipIf(!installed)('local Postgres (real runtime)', () => {
     const b = startLocalPg({ dataDir, port });
     expect(b).toBe(a);
     const pg = await a;
-    expect(pg.url).toBe(`postgres://postgres@127.0.0.1:${port}/${LOCAL_PG_DB}`);
+    expect(pg.url).toBe(localDatabaseUrl(port));
     expect(await scalar(pg.url, 'select 1 as one')).toBe(1);
     expect(await scalar(pg.url, 'select current_database()')).toBe(LOCAL_PG_DB);
 
@@ -80,7 +80,7 @@ describe.skipIf(!installed)('local Postgres (real runtime)', () => {
       process.env.LOCAL_PG_DIR = await mkData();
       process.env.LOCAL_PG_PORT = String(port);
       expect(await bootLocalPg()).toBe(true);
-      expect(process.env.DATABASE_URL).toBe(`postgres://postgres@127.0.0.1:${port}/${LOCAL_PG_DB}`);
+      expect(process.env.DATABASE_URL).toBe(localDatabaseUrl(port));
       expect(
         await scalar(
           process.env.DATABASE_URL,

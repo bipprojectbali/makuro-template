@@ -1,7 +1,7 @@
 /** Boot-time glue: start the local cluster, point DATABASE_URL at it, migrate, stop on exit signals. */
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
-import postgres from 'postgres';
+import { pgClient } from './client';
 import { isLocalMode, migrationsFolder } from './paths';
 import { startLocalPg } from './server';
 
@@ -9,7 +9,7 @@ const g = globalThis as typeof globalThis & { __makuroLocalPgSignals?: boolean }
 
 /** Apply Drizzle migrations to `url` with a short-lived client; returns the applied-migration count. */
 export async function runMigrations(url: string, folder = migrationsFolder()): Promise<number> {
-  const client = postgres(url, { max: 1, onnotice: () => {} });
+  const client = pgClient(url, { max: 1, onnotice: () => {} });
   try {
     await migrate(drizzle(client), { migrationsFolder: folder });
     const [row] = await client<

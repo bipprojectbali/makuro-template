@@ -8,6 +8,12 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 
 ### Changed
 - Workflow rilis kini menolak tag yang tidak sama dengan `v<version>` di `package.json` atau versi yang belum punya entry di CHANGELOG, sebelum build dimulai. Catatan rilis di GitHub Release diambil dari bagian versi tersebut di CHANGELOG, bukan daftar commit otomatis.
+- **Keamanan, Postgres lokal:** Postgres lokal tidak lagi membuka port TCP `127.0.0.1`. Sebelumnya auth `trust` di TCP membuat user lain di mesin yang sama bisa masuk sebagai superuser. Koneksi kini hanya lewat unix socket di direktori 0700 milik user (default `/tmp/makuro_template-pg-<uid>`, bisa diubah dengan `LOCAL_PG_SOCKET_DIR`). Format `DATABASE_URL` lokal berubah menjadi `postgres://postgres@localhost:54329/makuro_template?host=<dir socket>`. Perintah `pg_dump` di README sudah disesuaikan.
+
+### Fixed
+- Postgres lokal kini selalu berjalan dalam zona waktu UTC, berapa pun zona waktu mesinnya.
+- Postgres lokal kini bisa start lagi setelah proses app di-`kill -9`. Postmaster yatim dari run sebelumnya dihentikan otomatis.
+- Postgres lokal dan `backup` tidak lagi salah mengira proses lain yang kebetulan memakai PID lama sebagai Postgres yang masih berjalan.
 
 ## [0.2.0] - 2026-10-06
 

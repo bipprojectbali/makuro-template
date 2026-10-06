@@ -1,22 +1,25 @@
 /** Start/stop the local Postgres cluster as a child process (one per process, shared via globalThis). */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, rmSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import postgres from 'postgres';
 import { PKG_NAME } from '../pkg';
+import { pgClient } from './client';
 import {
   dataDir as defaultDataDir,
+  socketDir as defaultSocketDir,
   LOCAL_PG_DB,
   localDatabaseUrl,
   localPgPort,
   runtimeDir,
 } from './paths';
+import { dataDirHolder, lockHolder } from './postmaster';
 import { pgBin, runtimeInstalled } from './runtime';
 
 export type LocalPg = { url: string; stop: () => Promise<void> };
 export type StartLocalPgOptions = {
   dataDir?: string;
   port?: number;
+  socketDir?: string;
   runtime?: string;
   timeoutMs?: number;
 };
@@ -25,6 +28,7 @@ const DEFAULT_START_TIMEOUT_MS = 30_000;
 const STOP_TIMEOUT_MS = 10_000;
 const POLL_MS = 100;
 const STDERR_TAIL = 8_192;
+const SOCKET_PATH_MAX = 103; // macOS sun_path is 104 bytes including the NUL
 
 const g = globalThis as typeof globalThis & { __makuroLocalPg?: Promise<LocalPg> };
 
@@ -53,18 +57,41 @@ async function run(cmd: string[], what: string): Promise<void> {
   if (code !== 0) throw new Error(`${what} gagal (exit ${code}): ${(err || out).trim()}`);
 }
 
-function aliveOtherPid(data: string): number | null {
-  const pidFile = path.join(data, 'postmaster.pid');
-  if (!existsSync(pidFile)) return null;
-  const pid = Number(readFileSync(pidFile, 'utf8').split('\n')[0]);
-  if (!Number.isInteger(pid) || pid <= 0) return null;
-  try {
-    process.kill(pid, 0);
-    return pid;
-  } catch (err) {
-    // ESRCH = stale pid file; Postgres cleans it up itself. EPERM = alive but owned by another user.
-    return (err as NodeJS.ErrnoException).code === 'EPERM' ? pid : null;
+/** The socket dir is the only access control (trust auth): it must be ours, 0700, and not a symlink. */
+function ensureSocketDir(dir: string, port: number): void {
+  const sock = path.join(dir, `.s.PGSQL.${port}`);
+  if (Buffer.byteLength(sock) > SOCKET_PATH_MAX) {
+    throw new Error(
+      `Path socket Postgres terlalu panjang (${sock}). Set LOCAL_PG_SOCKET_DIR ke direktori pendek, mis. /tmp/pg-$USER.`,
+    );
   }
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  const st = lstatSync(dir);
+  if (!st.isDirectory() || st.uid !== process.getuid?.() || (st.mode & 0o077) !== 0) {
+    throw new Error(
+      `Direktori socket ${dir} harus direktori milik user ini dengan mode 0700 (bukan symlink). Hapus direktori itu atau set LOCAL_PG_SOCKET_DIR.`,
+    );
+  }
+}
+
+/** Clear what a previous run left behind: stop an orphaned postmaster, drop lock files whose PID is not Postgres. */
+async function reclaimLocks(data: string, sockLock: string, runtime: string): Promise<void> {
+  const holder = dataDirHolder(data);
+  if (holder && !holder.orphan) {
+    throw new Error(
+      `Postgres lain (pid ${holder.pid}) sudah memakai data dir ${data}. Hentikan proses itu dulu.`,
+    );
+  }
+  if (holder) {
+    // ponytail: orphan = reparented to init after our parent was SIGKILLed; under a subreaper (systemd --user, tini) it looks owned and is refused above.
+    console.warn(
+      `[local-pg] menghentikan postmaster yatim (pid ${holder.pid}) dari run sebelumnya`,
+    );
+    await run([pgBin('pg_ctl', runtime), 'stop', '-D', data, '-m', 'fast', '-w'], 'pg_ctl stop');
+  }
+  // Postgres itself refuses a lock file whose PID is alive, even when that PID was reused by an unrelated process.
+  rmSync(path.join(data, 'postmaster.pid'), { force: true });
+  if (!lockHolder(sockLock)) rmSync(sockLock, { force: true });
 }
 
 async function boot(opts: StartLocalPgOptions): Promise<LocalPg> {
@@ -81,6 +108,7 @@ async function boot(opts: StartLocalPgOptions): Promise<LocalPg> {
   }
   const data = opts.dataDir ?? defaultDataDir();
   const port = opts.port ?? localPgPort();
+  const sockDir = opts.socketDir ?? defaultSocketDir();
   const timeoutMs = opts.timeoutMs ?? DEFAULT_START_TIMEOUT_MS;
 
   if (!existsSync(path.join(data, 'PG_VERSION'))) {
@@ -92,7 +120,8 @@ async function boot(opts: StartLocalPgOptions): Promise<LocalPg> {
         data,
         '-U',
         'postgres',
-        '--auth=trust',
+        '--auth-local=trust',
+        '--auth-host=reject',
         '-E',
         'UTF8',
         '--locale=C',
@@ -100,14 +129,10 @@ async function boot(opts: StartLocalPgOptions): Promise<LocalPg> {
       'initdb',
     );
   }
-  const other = aliveOtherPid(data);
-  if (other) {
-    throw new Error(
-      `Postgres lain (pid ${other}) sudah memakai data dir ${data}. Hentikan proses itu dulu.`,
-    );
-  }
+  ensureSocketDir(sockDir, port);
+  await reclaimLocks(data, path.join(sockDir, `.s.PGSQL.${port}.lock`), runtime);
 
-  // Unix socket disabled: data-dir paths easily exceed macOS's 104-char socket limit; TCP loopback only.
+  // No TCP listener: trust over 127.0.0.1 would let any local user in as superuser. UTC keeps tests host-independent.
   const proc = Bun.spawn(
     [
       pgBin('postgres', runtime),
@@ -115,10 +140,16 @@ async function boot(opts: StartLocalPgOptions): Promise<LocalPg> {
       data,
       '-p',
       String(port),
-      '-h',
-      '127.0.0.1',
       '-c',
-      'unix_socket_directories=',
+      'listen_addresses=',
+      '-c',
+      `unix_socket_directories=${sockDir}`,
+      '-c',
+      'unix_socket_permissions=0700',
+      '-c',
+      'timezone=UTC',
+      '-c',
+      'log_timezone=UTC',
     ],
     { stdout: 'ignore', stderr: 'pipe' },
   );
@@ -153,7 +184,7 @@ async function boot(opts: StartLocalPgOptions): Promise<LocalPg> {
     g.__makuroLocalPg = undefined;
   };
 
-  const adminUrl = localDatabaseUrl(port).replace(/\/[^/]+$/, '/postgres');
+  const adminUrl = localDatabaseUrl(port, 'postgres', sockDir);
   const deadline = Date.now() + timeoutMs;
   let lastErr: unknown;
   while (!ready) {
@@ -166,7 +197,7 @@ async function boot(opts: StartLocalPgOptions): Promise<LocalPg> {
         `Postgres tidak siap dalam ${timeoutMs / 1000}s (${(lastErr as Error)?.message ?? 'tanpa error'}): ${tail.trim()}`,
       );
     }
-    const sql = postgres(adminUrl, { max: 1, connect_timeout: 1, onnotice: () => {} });
+    const sql = pgClient(adminUrl, { max: 1, connect_timeout: 1, onnotice: () => {} });
     try {
       await sql`select 1`;
       const exists = await sql`select 1 from pg_database where datname = ${LOCAL_PG_DB}`;
@@ -179,5 +210,5 @@ async function boot(opts: StartLocalPgOptions): Promise<LocalPg> {
       await sql.end({ timeout: 1 });
     }
   }
-  return { url: localDatabaseUrl(port), stop };
+  return { url: localDatabaseUrl(port, LOCAL_PG_DB, sockDir), stop };
 }

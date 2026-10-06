@@ -1,9 +1,10 @@
 /** Health checks behind `doctor`: environment, .env, database and host — each failure becomes a Check, never a throw. */
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import postgres from 'postgres';
+import type postgres from 'postgres';
 import { z } from 'zod';
 import journal from '../db/migrations/meta/_journal.json' with { type: 'json' };
+import { pgClient } from '../local-pg/client';
 import {
   currentPlatform,
   dataDir,
@@ -154,7 +155,7 @@ async function migrationCheck(sql: postgres.Sql): Promise<Check> {
 }
 
 async function connectivityChecks(url: string, local: boolean): Promise<Check[]> {
-  const sql = postgres(url, { max: 1, connect_timeout: DB_CONNECT_TIMEOUT_S, onnotice: () => {} });
+  const sql = pgClient(url, { max: 1, connect_timeout: DB_CONNECT_TIMEOUT_S, onnotice: () => {} });
   try {
     await sql`select 1`;
     return [
