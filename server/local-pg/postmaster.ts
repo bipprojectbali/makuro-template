@@ -1,8 +1,12 @@
 /** Who holds a Postgres lock file (`postmaster.pid`, `.s.PGSQL.<port>.lock`): line 1 = pid, line 2 = data dir. */
-import { readFileSync, realpathSync } from 'node:fs';
+import { readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-export type LockHolder = { pid: number; dataDir: string; orphan: boolean };
+export type LockHolder = { pid: number; dataDir: string; ppid: number };
+export type DataDirHolder = LockHolder & { orphan: boolean };
+
+/** Pid of the app process that spawned the postmaster; removed on clean stop, left behind by SIGKILL. */
+const ownerFile = (data: string) => path.join(data, 'postmaster.owner');
 
 const isMissing = (err: unknown) => (err as NodeJS.ErrnoException).code === 'ENOENT';
 
@@ -40,7 +44,24 @@ export function lockHolder(file: string): LockHolder | null {
   const pid = Number(lines[0]);
   const info = Number.isInteger(pid) && pid > 0 ? procInfo(pid) : null;
   if (info?.comm !== 'postgres') return null;
-  return { pid, dataDir: lines[1] ?? '', orphan: info.ppid === 1 };
+  return { pid, dataDir: lines[1] ?? '', ppid: info.ppid };
+}
+
+export function claimOwner(data: string): void {
+  writeFileSync(ownerFile(data), `${process.pid}\n`);
+}
+
+export function releaseOwner(data: string): void {
+  rmSync(ownerFile(data), { force: true });
+}
+
+function ownerPid(data: string): number | null {
+  try {
+    return Number(readFileSync(ownerFile(data), 'utf8').trim()) || null;
+  } catch (err) {
+    if (isMissing(err)) return null;
+    throw err;
+  }
 }
 
 /** Same directory after resolving symlinks; false when either is gone. */
@@ -53,8 +74,14 @@ export function sameDir(a: string, b: string): boolean {
   }
 }
 
-/** Live postmaster that owns `data` (its `postmaster.pid` names a `postgres` process serving that dir). */
-export function dataDirHolder(data: string): LockHolder | null {
+/**
+ * Live postmaster that owns `data` (its `postmaster.pid` names a `postgres` process serving that dir).
+ * Orphan = no longer a child of the app that claimed it; a dead parent's children are reparented
+ * (to init or a subreaper such as systemd --user / tini), so the ppid changes. No claim → ppid 1.
+ */
+export function dataDirHolder(data: string): DataDirHolder | null {
   const h = lockHolder(path.join(data, 'postmaster.pid'));
-  return h && sameDir(h.dataDir, data) ? h : null;
+  if (!h || !sameDir(h.dataDir, data)) return null;
+  const owner = ownerPid(data);
+  return { ...h, orphan: owner ? h.ppid !== owner : h.ppid === 1 };
 }
