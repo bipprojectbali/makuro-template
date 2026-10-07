@@ -18,6 +18,8 @@ afterEach(async () => {
 async function init(...args: string[]) {
   const proc = Bun.spawn(['bun', ENTRY, 'init', ...args], {
     cwd: dir,
+    // External S3 keeps init from installing/booting RustFS; storage setup is covered in tests/local-s3.
+    env: { ...process.env, S3_ENDPOINT: 'http://127.0.0.1:1' }, // test-only
     stdout: 'pipe',
     stderr: 'pipe',
   });
@@ -56,6 +58,39 @@ test('keeps an existing .env unless --force', async () => {
 
   await init('--yes', '--db=external', `--database-url=${DB_URL}`, '--force');
   expect(secretOf(await readEnv())).not.toBe(first);
+});
+
+test('a storage setup failure only warns: .env is still written and init exits 0', async () => {
+  const busy = Bun.listen({ hostname: '127.0.0.1', port: 0, socket: { data() {} } });
+  try {
+    const proc = Bun.spawn(
+      [
+        'bun',
+        ENTRY,
+        'init',
+        '--yes',
+        '--db=external',
+        `--database-url=${DB_URL}`,
+        `--s3-archive=${path.join(dir, 'missing.zip')}`,
+      ],
+      {
+        cwd: dir,
+        stdout: 'pipe',
+        stderr: 'pipe',
+        env: { ...process.env, S3_ENDPOINT: '', LOCAL_S3_PORT: String(busy.port) }, // test-only
+      },
+    );
+    const [out, err, code] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ]);
+    expect(code).toBe(0);
+    expect(out + err).toMatch(/Storage lokal belum disiapkan|RustFS\) tidak tersedia/);
+    expect(await Bun.file(path.join(dir, '.env')).exists()).toBe(true);
+  } finally {
+    busy.stop(true);
+  }
 });
 
 test('rejects bad --db values and external mode without a valid URL', async () => {

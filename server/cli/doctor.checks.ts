@@ -1,4 +1,4 @@
-/** Health checks behind `doctor`: environment, .env, database and host — each failure becomes a Check, never a throw. */
+/** Health checks behind `doctor`: environment, .env, database, storage and host — each failure becomes a Check, never a throw. */
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import type postgres from 'postgres';
@@ -15,10 +15,11 @@ import {
 import { installedIntegrity, PG_ARCHIVES, runtimeInstalled } from '../local-pg/runtime';
 import { PKG_NAME, PKG_VERSION } from '../pkg';
 import { hostChecks } from './doctor.host';
+import { storageChecks } from './doctor.storage';
 
 export type CheckStatus = 'ok' | 'warn' | 'fail';
 export type Check = {
-  group: 'Lingkungan' | '.env' | 'Database' | 'Host';
+  group: 'Lingkungan' | '.env' | 'Database' | 'Storage' | 'Host';
   name: string;
   status: CheckStatus;
   detail: string;
@@ -250,6 +251,7 @@ export async function collectChecks(ctx: DoctorContext): Promise<Check[]> {
     ...environmentChecks(local),
     ...envChecks(ctx),
     ...(await databaseChecks(ctx, local)),
+    ...(await storageChecks(ctx)),
     ...(await hostChecks(ctx, local)),
   ];
 }

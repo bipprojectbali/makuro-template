@@ -176,6 +176,7 @@ export function isPublicRead(method: string, pathname: string): boolean {
   return (
     READ.has(method.toUpperCase()) &&
     (pathname.startsWith('/api/posts') ||
+      pathname.startsWith('/api/storage/avatars/') ||
       pathname === '/api/hello' ||
       pathname === '/api/version' ||
       pathname === '/api/openapi.json')
