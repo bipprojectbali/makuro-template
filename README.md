@@ -35,6 +35,7 @@ Ketiga URL dokumentasi dilayani sebelum SSR, ber-ETag (`304` bila tidak berubah)
 | **Auth lengkap** | Better Auth: Google OAuth, email+password, multi-session, sistem role |
 | **SSR tanpa waterfall** | React Router v8 loader berjalan server-side, session tersedia di loader |
 | **ORM type-safe** | Drizzle ORM + PostgreSQL, schema-as-code, migration files, Drizzle Studio |
+| **Penyimpanan file** | S3-compatible lewat `Bun.S3Client`; RustFS lokal otomatis tanpa server terpisah, foto profil siap pakai |
 | **UI kit terkonfigurasi** | Mantine v9, TanStack Query, Zustand, Biome — semua sudah terhubung |
 | **Dev console `/dev`** | 14 halaman operasional: users, sessions, posts, API keys, DB schema, log pengunjung/login/rate-limit/server/audit, file health, tools, settings — badge hidup di sidebar |
 | **API keys** | Kunci `mk_live_…` ber-scope, kedaluwarsa, rotasi dengan masa tenggang, IP allow-list, rate limit per kunci, jejak pemakaian + rollup harian, kunci pribadi per user |
@@ -189,6 +190,35 @@ psql "$DATABASE_URL" < dump.sql
 ```
 
 **Docker:** image runtime berjalan sebagai `USER bun` dengan `VOLUME /app/data`; default tetap memakai `DATABASE_URL` eksternal.
+
+## Penyimpanan file (S3)
+
+Satu API untuk file, gambar, dan dokumen: `storage()` dari `server/storage` mengembalikan `Bun.S3Client` bawaan Bun (tanpa AWS SDK) yang terarah ke bucket app. Kodenya sama untuk semua backend S3-compatible.
+
+```ts
+import { storage, storageEnabled } from '../storage';
+
+await storage().write(`docs/${id}.pdf`, file, { type: 'application/pdf' });
+const url = storage().presign(`docs/${id}.pdf`, { expiresIn: 3600 }); // tautan sementara
+await storage().delete(`docs/${id}.pdf`);
+```
+
+**Storage lokal otomatis** aktif bila `S3_ENDPOINT` kosong: app menjalankan [RustFS](https://github.com/rustfs/rustfs) 1.0.1 (Apache-2.0) sebagai child process, sama seperti Postgres lokal, jadi tidak perlu menjalankan server storage sendiri.
+
+- Runtime diunduh sekali (`init`, atau otomatis saat `bun run dev`/test) dari GitHub Release RustFS dengan sha256 yang di-pin, ke `~/.cache/makuro-template/rustfs/1.0.1/<platform>` (~88 MB). Ekstraksi memakai `unzip`, jadi pastikan `unzip` terpasang. Server tanpa internet: `init --s3-archive=<zip>` memakai arsip yang diunduh manual (sha256 tetap diverifikasi).
+- Data di `./data/s3` (`LOCAL_S3_DIR`), port `54330` (`LOCAL_S3_PORT`), hanya `127.0.0.1`. Kredensial acak dibuat saat boot pertama dan disimpan di `<LOCAL_S3_DIR>/keys.json` (mode 0600). Nama bucket = nama package (ubah dengan `LOCAL_S3_BUCKET`), test memakai `<bucket>-test`.
+- Platform: linux-x64, linux-arm64, darwin-arm64. darwin-x64 belum didukung, jadi isi `S3_ENDPOINT` dengan S3 eksternal.
+- RustFS tidak mengunci volume sendiri. App mencegah dua instance dengan memeriksa port dan `<LOCAL_S3_DIR>/rustfs.pid`, jadi jangan menjalankan RustFS lain di direktori yang sama.
+- Gagal lunak: bila RustFS tidak bisa start, app (dan `init`) tetap jalan dengan peringatan, dan fitur upload membalas `503 STORAGE_DISABLED`. `doctor` menampilkannya di grup "Storage" sebagai peringatan, bukan error.
+
+**S3 eksternal** (AWS S3, Cloudflare R2, MinIO, RustFS terpisah): isi `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, dan opsional `S3_REGION` (default `us-east-1`). Bucket harus sudah ada. Pindah dari lokal: salin objek dengan klien S3 apa pun (mis. `aws s3 sync`), lalu isi env dan restart.
+
+**Foto profil** memakai storage ini:
+- `POST /api/app/avatar` (multipart, field `file`, maks 2 MB; PNG/JPEG/WEBP/GIF dicek dari isi file, SVG ditolak) → `{ image }`.
+- `DELETE /api/app/avatar` → `{ image: null }`.
+- Gambar dilayani publik di `GET /api/storage/avatars/<userId>/<file>` dengan cache `immutable` (nama file acak per unggahan).
+- Foto lama dihapus dari storage saat diganti, dihapus, atau saat akunnya dihapus (oleh user sendiri maupun admin).
+- Foto dari URL luar (mis. foto akun Google lama) tetap tampil dan bisa dihapus, tetapi halaman Profil tidak lagi menyediakan isian URL foto.
 
 ## Struktur project
 

@@ -2,7 +2,9 @@
 import { runMigrations } from './boot';
 import { pgClient } from './client';
 import { isLocalMode, localDatabaseUrl, localPgDb, localPgPort } from './paths';
-import { boot } from './server';
+import { boot, type LocalPg } from './server';
+
+let started: LocalPg | undefined;
 
 async function reachable(url: string): Promise<boolean> {
   const client = pgClient(url, { max: 1, connect_timeout: 2, onnotice: () => {} });
@@ -21,7 +23,8 @@ async function reachable(url: string): Promise<boolean> {
 export async function ensureLocalTestDb(): Promise<string> {
   const port = localPgPort();
   const admin = localDatabaseUrl(port, 'postgres');
-  if (!(await reachable(admin))) await boot({}); // stopped by boot's own exit hook
+  // Not the startLocalPg singleton: local-pg tests call stopLocalPg() on their own clusters mid-run.
+  if (!(await reachable(admin))) started = await boot({});
   const name = `${localPgDb()}_test`;
   const client = pgClient(admin, { max: 1, onnotice: () => {} });
   try {
@@ -33,6 +36,12 @@ export async function ensureLocalTestDb(): Promise<string> {
   const url = localDatabaseUrl(port, name);
   await runMigrations(url);
   return url;
+}
+
+/** Stop the cluster this run started (bun test fires no 'exit', so boot's exit hook never runs); a reused one is left alone. */
+export async function stopTestDb(): Promise<void> {
+  await started?.stop();
+  started = undefined;
 }
 
 /** Ensure DATABASE_URL_TEST is set (auto in local mode) and make DATABASE_URL point at it too. */

@@ -1,22 +1,18 @@
-import { Avatar, Button, Group, Stack, TextInput } from '@mantine/core';
+import { Button, Group, Stack, TextInput } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useMutation } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import type { AppUser } from '~/lib/app-context';
 import { authClient } from '~/lib/auth-client';
 import { SettingsCard } from '../settings/SettingsParts';
+import { AvatarField } from './AvatarField';
 
 const NAME_MAX = 80;
-const URL_RE = /^https?:\/\/\S+$/i;
 
-/** Name + avatar URL, saved through Better Auth updateUser. */
+/** Profile photo (object storage) + display name (Better Auth updateUser). */
 export function ProfileForm({ user, onSaved }: { user: AppUser; onSaved: () => void }) {
   const [name, setName] = useState(user.name);
-  const [image, setImage] = useState(user.image ?? '');
-  useEffect(() => {
-    setName(user.name);
-    setImage(user.image ?? '');
-  }, [user.name, user.image]);
+  useEffect(() => setName(user.name), [user.name]);
 
   const trimmed = name.trim();
   const nameError =
@@ -25,12 +21,11 @@ export function ProfileForm({ user, onSaved }: { user: AppUser; onSaved: () => v
       : trimmed.length > NAME_MAX
         ? `Maksimal ${NAME_MAX} karakter`
         : null;
-  const imageError = image.trim() && !URL_RE.test(image.trim()) ? 'Harus berupa URL http(s)' : null;
-  const dirty = trimmed !== user.name || (image.trim() || null) !== (user.image ?? null);
+  const dirty = trimmed !== user.name;
 
   const save = useMutation({
     mutationFn: async () => {
-      const { error } = await authClient.updateUser({ name: trimmed, image: image.trim() || null });
+      const { error } = await authClient.updateUser({ name: trimmed });
       if (error) throw new Error(error.message ?? 'Server menolak perubahan');
     },
     onSuccess: () => {
@@ -43,46 +38,20 @@ export function ProfileForm({ user, onSaved }: { user: AppUser; onSaved: () => v
 
   return (
     <SettingsCard title="Profil" description="Nama dan foto yang tampil di aplikasi.">
-      <Group align="flex-start" wrap="nowrap" gap="md">
-        <Avatar
-          src={image.trim() || null}
-          radius="xl"
-          size={56}
-          name={trimmed || user.name}
-          color="initials"
-          imageProps={{ referrerPolicy: 'no-referrer' }}
+      <Stack gap="sm">
+        <AvatarField image={user.image ?? null} name={trimmed || user.name} onChanged={onSaved} />
+        <TextInput
+          label="Nama"
+          value={name}
+          onChange={(e) => setName(e.currentTarget.value)}
+          maxLength={NAME_MAX}
+          error={nameError}
+          required
         />
-        <Stack gap="sm" style={{ flex: 1, minWidth: 0 }}>
-          <TextInput
-            label="Nama"
-            value={name}
-            onChange={(e) => setName(e.currentTarget.value)}
-            maxLength={NAME_MAX}
-            error={nameError}
-            required
-          />
-          <TextInput
-            label="URL foto"
-            description="Kosongkan untuk memakai inisial. Foto dari login Google tidak ikut berubah otomatis."
-            placeholder="https://…"
-            value={image}
-            onChange={(e) => setImage(e.currentTarget.value)}
-            inputMode="url"
-            error={imageError}
-          />
-        </Stack>
-      </Group>
+      </Stack>
       <Group justify="flex-end" gap="xs">
         {dirty && (
-          <Button
-            variant="subtle"
-            color="gray"
-            size="sm"
-            onClick={() => {
-              setName(user.name);
-              setImage(user.image ?? '');
-            }}
-          >
+          <Button variant="subtle" color="gray" size="sm" onClick={() => setName(user.name)}>
             Batalkan
           </Button>
         )}
@@ -90,7 +59,7 @@ export function ProfileForm({ user, onSaved }: { user: AppUser; onSaved: () => v
           size="sm"
           onClick={() => save.mutate()}
           loading={save.isPending}
-          disabled={!dirty || Boolean(nameError) || Boolean(imageError)}
+          disabled={!dirty || Boolean(nameError)}
         >
           Simpan profil
         </Button>

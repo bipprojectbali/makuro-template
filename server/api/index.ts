@@ -24,6 +24,7 @@ import { postsApi } from './posts';
 import { sessionsApi } from './sessions';
 import { settingsApi } from './settings';
 import { settingsOpsApi } from './settings-ops';
+import { storageFilesApi } from './storage-files';
 import { versionApi } from './version';
 
 /**
@@ -95,6 +96,8 @@ export const api = new Elysia({ prefix: '/api' })
   .use(meApi)
   // Product endpoints (/api/app/*, any signed-in role) — new app features go here.
   .use(appApi)
+  // Public reads of stored files (avatars), before the session derive so images skip the lookup.
+  .use(storageFilesApi)
   // Derive the session for downstream handlers.
   .derive(async ({ request }) => {
     const s = await getSession(request.headers);

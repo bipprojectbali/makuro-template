@@ -37,6 +37,12 @@ describe('requiredScope', () => {
     expect(requiredScope('GET', '/api/openapi.json')).toBeNull();
     expect(isPublicRead('GET', '/api/openapi.json')).toBe(true);
     expect(isPublicRead('POST', '/api/openapi.json')).toBe(false);
+    expect(requiredScope('POST', '/api/app/avatar')).toBe('app:write');
+    expect(requiredScope('DELETE', '/api/app/avatar')).toBe('app:write');
+    expect(isPublicRead('GET', '/api/storage/avatars/u1/a.png')).toBe(true);
+    expect(isPublicRead('PUT', '/api/storage/avatars/u1/a.png')).toBe(false);
+    expect(requiredScope('GET', '/api/storage/avatars/u1/a.png')).toBeNull();
+    expect(requiredScope('PUT', '/api/storage/avatars/u1/a.png')).toBeNull();
   });
 });
 

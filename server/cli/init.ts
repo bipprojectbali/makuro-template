@@ -1,4 +1,4 @@
-/** `init`: write `.env` (fresh auth secret), install the local Postgres runtime + migrate, optional systemd unit. */
+/** `init`: write `.env` (fresh auth secret), install local Postgres (+ migrate) and RustFS storage, optional systemd unit. */
 import { chmod, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
@@ -6,7 +6,12 @@ import { runMigrations } from '../local-pg/boot';
 import { isLocalMode } from '../local-pg/paths';
 import { ensureRuntime } from '../local-pg/runtime';
 import { startLocalPg } from '../local-pg/server';
+import { localTarget } from '../local-s3/boot';
+import { currentS3Platform, isLocalStorageMode, unsupportedMessage } from '../local-s3/paths';
+import { ensureS3Runtime } from '../local-s3/runtime';
+import { startLocalS3 } from '../local-s3/server';
 import { PKG_NAME } from '../pkg';
+import { ensureBucket } from '../storage/bucket';
 
 const DEFAULT_PORT = 3005;
 type DbMode = 'local' | 'external';
@@ -34,10 +39,43 @@ export function envFileContent(mode: DbMode, databaseUrl?: string): string {
     `BETTER_AUTH_URL=${base}`,
     `BETTER_AUTH_SECRET=${randomSecret()}`,
     db,
+    `# S3_ENDPOINT sengaja tidak diisi: \`${PKG_NAME} start\` menjalankan storage lokal RustFS (data di ./data/s3).`,
+    '# Isi S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY untuk S3 eksternal.',
     '# Email super-admin, pisahkan dengan koma.',
     'SUPER_ADMIN_EMAILS=',
     '',
   ].join('\n');
+}
+
+/** Install RustFS and boot it once so keys + bucket exist. Storage is optional, so any failure only warns. */
+async function initLocalStorage(archive?: string): Promise<void> {
+  try {
+    await setupLocalStorage(archive);
+  } catch (err) {
+    console.warn(
+      `! Storage lokal belum disiapkan: ${err instanceof Error ? err.message : String(err)}`,
+    );
+    console.warn('  `start` akan mencoba lagi; tanpa storage, unggah file mengembalikan 503.');
+  }
+}
+
+async function setupLocalStorage(archive?: string): Promise<void> {
+  if (!isLocalStorageMode()) {
+    console.log('✓ S3_ENDPOINT terisi — storage memakai S3 eksternal.');
+    return;
+  }
+  if (!currentS3Platform()) {
+    console.warn(`! ${unsupportedMessage()}`);
+    return;
+  }
+  await ensureS3Runtime({ archive, onProgress: (msg) => console.log(`  ${msg}`) });
+  const s3 = await startLocalS3();
+  try {
+    await ensureBucket(localTarget(s3));
+  } finally {
+    await s3.stop();
+  }
+  console.log('✓ Storage lokal (RustFS) siap.');
 }
 
 function ask(question: string, fallback: string): string {
@@ -52,6 +90,7 @@ export async function run(argv: string[]): Promise<number> {
       db: { type: 'string' },
       'database-url': { type: 'string' },
       'pg-archive': { type: 'string' },
+      's3-archive': { type: 'string' },
       systemd: { type: 'boolean' },
       force: { type: 'boolean' },
     },
@@ -107,6 +146,7 @@ export async function run(argv: string[]): Promise<number> {
       }
       console.log('✓ Postgres lokal siap dan migrasi diterapkan.');
     }
+    await initLocalStorage(values['s3-archive']);
 
     if (values.systemd) {
       const { writeSystemdUnit } = await import('./systemd');

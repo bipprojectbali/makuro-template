@@ -57,6 +57,8 @@ const finish = async (code: number) => {
 };
 if (!up) {
   console.error(`Server tidak siap dalam ${BOOT_TIMEOUT_MS / 1000}s (exit ${child.exitCode}).`);
+  // Kill first: a still-running server never closes stderr, so reading it would hang forever.
+  child.kill();
   console.error(await new Response(child.stderr).text());
   await finish(1);
 }

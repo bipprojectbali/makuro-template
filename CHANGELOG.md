@@ -7,16 +7,21 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 ## [Unreleased]
 
 ### Added
+- Penyimpanan file S3-compatible untuk file, gambar, dan dokumen. Kosongkan `S3_ENDPOINT` dan app menjalankan RustFS sendiri (data di `./data/s3`, hanya `127.0.0.1`, kredensial acak dibuat otomatis), tanpa server storage terpisah. Isi `S3_ENDPOINT`/`S3_BUCKET`/`S3_ACCESS_KEY_ID`/`S3_SECRET_ACCESS_KEY` untuk memakai AWS S3, Cloudflare R2, atau MinIO.
+- Foto profil kini bisa diunggah langsung dari halaman Profil (PNG, JPEG, WEBP, atau GIF, maks 2 MB) dan dihapus kembali, menggantikan isian URL foto. Foto yang tersimpan ikut dihapus saat diganti atau saat akunnya dihapus.
 - Server Logs kini punya pagination (50 entri per halaman) dengan total entri yang cocok dengan filter. Halaman 2 dan seterusnya tidak bergeser saat log baru masuk, dan tombol "N log baru" membawa kembali ke halaman pertama yang live.
 - Nama database Postgres lokal kini bisa diatur lewat `LOCAL_PG_DB` di `.env` (default tetap nama package, mis. `makuro_template`). Database test ikut menjadi `<nama>_test`.
 - Dokumentasi API yang bisa langsung dibaca AI agent dan tool seperti Postman: `GET /api/openapi.json` mengembalikan spec OpenAPI 3 dengan API key apa pun. Isinya hanya endpoint yang boleh dipanggil key tersebut, lengkap dengan scope yang dibutuhkan tiap endpoint. Tautannya juga tercantum di `/llms.txt`.
 
 ### Changed
+- Halaman Profil tidak lagi punya isian URL foto. Ganti foto dengan mengunggah file. Foto lama dari URL luar (mis. akun Google) tetap tampil dan bisa dihapus.
+- `init` kini juga menyiapkan storage lokal (RustFS, unduhan ~88 MB, butuh `unzip`). Bila gagal, `init` tetap selesai dengan peringatan. Server tanpa internet bisa memakai `--s3-archive=<zip>`.
 - Workflow rilis kini menolak tag yang tidak sama dengan `v<version>` di `package.json` atau versi yang belum punya entry di CHANGELOG, sebelum build dimulai. Catatan rilis di GitHub Release diambil dari bagian versi tersebut di CHANGELOG, bukan daftar commit otomatis.
 - CI dan build binary Linux kini berjalan di runner `ubuntu-24.04` yang dipatok, sehingga tidak ikut berpindah otomatis saat `ubuntu-latest` beralih ke Ubuntu 26.04 (mulai 19 Oktober 2026).
 - **Keamanan, Postgres lokal:** Postgres lokal tidak lagi membuka port TCP `127.0.0.1`. Sebelumnya auth `trust` di TCP membuat user lain di mesin yang sama bisa masuk sebagai superuser. Koneksi kini hanya lewat unix socket di direktori 0700 milik user (default `/tmp/makuro_template-pg-<uid>`, bisa diubah dengan `LOCAL_PG_SOCKET_DIR`). Format `DATABASE_URL` lokal berubah menjadi `postgres://postgres@localhost:54329/makuro_template?host=<dir socket>`. Perintah `pg_dump` di README sudah disesuaikan.
 
 ### Fixed
+- `bun run test` kini menghentikan Postgres lokal yang ia nyalakan sendiri setelah test selesai. Sebelumnya proses Postgres tertinggal dan memegang port `54329`. Postgres milik `bun dev` yang sedang jalan tetap tidak disentuh.
 - Variabel `.env` yang dibiarkan kosong (mis. `DATABASE_URL_TEST=` atau `MCP_ADMIN_TOKEN=`) kini dianggap tidak di-set, sehingga `bun run dev` tidak lagi gagal dengan "Invalid environment variables".
 - **Keamanan data:** test tidak lagi diam-diam memakai database dev saat `DATABASE_URL_TEST` kosong. Sebelumnya hal itu bisa menghapus data dev. Di mode Postgres lokal, `bun run test` kini otomatis menyiapkan database `<nama>_test` terpisah. Dengan Postgres eksternal, test menolak berjalan sampai `DATABASE_URL_TEST` di-set.
 - Postgres lokal kini selalu berjalan dalam zona waktu UTC, berapa pun zona waktu mesinnya.

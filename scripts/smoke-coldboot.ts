@@ -78,6 +78,7 @@ async function main(): Promise<number> {
   const cwd = await mkdtemp(path.join(tmpdir(), 'coldboot-'));
   const port = await freePort();
   const pgPort = await freePort();
+  const s3Port = await freePort();
   const env: Record<string, string> = {
     PATH: process.env.PATH ?? '',
     HOME: process.env.HOME ?? cwd,
@@ -86,13 +87,15 @@ async function main(): Promise<number> {
     PORT: String(port),
     LOCAL_PG_DIR: path.join(cwd, 'data/pg'),
     LOCAL_PG_PORT: String(pgPort),
+    LOCAL_S3_DIR: path.join(cwd, 'data/s3'),
+    LOCAL_S3_PORT: String(s3Port),
     BETTER_AUTH_SECRET: Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('hex'),
     TRUSTED_PROXIES: '',
   };
   let server: ReturnType<typeof Bun.spawn> | undefined;
 
   try {
-    console.log(`cwd=${cwd}  PORT=${port}  LOCAL_PG_PORT=${pgPort}\n`);
+    console.log(`cwd=${cwd}  PORT=${port}  LOCAL_PG_PORT=${pgPort}  LOCAL_S3_PORT=${s3Port}\n`);
 
     const init = await run(bin, ['init', '--yes', '--db=local'], cwd, env, INIT_TIMEOUT_MS);
     console.log(`${init.code === 0 ? '✅' : '❌'} init --yes --db=local (exit ${init.code})`);
@@ -155,7 +158,11 @@ async function main(): Promise<number> {
     console.log(
       `${pgStopped ? '✅' : '❌'} Postgres anak berhenti (port ${pgPort} ${pgStopped ? 'bebas' : 'masih listen'})`,
     );
-    return failed || !pgStopped ? 1 : 0;
+    const s3Stopped = await waitFor(async () => !(await isListening(s3Port)), STOP_TIMEOUT_MS);
+    console.log(
+      `${s3Stopped ? '✅' : '❌'} RustFS anak berhenti (port ${s3Port} ${s3Stopped ? 'bebas' : 'masih listen'})`,
+    );
+    return failed || !pgStopped || !s3Stopped ? 1 : 0;
   } finally {
     if (server && server.exitCode === null) {
       server.kill('SIGKILL');

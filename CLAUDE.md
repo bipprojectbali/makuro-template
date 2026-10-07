@@ -280,6 +280,14 @@ Saat bekerja dengan `bun build --compile --asset`:
 - Menyentuh `local-pg/` atau `cli/` → jalankan `bun run smoke:coldboot` selain `smoke:prod`/`smoke:binary`.
 - PG lokal app memakai port `54329`. **Jangan** pkill/stop Postgres milik user (port 5432) — hentikan hanya PID yang kamu jalankan.
 
+## Storage (S3 / RustFS lokal) — Catatan Agent
+
+- Semua file/gambar/dokumen lewat `storage()` / `storageEnabled()` dari `server/storage` (`Bun.S3Client`, tanpa AWS SDK). Config dibaca dari `process.env` saat dipanggil (boot lokal mengisi `S3_*` setelah `env.ts` dimuat) — jangan pindahkan ke skema `env.ts`.
+- Endpoint yang butuh storage wajib cek `storageEnabled()` → `503 STORAGE_DISABLED`; storage gagal lunak, app tetap boot tanpa storage.
+- `Bun.S3Client` tidak punya API bucket — pembuatan bucket lewat `ensureBucket()` (`server/storage/bucket.ts`, SigV4 manual).
+- RustFS lokal (`server/local-s3/*`) env-free seperti `local-pg`; versi + sha256 zip di-pin di `runtime.ts` (update semua platform bersamaan). Wajib `RUSTFS_CONSOLE_ENABLE=false` (console default bind `:9001`). Port `54330`; **jangan** stop RustFS/MinIO milik user di `9000`/`9001`.
+- Upload dari user: validasi tipe dari magic bytes, bukan `Content-Type` klien; **jangan** izinkan SVG/HTML di bucket yang dilayani publik (XSS). Key objek per user diberi prefix `<area>/<userId>/` dan nama acak.
+
 ## Stack
 
 - **Runtime:** Bun
