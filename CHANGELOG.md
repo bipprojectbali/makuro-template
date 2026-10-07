@@ -8,7 +8,7 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 
 ### Added
 - Penyimpanan file S3-compatible untuk file, gambar, dan dokumen. Kosongkan `S3_ENDPOINT` dan app menjalankan RustFS sendiri (data di `./data/s3`, hanya `127.0.0.1`, kredensial acak dibuat otomatis), tanpa server storage terpisah. Isi `S3_ENDPOINT`/`S3_BUCKET`/`S3_ACCESS_KEY_ID`/`S3_SECRET_ACCESS_KEY` untuk memakai AWS S3, Cloudflare R2, atau MinIO.
-- Foto profil kini bisa diunggah langsung dari halaman Profil (PNG, JPEG, WEBP, atau GIF, maks 2 MB) dan dihapus kembali, menggantikan isian URL foto.
+- Foto profil kini bisa diunggah langsung dari halaman Profil (PNG, JPEG, WEBP, atau GIF, maks 2 MB) dan dihapus kembali, menggantikan isian URL foto. Foto yang tersimpan ikut dihapus saat diganti atau saat akunnya dihapus.
 - Server Logs kini punya pagination (50 entri per halaman) dengan total entri yang cocok dengan filter. Halaman 2 dan seterusnya tidak bergeser saat log baru masuk, dan tombol "N log baru" membawa kembali ke halaman pertama yang live.
 - Nama database Postgres lokal kini bisa diatur lewat `LOCAL_PG_DB` di `.env` (default tetap nama package, mis. `makuro_template`). Database test ikut menjadi `<nama>_test`.
 - Dokumentasi API yang bisa langsung dibaca AI agent dan tool seperti Postman: `GET /api/openapi.json` mengembalikan spec OpenAPI 3 dengan API key apa pun. Isinya hanya endpoint yang boleh dipanggil key tersebut, lengkap dengan scope yang dibutuhkan tiap endpoint. Tautannya juga tercantum di `/llms.txt`.

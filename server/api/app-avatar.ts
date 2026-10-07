@@ -58,9 +58,15 @@ async function dropObject(userId: string, image: string | null | undefined): Pro
   try {
     await storage().file(key).delete();
   } catch (err) {
-    // The new image is already saved; a leftover object only costs space.
-    logger.warn({ err, userId, key }, 'failed to delete old avatar object');
+    // The DB change already happened; a leftover object only costs space.
+    logger.warn({ err, userId, key }, 'failed to delete avatar object');
   }
+}
+
+/** Account deletion: drop the stored photo so its public URL stops serving. Never throws. */
+export async function deleteAvatarObject(userId: string, image: string | null | undefined) {
+  // ponytail: deletes the current photo only; objects orphaned by an earlier failed delete stay (logged as warn).
+  if (storageEnabled()) await dropObject(userId, image);
 }
 
 /** Validate, store and assign a new avatar; the previous one we own is deleted afterwards. */

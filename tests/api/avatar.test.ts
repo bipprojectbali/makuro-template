@@ -153,6 +153,25 @@ describe('/api/app/avatar', () => {
     ).toBe(false);
   });
 
+  test('deleting the account deletes the stored photo', async () => {
+    const gone = `${ID}-del`;
+    const key = `avatars/${gone}/${crypto.randomUUID()}.png`;
+    await storage().write(key, PNG, { type: 'image/png' });
+    const now = new Date();
+    await db.insert(user).values({
+      id: gone,
+      name: gone,
+      email: `${gone}@test.local`,
+      image: `/api/storage/${key}`,
+      emailVerified: false,
+      role: 'user',
+      createdAt: now,
+      updatedAt: now,
+    });
+    await (await auth.$context).internalAdapter.deleteUser(gone);
+    expect(await storage().file(key).exists()).toBe(false);
+  });
+
   test('file route rejects unexpected names and unknown files with JSON 404', async () => {
     for (const p of [
       `/api/storage/avatars/${ID}/..%2F..%2Fsecret.png`,

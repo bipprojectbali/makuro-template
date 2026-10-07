@@ -2,6 +2,7 @@ import { apiKey } from '@better-auth/api-key';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { admin, multiSession } from 'better-auth/plugins';
+import { deleteAvatarObject } from './api/app-avatar';
 import { AUDIT_ACTIONS, audit } from './audit';
 import { db } from './db';
 import * as schema from './db/schema';
@@ -69,6 +70,8 @@ export const auth = betterAuth({
     }),
   ],
   databaseHooks: {
+    // Self-delete and admin removeUser both go through internalAdapter.deleteUser → this hook.
+    user: { delete: { after: (u) => deleteAvatarObject(u.id, u.image) } },
     session: {
       create: {
         after: async (session, ctx) => {

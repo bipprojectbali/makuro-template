@@ -217,6 +217,7 @@ await storage().delete(`docs/${id}.pdf`);
 - `POST /api/app/avatar` (multipart, field `file`, maks 2 MB; PNG/JPEG/WEBP/GIF dicek dari isi file, SVG ditolak) → `{ image }`.
 - `DELETE /api/app/avatar` → `{ image: null }`.
 - Gambar dilayani publik di `GET /api/storage/avatars/<userId>/<file>` dengan cache `immutable` (nama file acak per unggahan).
+- Foto lama dihapus dari storage saat diganti, dihapus, atau saat akunnya dihapus (oleh user sendiri maupun admin).
 - Foto dari URL luar (mis. foto akun Google lama) tetap tampil dan bisa dihapus, tetapi halaman Profil tidak lagi menyediakan isian URL foto.
 
 ## Struktur project
