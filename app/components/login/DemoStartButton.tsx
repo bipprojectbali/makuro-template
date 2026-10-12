@@ -7,9 +7,9 @@ import { demoNote, startDemo } from '~/lib/demo-api';
 /** Login-card footer: divider, full-width demo button, and the auto-delete note. */
 export function DemoLoginOption({ ttlHours }: { ttlHours: number }) {
   return (
-    <Stack gap={4}>
+    <Stack gap="xs">
       <Divider label="atau jelajahi dulu" labelPosition="center" />
-      <DemoStartButton fullWidth />
+      <DemoStartButton fullWidth size="md" radius="md" />
       <Text size="xs" c="dimmed" ta="center">
         Tanpa akun. {demoNote(ttlHours)}.
       </Text>

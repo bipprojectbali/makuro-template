@@ -18,6 +18,7 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 - Aksi sensitif diblokir untuk user demo dengan pesan yang jelas: membuat API key, mengganti email atau password, reset password, mengunggah/menghapus foto profil, dan menautkan akun sosial.
 
 ### Changed
+- Halaman login didesain ulang menjadi kartu dua kolom. Form ada di kiri: input bergaya filled, tombol Google di bawah pemisah "atau", tombol Coba Demo, dan tautan Daftar/Masuk menggantikan tab. Di kanan ada panel showcase bertema warna utama yang hanya tampil di layar lebar. Nama dan tagline diambil dari pengaturan branding.
 - User demo tidak ikut dihitung di statistik dan daftar user admin, termasuk tool MCP.
 - Halaman Profil tidak lagi punya isian URL foto. Ganti foto dengan mengunggah file. Foto lama dari URL luar (mis. akun Google) tetap tampil dan bisa dihapus.
 - `init` kini juga menyiapkan storage lokal (RustFS, unduhan ~88 MB, butuh `unzip`). Bila gagal, `init` tetap selesai dengan peringatan. Server tanpa internet bisa memakai `--s3-archive=<zip>`.
