@@ -21,7 +21,11 @@ export const MCP_TOOL_CATALOG: ToolInfo[] = [
     group: 'logs',
   },
   { name: 'get_db_stats', description: 'Jumlah baris tabel utama.', group: 'db' },
-  { name: 'list_users', description: 'Daftar user, filter nama/email.', group: 'db' },
+  {
+    name: 'list_users',
+    description: 'Daftar user (tanpa user demo), filter nama/email.',
+    group: 'db',
+  },
   { name: 'get_active_sessions', description: 'Sesi yang masih berlaku.', group: 'db' },
   { name: 'get_recent_posts', description: 'Post terbaru.', group: 'db' },
   {

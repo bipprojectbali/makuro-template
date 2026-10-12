@@ -1,6 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { count, desc, gt, like, or } from 'drizzle-orm';
+import { and, count, desc, gt, like, or } from 'drizzle-orm';
 import { z } from 'zod';
+import { realUser } from '../../api/admin-users.query';
 import { db } from '../../db';
 import { account, post, session, user } from '../../db/schema';
 
@@ -8,12 +9,13 @@ export function registerDbTools(server: McpServer) {
   server.registerTool(
     'get_db_stats',
     {
-      description: 'Get row counts for all main database tables.',
+      description:
+        'Get row counts for all main database tables (user excludes temporary demo users).',
       inputSchema: {},
     },
     async () => {
       const [[userRow], [sessionRow], [accountRow], [postRow]] = await Promise.all([
-        db.select({ count: count() }).from(user),
+        db.select({ count: count() }).from(user).where(realUser),
         db.select({ count: count() }).from(session),
         db.select({ count: count() }).from(account),
         db.select({ count: count() }).from(post),
@@ -41,7 +43,8 @@ export function registerDbTools(server: McpServer) {
   server.registerTool(
     'list_users',
     {
-      description: 'List users ordered by creation date. Optionally filter by email or name.',
+      description:
+        'List real (non-demo) users ordered by creation date. Optionally filter by email or name.',
       inputSchema: {
         search: z
           .string()
@@ -63,9 +66,12 @@ export function registerDbTools(server: McpServer) {
         })
         .from(user)
         .where(
-          args.search
-            ? or(like(user.email, `%${args.search}%`), like(user.name, `%${args.search}%`))
-            : undefined,
+          and(
+            realUser,
+            args.search
+              ? or(like(user.email, `%${args.search}%`), like(user.name, `%${args.search}%`))
+              : undefined,
+          ),
         )
         .orderBy(desc(user.createdAt))
         .limit(args.limit ?? 20);
