@@ -12,8 +12,13 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 - Server Logs kini punya pagination (50 entri per halaman) dengan total entri yang cocok dengan filter. Halaman 2 dan seterusnya tidak bergeser saat log baru masuk, dan tombol "N log baru" membawa kembali ke halaman pertama yang live.
 - Nama database Postgres lokal kini bisa diatur lewat `LOCAL_PG_DB` di `.env` (default tetap nama package, mis. `makuro_template`). Database test ikut menjadi `<nama>_test`.
 - Dokumentasi API yang bisa langsung dibaca AI agent dan tool seperti Postman: `GET /api/openapi.json` mengembalikan spec OpenAPI 3 dengan API key apa pun. Isinya hanya endpoint yang boleh dipanggil key tersebut, lengkap dengan scope yang dibutuhkan tiap endpoint. Tautannya juga tercantum di `/llms.txt`.
+- Tombol **Coba Demo** di halaman login: pengunjung langsung masuk ke `/app` sebagai user demo sementara yang sudah berisi data contoh, tanpa mendaftar. Akun demo beserta datanya terhapus otomatis setelah masa berlaku habis (default 24 jam). Sesi demo yang kedaluwarsa dianggap sudah keluar, dan mencoba demo lagi membuat sandbox baru. Butuh migrasi `0013`.
+- Saklar **Mode demo** di `/dev/settings` untuk menyalakan/mematikan demo dan mengatur masa berlaku (1 jam sampai 7 hari). Perubahan tercatat di audit log, dan badge sidebar Settings menampilkan jumlah user demo aktif.
+- Banner di setiap halaman `/app` saat memakai akun demo, berisi sisa waktu demo dan tombol keluar dari demo.
+- Aksi sensitif diblokir untuk user demo dengan pesan yang jelas: membuat API key, mengganti email atau password, reset password, mengunggah/menghapus foto profil, dan menautkan akun sosial.
 
 ### Changed
+- User demo tidak ikut dihitung di statistik dan daftar user admin, termasuk tool MCP.
 - Halaman Profil tidak lagi punya isian URL foto. Ganti foto dengan mengunggah file. Foto lama dari URL luar (mis. akun Google) tetap tampil dan bisa dihapus.
 - `init` kini juga menyiapkan storage lokal (RustFS, unduhan ~88 MB, butuh `unzip`). Bila gagal, `init` tetap selesai dengan peringatan. Server tanpa internet bisa memakai `--s3-archive=<zip>`.
 - Workflow rilis kini menolak tag yang tidak sama dengan `v<version>` di `package.json` atau versi yang belum punya entry di CHANGELOG, sebelum build dimulai. Catatan rilis di GitHub Release diambil dari bagian versi tersebut di CHANGELOG, bukan daftar commit otomatis.

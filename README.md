@@ -303,6 +303,23 @@ Template ini dipakai sebagai dasar project lain, jadi fitur produk punya satu te
 - **API key** — `/api/app/*` dipetakan ke scope `app:read` (GET/HEAD) dan `app:write` (lainnya), tersedia untuk semua role.
 - `/dev` untuk operasional dan `/dashboard` untuk admin — jangan taruh fitur produk di sana.
 
+## Mode demo
+
+Tombol **Coba Demo** di `/login` memasukkan pengunjung ke `/app` sebagai user anonim sementara (Better Auth `anonymous`, `user.isAnonymous = true`, role `user`) yang sudah berisi data contoh. Setelah masa berlaku habis (default 24 jam, 1–168 jam) sesi demo dianggap keluar dan job per jam menghapus user beserta datanya (cascade). Saklar dan masa berlaku diatur super-admin di `/dev/settings`; user demo tidak ikut statistik/daftar user admin.
+
+| Endpoint | Akses | Respons |
+|---|---|---|
+| `GET /api/demo` | publik | `{ enabled, ttlHours }` |
+| `POST /api/demo/start` | publik | `200 { redirect: "/app" }` + cookie sesi; sesi demo yang masih aktif dipakai ulang, yang kedaluwarsa diganti sandbox baru. `403 INVALID_ORIGIN` (header `Origin` dari situs lain), `404 DEMO_DISABLED`, `409 ALREADY_SIGNED_IN` (sudah masuk dengan akun biasa), `429 DEMO_RATE_LIMITED` (maks. 5 per 10 menit per IP, dengan `Retry-After`) |
+| `PUT /api/settings/demo` | super-admin, teraudit | body `{ enabled, ttlHours: number \| null }` (`null` = default) |
+
+`POST /api/auth/sign-in/anonymous` tidak bisa dipanggil lewat HTTP (`404`); demo hanya dimulai lewat `/api/demo/start`, yang memeriksa saklar dan batas IP. Aksi sensitif dari user demo ditolak `403 DEMO_RESTRICTED` dengan pesan yang menjelaskan alasannya: API key, ganti email/password, reset password, verifikasi email, foto profil, dan menautkan akun sosial.
+
+Untuk app turunan:
+
+- **Data contoh** — isi `seedDemo(userId)` di `server/demo/seed.ts`. Tabel baru milik user wajib punya FK ke `user.id` dengan `onDelete: 'cascade'` agar ikut terhapus saat demo berakhir.
+- **Aksi terlarang** — tambahkan entri `{ method?, prefix, reason }` ke `DEMO_BLOCKED` di `server/demo/restrict.ts`, atau di handler: `const denied = assertNotDemo(actor); if (denied) return status(403, denied);`.
+
 ## Visitor analytics
 
 Setiap page navigation (bukan `/api/*`, aset, atau loader `.data`) dicatat ke `visit_log` oleh `server/middleware/visitor.ts` dan ditampilkan di `/dev/visits` (super-admin): statistik, breakdown negara/perangkat/browser/OS/halaman/referer, filter, detail per kunjungan, hapus massal, dan export CSV.
@@ -336,9 +353,9 @@ Konsol super-admin dengan pola yang sama di tiap halaman: loader SSR (data lengk
 - **Log & monitoring**: Visitor Logs, Login Logs, Rate Limits, Server Logs (buffer pino di memori, `GET /api/logs`; live lewat SSE `GET /api/logs/stream`, resume via `Last-Event-ID`), Audit Log (`audit_log`: semua aksi berhak istimewa, read-only, `GET /api/audit`), File Health.
 - **Tools & MCP**: status proses, katalog tool MCP + contoh `.mcp.json` (auth lewat API key ber-scope `mcp`, tombol "Buat kunci MCP"), ringkasan API, reset cache/limiter (`POST /api/ops/reset/:target`, teraudit).
 - **Changelog** — `CHANGELOG.md` (Keep a Changelog) dirender sebagai timeline per versi dengan filter jenis dan pencarian. Badge sidebar kuning bila versi di `package.json` belum punya entry, abu-abu untuk jumlah perubahan di `[Unreleased]`. Dev membaca file langsung; `bun run start`/binary memakai salinan yang ter-embed saat build.
-- **Settings** (`app_setting`, semua perubahan teraudit): autentikasi, rate limit, **retensi log** (usia maksimum per tabel, job harian + jalankan manual), **mode maintenance** (503 untuk semua kecuali role yang diizinkan; login tetap terbuka), **feature flags** (`isFeatureEnabled(key)` di server, `GET /api/settings` → `features` di client), **branding** (nama, tagline, URL dukungan → sidebar, meta, login).
+- **Settings** (`app_setting`, semua perubahan teraudit): autentikasi, rate limit, **retensi log** (usia maksimum per tabel, job harian + jalankan manual), **mode maintenance** (503 untuk semua kecuali role yang diizinkan; login tetap terbuka), **feature flags** (`isFeatureEnabled(key)` di server, `GET /api/settings` → `features` di client), **mode demo** (lihat [Mode demo](#mode-demo)), **branding** (nama, tagline, URL dukungan → sidebar, meta, login).
 
-Migrasi yang dibutuhkan fitur-fitur ini: 0008 (audit_log), 0009 (settings), 0010 (post.updated_at), 0011 (apikey, api_key_usage), 0012 (api_key_usage_daily) — semuanya idempotent.
+Migrasi yang dibutuhkan fitur-fitur ini: 0008 (audit_log), 0009 (settings), 0010 (post.updated_at), 0011 (apikey, api_key_usage), 0012 (api_key_usage_daily), 0013 (mode demo: `user.is_anonymous`, setting demo) — semuanya idempotent.
 
 Menambah halaman `/dev` baru berarti menyentuh lima tempat sekaligus: `app/routes.ts`, `NAV` di `app/routes/super/layout.tsx`, `QuickLinks` overview, `CONSOLE_PAGES` di landing (test menjaga jumlahnya sama dengan route), dan badge di `server/sidebar-badges.ts`.
 
