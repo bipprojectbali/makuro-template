@@ -13,6 +13,12 @@ export function effectiveDemoTtlHours(s: DemoSettings): number {
   return s.ttlHours ?? DEMO_DEFAULTS.ttlHours;
 }
 
+/** True once a demo account created at `createdAt` is past the TTL (same cutoff as the purge job). */
+export async function isDemoExpired(createdAt: Date | string, now = Date.now()): Promise<boolean> {
+  const ttlMs = effectiveDemoTtlHours(await getDemo()) * 3_600_000;
+  return new Date(createdAt).getTime() + ttlMs < now;
+}
+
 export async function getDemo(): Promise<DemoSettings> {
   return parseDemo(await readSettingsRow());
 }

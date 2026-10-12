@@ -4,6 +4,7 @@ import { api } from '../../server/api';
 import { auth } from '../../server/auth';
 import { db } from '../../server/db';
 import { auditLog, post, user } from '../../server/db/schema';
+import { env } from '../../server/env';
 import { CLIENT_IP_HEADER } from '../../server/middleware/client-ip';
 import * as rolesMod from '../../server/roles';
 import { type DemoSettings, getDemo, upsertDemo } from '../../server/settings-demo';
@@ -100,6 +101,41 @@ describe('demo entry API', () => {
     const again = await start({ cookie, [CLIENT_IP_HEADER]: freshIp() });
     expect(again.res.status).toBe(200);
     expect(again.res.headers.getSetCookie()).toHaveLength(0);
+  });
+
+  test('foreign Origin → 403 INVALID_ORIGIN without a session; trusted Origin passes', async () => {
+    await upsertDemo({ enabled: true, ttlHours: null });
+    const foreign = await start({ origin: 'https://evil.example', [CLIENT_IP_HEADER]: freshIp() });
+    expect(foreign.res.status).toBe(403);
+    expect(foreign.body.code).toBe('INVALID_ORIGIN');
+    expect(foreign.body.requestId).toBeString();
+    expect(foreign.res.headers.getSetCookie()).toHaveLength(0);
+
+    const trusted = await start({
+      origin: new URL(env.BETTER_AUTH_URL).origin,
+      [CLIENT_IP_HEADER]: freshIp(),
+    });
+    expect(trusted.res.status).toBe(200);
+    expect(cookieHeader(trusted.res)).toContain('session_token=');
+  });
+
+  test('expired anonymous session → old user deleted, fresh demo started', async () => {
+    await upsertDemo({ enabled: true, ttlHours: 1 });
+    const cookie = cookieHeader((await start()).res);
+    const oldId = (await realGetSession({ headers: new Headers({ cookie }) }))?.user.id as string;
+    await db
+      .update(user)
+      .set({ createdAt: new Date(Date.now() - 2 * 3_600_000) })
+      .where(eq(user.id, oldId));
+
+    const again = await start({ cookie, [CLIENT_IP_HEADER]: freshIp() });
+    expect(again.res.status).toBe(200);
+    const fresh = await realGetSession({
+      headers: new Headers({ cookie: cookieHeader(again.res) }),
+    });
+    expect(fresh?.user.isAnonymous).toBe(true);
+    expect(fresh?.user.id).not.toBe(oldId);
+    expect(await db.select().from(user).where(eq(user.id, oldId))).toHaveLength(0);
   });
 
   test('demo session: admin/dev APIs denied, sign-out still works', async () => {

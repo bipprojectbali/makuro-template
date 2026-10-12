@@ -7,6 +7,7 @@ import { db } from './db';
 import { user as userTable } from './db/schema';
 import { homeFor, ROLES, type Role } from './permissions';
 import { resolveUserRole } from './roles';
+import { isDemoExpired } from './settings-demo';
 
 /**
  * Layout guard for strict per-role areas. Enforces an authenticated session and
@@ -84,6 +85,8 @@ export async function resolveActor(request: Request): Promise<Actor | null> {
     bannedRequests.set(request, session.user);
     return null;
   }
+  // The hourly purge lags; an expired demo session must stop working at the TTL.
+  if (session.user.isAnonymous && (await isDemoExpired(session.user.createdAt))) return null;
   return {
     user: session.user,
     role: await resolveUserRole(session.user),

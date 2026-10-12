@@ -12,6 +12,8 @@ type SessionUser = {
   email: string;
   banned?: boolean;
   banExpires?: Date | null;
+  isAnonymous?: boolean;
+  createdAt?: Date;
 } | null;
 const ctx: { user: SessionUser; role: string } = { user: null, role: 'user' };
 
@@ -29,8 +31,9 @@ const roleSpy = spyOn(rolesMod, 'resolveUserRole').mockImplementation(
   async () => ctx.role as 'user',
 );
 
-import { requireAnyRole, requireRole, requireUser } from '../server/guard';
+import { requireAnyRole, requireRole, requireUser, resolveActor } from '../server/guard';
 import { ROLES } from '../server/permissions';
+import * as settingsCore from '../server/settings.core';
 
 afterAll(() => {
   sessionSpy.mockRestore();
@@ -123,6 +126,29 @@ describe('requireAnyRole', () => {
     const res = await catchRedirect(() => requireAnyRole(request(), [ROLES.SUPER_ADMIN]));
     expect(res?.status).toBe(302);
     expect(res?.headers.get('Location')).toBe('/dashboard');
+  });
+});
+
+describe('resolveActor — demo expiry', () => {
+  // Past the max TTL (7 days) / brand new, so the result holds for any stored demo TTL.
+  const longAgo = new Date(Date.now() - 8 * 86_400_000);
+
+  test('anonymous user past the TTL → signed out; fresh one passes as demo', async () => {
+    ctx.user = { id: 'd1', email: 'd1@test.local', isAnonymous: true, createdAt: longAgo };
+    expect(await resolveActor(request())).toBeNull();
+    ctx.user = { id: 'd2', email: 'd2@test.local', isAnonymous: true, createdAt: new Date() };
+    expect((await resolveActor(request()))?.isDemo).toBe(true);
+  });
+
+  test('regular user never triggers the demo settings lookup', async () => {
+    const readSpy = spyOn(settingsCore, 'readSettingsRow');
+    try {
+      ctx.user = { id: 'u6', email: 'u6@test.local', createdAt: longAgo };
+      expect((await resolveActor(request()))?.user.id).toBe('u6');
+      expect(readSpy).not.toHaveBeenCalled();
+    } finally {
+      readSpy.mockRestore();
+    }
   });
 });
 
