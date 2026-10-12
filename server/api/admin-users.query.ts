@@ -23,6 +23,9 @@ export type UserListQueryType = typeof UserListQuery.static;
 
 const MAX_DAYS = 365;
 
+/** Excludes temporary demo (anonymous) users; the column is nullable for older rows. */
+export const realUser = sql`${user.isAnonymous} is not true`;
+
 // Correlated subqueries must qualify columns explicitly: drizzle renders bare
 // column names inside `sql` fragments, so `user_id = "id"` would compare the
 // inner table with itself.
@@ -79,7 +82,7 @@ function orderFor(sort: string | undefined) {
 /** One page of users with login/session/provider enrichment. */
 export async function listAdminUsers(q: UserListQueryType) {
   const { page, limit } = parsePaging(q);
-  const where = buildUserWhere(q);
+  const where = and(realUser, buildUserWhere(q));
   const [rows, [totals]] = await Promise.all([
     db
       .select({
@@ -119,10 +122,12 @@ export async function adminUserStats() {
       verified: sql<number>`count(*) filter (where ${user.emailVerified} = true)::int`,
       new7d: sql<number>`count(*) filter (where ${user.createdAt} >= now() - interval '7 days')::int`,
     })
-    .from(user);
+    .from(user)
+    .where(realUser);
   const [active] = await db
     .select({ count: sql<number>`count(distinct ${loginLog.userId})::int` })
     .from(loginLog)
-    .where(sql`${loginLog.createdAt} >= now() - interval '24 hours'`);
+    .innerJoin(user, eq(loginLog.userId, user.id))
+    .where(and(realUser, sql`${loginLog.createdAt} >= now() - interval '24 hours'`));
   return { ...row, active24h: active?.count ?? 0 };
 }

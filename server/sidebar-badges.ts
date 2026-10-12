@@ -5,6 +5,7 @@
  * console navigation, and every source degrades to "no badge" on failure.
  */
 import { sql } from 'drizzle-orm';
+import { realUser } from './api/admin-users.query';
 import { countRateLimitLastHour } from './api/analytics-ratelimits.stats.query';
 import { errorsLastHour, warningsLastHour } from './api/logs';
 import { keyStats } from './api-keys/query';
@@ -26,7 +27,6 @@ export type SidebarBadges = Record<string, SidebarBadge>;
 
 const CACHE_TTL_MS = 15_000;
 const nf = new Intl.NumberFormat('id-ID');
-const count = sql<number>`count(*)::int`;
 const last24h = (col: unknown) =>
   sql<number>`count(*) filter (where ${col} >= now() - interval '24 hours')::int`;
 
@@ -67,14 +67,15 @@ async function collect(): Promise<SidebarBadges> {
     settings,
     changelog,
   ] = await Promise.all([
-    safe({ total: 0, banned: 0 }, async () => {
+    safe({ total: 0, banned: 0, demo: 0 }, async () => {
       const [r] = await db
         .select({
-          total: count,
-          banned: sql<number>`count(*) filter (where ${user.banned} = true)::int`,
+          total: sql<number>`count(*) filter (where ${realUser})::int`,
+          banned: sql<number>`count(*) filter (where ${realUser} and ${user.banned} = true)::int`,
+          demo: sql<number>`count(*) filter (where ${user.isAnonymous} = true)::int`,
         })
         .from(user);
-      return r ?? { total: 0, banned: 0 };
+      return r ?? { total: 0, banned: 0, demo: 0 };
     }),
     safe({ active: 0, impersonated: 0 }, async () => {
       const [r] = await db
@@ -153,11 +154,13 @@ async function collect(): Promise<SidebarBadges> {
       errors > 0
         ? alert(errors, 'red', `${nf.format(errors)} error dalam 1 jam terakhir`)
         : alert(warnings, 'yellow', `${nf.format(warnings)} warning dalam 1 jam terakhir`),
-    '/dev/settings': alert(
-      settingsIssues.length,
-      'orange',
-      settingsIssues.length ? `Perlu perhatian: ${settingsIssues.join(', ')}` : '',
-    ),
+    '/dev/settings': settingsIssues.length
+      ? alert(
+          settingsIssues.length,
+          'orange',
+          `Perlu perhatian: ${settingsIssues.join(', ')} · ${nf.format(users.demo)} user demo aktif`,
+        )
+      : info(users.demo, `${nf.format(users.demo)} user demo aktif`),
     '/dev/tools': alert(
       env.MCP_ADMIN_TOKEN ? 1 : 0,
       'orange',
