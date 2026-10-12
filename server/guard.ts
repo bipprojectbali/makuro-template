@@ -56,7 +56,8 @@ export function signedOutTarget(request: Request): string {
 }
 
 type SessionUser = (typeof auth)['$Infer']['Session']['user'];
-export type Actor = { user: SessionUser; role: Role; viaApiKey: boolean };
+/** `isDemo`: a temporary anonymous demo visitor (see server/demo). */
+export type Actor = { user: SessionUser; role: Role; viaApiKey: boolean; isDemo: boolean };
 
 /**
  * Who is calling: an API-key identity (set by the api-key plugin, scope
@@ -68,7 +69,12 @@ export async function resolveActor(request: Request): Promise<Actor | null> {
     // Full row so callers (layouts, admin API) see the same shape as a session user.
     const [row] = await db.select().from(userTable).where(eq(userTable.id, key.user.id)).limit(1);
     if (!row) return null;
-    return { user: row as unknown as SessionUser, role: key.role, viaApiKey: true };
+    return {
+      user: row as unknown as SessionUser,
+      role: key.role,
+      viaApiKey: true,
+      isDemo: Boolean(row.isAnonymous),
+    };
   }
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) return null;
@@ -78,7 +84,12 @@ export async function resolveActor(request: Request): Promise<Actor | null> {
     bannedRequests.set(request, session.user);
     return null;
   }
-  return { user: session.user, role: await resolveUserRole(session.user), viaApiKey: false };
+  return {
+    user: session.user,
+    role: await resolveUserRole(session.user),
+    viaApiKey: false,
+    isDemo: Boolean(session.user.isAnonymous),
+  };
 }
 
 /**

@@ -1,27 +1,33 @@
 // Better Auth core tables. These match the Better Auth Drizzle adapter schema;
 // regenerate with: bun run auth:generate
-import { boolean, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { boolean, index, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 
-export const user = pgTable('user', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  email: text('email').notNull().unique(),
-  emailVerified: boolean('email_verified')
-    .$defaultFn(() => false)
-    .notNull(),
-  image: text('image'),
-  createdAt: timestamp('created_at')
-    .$defaultFn(() => new Date())
-    .notNull(),
-  updatedAt: timestamp('updated_at')
-    .$defaultFn(() => new Date())
-    .notNull(),
-  // Better Auth admin plugin fields.
-  role: text('role'),
-  banned: boolean('banned').default(false),
-  banReason: text('ban_reason'),
-  banExpires: timestamp('ban_expires'),
-});
+export const user = pgTable(
+  'user',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    email: text('email').notNull().unique(),
+    emailVerified: boolean('email_verified')
+      .$defaultFn(() => false)
+      .notNull(),
+    image: text('image'),
+    createdAt: timestamp('created_at')
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: timestamp('updated_at')
+      .$defaultFn(() => new Date())
+      .notNull(),
+    // Better Auth admin plugin fields.
+    role: text('role'),
+    banned: boolean('banned').default(false),
+    banReason: text('ban_reason'),
+    banExpires: timestamp('ban_expires'),
+    // Better Auth anonymous plugin: temporary demo visitors, purged after the demo TTL.
+    isAnonymous: boolean('is_anonymous').default(false),
+  },
+  (t) => [index('user_is_anonymous_created_at_idx').on(t.isAnonymous, t.createdAt)],
+);
 
 export const session = pgTable('session', {
   id: text('id').primaryKey(),

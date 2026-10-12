@@ -1,7 +1,7 @@
 import { apiKey } from '@better-auth/api-key';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { admin, multiSession } from 'better-auth/plugins';
+import { admin, anonymous, multiSession } from 'better-auth/plugins';
 import { deleteAvatarObject } from './api/app-avatar';
 import { AUDIT_ACTIONS, audit } from './audit';
 import { db } from './db';
@@ -41,6 +41,8 @@ export const auth = betterAuth({
     // Lets a browser stay signed in to several accounts at once and switch
     // between them. Cookie-based, so no extra DB tables/migration.
     multiSession({ maximumSessions: 5 }),
+    // Demo visitors (server/demo/*): only reachable through POST /api/demo/start.
+    anonymous({ generateName: () => 'Pengunjung Demo' }),
     // API keys: hashed at rest, per-key expiry/rate limit/permissions. Our own
     // middleware (server/api-keys/*) adds scopes, usage tracking and rotation.
     apiKey({

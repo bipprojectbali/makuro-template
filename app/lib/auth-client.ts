@@ -1,5 +1,5 @@
 import { ac, roles } from '@server/permissions';
-import { adminClient, multiSessionClient } from 'better-auth/client/plugins';
+import { adminClient, anonymousClient, multiSessionClient } from 'better-auth/client/plugins';
 import { createAuthClient } from 'better-auth/react';
 
 /**
@@ -7,7 +7,7 @@ import { createAuthClient } from 'better-auth/react';
  * to the current origin and talks to /api/auth/*.
  */
 export const authClient = createAuthClient({
-  plugins: [adminClient({ ac, roles }), multiSessionClient()],
+  plugins: [adminClient({ ac, roles }), multiSessionClient(), anonymousClient()],
 });
 
 export const { signIn, signUp, signOut, useSession } = authClient;

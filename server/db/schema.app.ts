@@ -62,6 +62,10 @@ export const appSetting = pgTable('app_setting', {
   appName: text('app_name'),
   appTagline: text('app_tagline'),
   supportUrl: text('support_url'),
+  // Demo sandbox: "Coba Demo" signs visitors in as temporary anonymous users.
+  demoEnabled: boolean('demo_enabled').default(false).notNull(),
+  /** Hours before a demo user and its data are deleted; NULL = default (24). */
+  demoTtlHours: integer('demo_ttl_hours'),
   updatedAt: timestamp('updated_at')
     .$defaultFn(() => new Date())
     .notNull(),
