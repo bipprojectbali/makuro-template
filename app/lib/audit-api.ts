@@ -101,6 +101,7 @@ const ACTION_META: Record<string, { label: string; color: string }> = {
   'settings.maintenance.update': { label: 'Settings maintenance', color: 'orange' },
   'settings.features.update': { label: 'Feature flags', color: 'indigo' },
   'settings.branding.update': { label: 'Branding', color: 'indigo' },
+  'settings.demo.update': { label: 'Settings demo', color: 'orange' },
   'ops.reset': { label: 'Reset cache', color: 'gray' },
   'post.update': { label: 'Edit post', color: 'blue' },
   'post.delete': { label: 'Hapus post', color: 'red' },

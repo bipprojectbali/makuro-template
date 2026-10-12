@@ -48,6 +48,19 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 const AUTH_BASE = '/api/auth';
+/** Anonymous sign-in is server-only (POST /api/demo/start enforces the demo switch + IP limit). */
+const BLOCKED_AUTH_PATHS = [`${AUTH_BASE}/sign-in/anonymous`];
+
+function isAuthPath(pathname: string): boolean {
+  if (!pathname.startsWith(AUTH_BASE)) return false;
+  let p = pathname.toLowerCase();
+  try {
+    p = decodeURIComponent(p).replace(/\/{2,}/g, '/');
+  } catch {
+    return false;
+  }
+  return !BLOCKED_AUTH_PATHS.some((b) => p.startsWith(b));
+}
 
 /**
  * Main Elysia API. Everything here is served under `/api` (see mount in
@@ -70,9 +83,7 @@ export const api = new Elysia({ prefix: '/api' })
   // every unmatched /api path, so anything else gets the uniform JSON 404 here
   // instead of Better Auth's empty one.
   .mount((request) =>
-    new URL(request.url).pathname.startsWith(AUTH_BASE)
-      ? auth.handler(request)
-      : notFoundResponse(request),
+    isAuthPath(new URL(request.url).pathname) ? auth.handler(request) : notFoundResponse(request),
   )
   // Admin console endpoints (self-guarded by role).
   .use(adminApi)

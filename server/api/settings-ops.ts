@@ -1,9 +1,10 @@
 /** Settings groups beyond auth/rate-limit: retention, maintenance, feature flags, branding (super-admin). */
 import { Elysia, t } from 'elysia';
 import { AUDIT_ACTIONS, audit } from '../audit';
-import { requireRole } from '../guard';
+import { requireRole, resolveActor } from '../guard';
 import { ROLES } from '../permissions';
 import { upsertBranding } from '../settings-branding';
+import { DEMO_DEFAULTS, upsertDemo } from '../settings-demo';
 import { FLAG_KEY_RE, MAX_FLAGS, upsertFeatureFlags } from '../settings-features';
 import { upsertMaintenance } from '../settings-maintenance';
 import {
@@ -81,6 +82,32 @@ export const settingsOpsApi = new Elysia({ prefix: '/settings' })
         enabled: t.Boolean(),
         message: t.Optional(t.Nullable(t.String({ maxLength: 500 }))),
         allowRoles: t.Optional(t.Nullable(t.Array(ROLE, { maxItems: 3 }))),
+      }),
+    },
+  )
+  .put(
+    '/demo',
+    async ({ request, body, status }) => {
+      const actor = await resolveActor(request);
+      if (!actor) return status(401, { error: 'Masuk dulu untuk mengubah pengaturan demo.' });
+      if (actor.role !== ROLES.SUPER_ADMIN)
+        return status(403, { error: 'Hanya super-admin yang bisa mengubah pengaturan demo.' });
+      const saved = await upsertDemo(body);
+      void audit({
+        actor: actor.user,
+        headers: request.headers,
+        action: AUDIT_ACTIONS.SETTINGS_DEMO_UPDATE,
+        targetType: 'settings',
+        targetId: 'demo',
+        summary: `Mode demo ${body.enabled ? 'DIAKTIFKAN' : 'dimatikan'} (TTL ${body.ttlHours ?? `default ${DEMO_DEFAULTS.ttlHours}`} jam)`,
+        meta: body,
+      });
+      return saved;
+    },
+    {
+      body: t.Object({
+        enabled: t.Boolean(),
+        ttlHours: t.Nullable(t.Integer({ minimum: 1, maximum: DEMO_DEFAULTS.maxTtlHours })),
       }),
     },
   )

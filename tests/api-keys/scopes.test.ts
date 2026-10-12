@@ -43,6 +43,13 @@ describe('requiredScope', () => {
     expect(isPublicRead('PUT', '/api/storage/avatars/u1/a.png')).toBe(false);
     expect(requiredScope('GET', '/api/storage/avatars/u1/a.png')).toBeNull();
     expect(requiredScope('PUT', '/api/storage/avatars/u1/a.png')).toBeNull();
+    expect(isPublicRead('GET', '/api/demo')).toBe(true);
+    expect(requiredScope('GET', '/api/demo')).toBeNull();
+    expect(isPublicRead('POST', '/api/demo/start')).toBe(false);
+    expect(requiredScope('POST', '/api/demo/start')).toBeNull();
+    expect(requiredScope('GET', '/api/settings/demo')).toBe('settings:read');
+    expect(requiredScope('PUT', '/api/settings/demo')).toBe('settings:write');
+    expect(requiredScope('POST', '/api/auth/sign-in/anonymous')).toBeNull();
   });
 });
 

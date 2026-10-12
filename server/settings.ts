@@ -24,6 +24,7 @@ import {
   effectiveBranding,
   parseBranding,
 } from './settings-branding';
+import { DEMO_DEFAULTS, type DemoSettings, parseDemo } from './settings-demo';
 import { type FeatureFlag, parseFeatureFlags } from './settings-features';
 import {
   MAINTENANCE_DEFAULTS,
@@ -134,6 +135,7 @@ export type SettingsOverview = {
   retention: RetentionState;
   maintenance: MaintenanceSettings & { defaults: typeof MAINTENANCE_DEFAULTS };
   features: FeatureFlag[];
+  demo: DemoSettings & { defaults: typeof DEMO_DEFAULTS };
   branding: {
     settings: BrandingSettings;
     defaults: typeof BRANDING_DEFAULTS;
@@ -153,6 +155,7 @@ export async function settingsOverview(): Promise<SettingsOverview> {
     retention: parseRetention(row),
     maintenance: { ...parseMaintenance(row), defaults: MAINTENANCE_DEFAULTS },
     features: parseFeatureFlags(row),
+    demo: { ...parseDemo(row), defaults: DEMO_DEFAULTS },
     branding: {
       settings: branding,
       defaults: BRANDING_DEFAULTS,
