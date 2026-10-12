@@ -102,6 +102,21 @@ describe('demo entry API', () => {
     expect(again.res.headers.getSetCookie()).toHaveLength(0);
   });
 
+  test('demo session: admin/dev APIs denied, sign-out still works', async () => {
+    await upsertDemo({ enabled: true, ttlHours: null });
+    const cookie = cookieHeader((await start()).res);
+    expect((await call('GET', '/api/admin/users', { headers: { cookie } })).res.status).toBe(403);
+    const demoPut = { headers: { cookie }, body: { enabled: false, ttlHours: null } };
+    expect((await call('PUT', '/api/settings/demo', demoPut)).res.status).toBe(403);
+
+    const out = await call('POST', '/api/auth/sign-out', {
+      headers: { cookie, origin: 'http://localhost' },
+      body: {},
+    });
+    expect(out.res.status).toBe(200);
+    expect(await realGetSession({ headers: new Headers({ cookie }) })).toBeNull();
+  });
+
   test('a signed-in real account gets 409 ALREADY_SIGNED_IN', async () => {
     await upsertDemo({ enabled: true, ttlHours: null });
     ctx.actor = { id: `${TAG}-u`, email: `${TAG}-u@test.local`, isAnonymous: false };
