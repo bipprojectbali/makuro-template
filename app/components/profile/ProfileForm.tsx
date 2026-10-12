@@ -9,8 +9,16 @@ import { AvatarField } from './AvatarField';
 
 const NAME_MAX = 80;
 
-/** Profile photo (object storage) + display name (Better Auth updateUser). */
-export function ProfileForm({ user, onSaved }: { user: AppUser; onSaved: () => void }) {
+/** Profile photo (object storage) + display name (Better Auth updateUser). `demo` hides the photo upload. */
+export function ProfileForm({
+  user,
+  onSaved,
+  demo = false,
+}: {
+  user: AppUser;
+  onSaved: () => void;
+  demo?: boolean;
+}) {
   const [name, setName] = useState(user.name);
   useEffect(() => setName(user.name), [user.name]);
 
@@ -37,9 +45,16 @@ export function ProfileForm({ user, onSaved }: { user: AppUser; onSaved: () => v
   });
 
   return (
-    <SettingsCard title="Profil" description="Nama dan foto yang tampil di aplikasi.">
+    <SettingsCard
+      title="Profil"
+      description={
+        demo ? 'Nama yang tampil di aplikasi.' : 'Nama dan foto yang tampil di aplikasi.'
+      }
+    >
       <Stack gap="sm">
-        <AvatarField image={user.image ?? null} name={trimmed || user.name} onChanged={onSaved} />
+        {!demo && (
+          <AvatarField image={user.image ?? null} name={trimmed || user.name} onChanged={onSaved} />
+        )}
         <TextInput
           label="Nama"
           value={name}

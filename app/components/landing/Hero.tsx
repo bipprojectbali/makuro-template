@@ -11,8 +11,11 @@ import {
   Text,
   Title,
 } from '@mantine/core';
+import { useQuery } from '@tanstack/react-query';
 import { FiArrowRight, FiCheck, FiGithub } from 'react-icons/fi';
 import { Link } from 'react-router';
+import { DemoStartButton } from '~/components/login/DemoStartButton';
+import { demoNote, fetchDemoStatus } from '~/lib/demo-api';
 import { GITHUB_URL } from './landing.content';
 
 export type LandingStats = {
@@ -52,6 +55,13 @@ export function Hero({
   signedIn: boolean;
   homePath: string;
 }) {
+  // Client-side: the landing loader stays cache-friendly; the button appears after hydration.
+  const demo = useQuery({
+    queryKey: ['demo-status'],
+    queryFn: fetchDemoStatus,
+    enabled: !signedIn,
+  });
+  const demoTtl = !signedIn && demo.data?.enabled ? demo.data.ttlHours : null;
   return (
     <Box component="section" pt={{ base: 48, md: 80 }} pb={{ base: 40, md: 64 }}>
       <Container size="lg">
@@ -89,7 +99,13 @@ export function Hero({
               >
                 Lihat di GitHub
               </Button>
+              {demoTtl !== null && <DemoStartButton size="md" />}
             </Group>
+            {demoTtl !== null && (
+              <Text size="sm" c="dimmed" mt={-8}>
+                Coba Demo tanpa akun. {demoNote(demoTtl)}.
+              </Text>
+            )}
             <Group gap="xs" wrap="wrap">
               {TRUST.map((t) => (
                 <Group key={t} gap={4} wrap="nowrap">

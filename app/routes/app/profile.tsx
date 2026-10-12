@@ -5,6 +5,7 @@ import { requireUser } from '@server/guard';
 import { useQuery } from '@tanstack/react-query';
 import { ApiKeysCard } from '~/components/profile/ApiKeysCard';
 import { DangerZoneCard } from '~/components/profile/DangerZoneCard';
+import { DemoProfileNotice } from '~/components/profile/DemoProfileNotice';
 import { LinkedAccountsCard } from '~/components/profile/LinkedAccountsCard';
 import { LoginHistoryCard } from '~/components/profile/LoginHistoryCard';
 import { PasswordCard } from '~/components/profile/PasswordCard';
@@ -57,6 +58,7 @@ export default function Profile({ loaderData }: Route.ComponentProps) {
     },
   });
   const hasPassword = hasPasswordAccount(accounts.data ?? []);
+  const demo = Boolean(user.isAnonymous);
 
   return (
     <Stack gap="md" p={{ base: 'sm', md: 'md' }} maw={880}>
@@ -67,23 +69,26 @@ export default function Profile({ loaderData }: Route.ComponentProps) {
         </Text>
       </div>
       <ProfileHeader user={user} role={role} />
-      <ProfileForm user={user} onSaved={() => refetchSession()} />
-      <PasswordCard hasPassword={hasPassword} onChanged={() => sessions.refetch()} />
-      <LinkedAccountsCard
-        accounts={accounts.data ?? []}
-        googleEnabled={loaderData.googleEnabled}
-        loading={accounts.isPending}
-        onChanged={() => accounts.refetch()}
-      />
+      <ProfileForm user={user} demo={demo} onSaved={() => refetchSession()} />
+      {demo && <DemoProfileNotice />}
+      {!demo && <PasswordCard hasPassword={hasPassword} onChanged={() => sessions.refetch()} />}
+      {!demo && (
+        <LinkedAccountsCard
+          accounts={accounts.data ?? []}
+          googleEnabled={loaderData.googleEnabled}
+          loading={accounts.isPending}
+          onChanged={() => accounts.refetch()}
+        />
+      )}
       <SessionsCard
         sessions={sessions.data ?? []}
         currentToken={currentToken}
         loading={sessions.isPending}
         onChanged={() => sessions.refetch()}
       />
-      <ApiKeysCard role={role} />
+      {!demo && <ApiKeysCard role={role} />}
       <LoginHistoryCard rows={loaderData.logins.rows} total={loaderData.logins.total} />
-      <DangerZoneCard email={user.email} hasPassword={hasPassword} />
+      {!demo && <DangerZoneCard email={user.email} hasPassword={hasPassword} />}
     </Stack>
   );
 }

@@ -14,9 +14,11 @@ import { hasLength, isEmail, isNotEmpty, useForm } from '@mantine/form';
 import { hasGoogleAuth } from '@server/env';
 import { getSettings } from '@server/settings';
 import { getBranding } from '@server/settings-branding';
+import { effectiveDemoTtlHours, getDemo } from '@server/settings-demo';
 import { useState } from 'react';
 import { FcGoogle } from 'react-icons/fc';
 import { useNavigate, useSearchParams } from 'react-router';
+import { DemoLoginOption } from '~/components/login/DemoStartButton';
 import { LoginNotice } from '~/components/login/LoginNotices';
 import { signIn, signUp } from '~/lib/auth-client';
 import { type AuthNotice, describeAuthError, loginNotice } from '~/lib/auth-errors';
@@ -27,11 +29,13 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export async function loader() {
-  const [{ emailAuthEnabled, signupEnabled }, branding] = await Promise.all([
+  const [{ emailAuthEnabled, signupEnabled }, branding, demo] = await Promise.all([
     getSettings(),
     getBranding(),
+    getDemo(),
   ]);
-  return { googleEnabled: hasGoogleAuth, emailAuthEnabled, signupEnabled, branding };
+  const demoTtlHours = demo.enabled ? effectiveDemoTtlHours(demo) : null;
+  return { googleEnabled: hasGoogleAuth, emailAuthEnabled, signupEnabled, branding, demoTtlHours };
 }
 
 const MIN_PASSWORD = 8;
@@ -39,8 +43,10 @@ const MIN_PASSWORD = 8;
 export default function Login({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { googleEnabled, emailAuthEnabled, signupEnabled, branding } = loaderData;
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const { googleEnabled, emailAuthEnabled, signupEnabled, branding, demoTtlHours } = loaderData;
+  const [mode, setMode] = useState<'signin' | 'signup'>(() =>
+    searchParams.get('mode') === 'signup' && signupEnabled ? 'signup' : 'signin',
+  );
   // Starts from the URL (guard redirect, OAuth callback), replaced by form results.
   const [notice, setNotice] = useState<AuthNotice | null>(() => loginNotice(searchParams));
   const [loading, setLoading] = useState(false);
@@ -166,6 +172,8 @@ export default function Login({ loaderData }: Route.ComponentProps) {
               </Stack>
             </form>
           )}
+
+          {demoTtlHours !== null && <DemoLoginOption ttlHours={demoTtlHours} />}
 
           {!googleEnabled && !emailAuthEnabled && (
             <Text c="dimmed" size="sm" ta="center">
