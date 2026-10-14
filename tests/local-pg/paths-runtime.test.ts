@@ -19,6 +19,8 @@ import {
   installedIntegrity,
   PG_ARCHIVES,
   pgBin,
+  progressLine,
+  registryRoot,
   runtimeInstalled,
 } from '../../server/local-pg/runtime';
 
@@ -90,6 +92,24 @@ describe('local-pg paths', () => {
       expect(a.url).toStartWith('https://registry.npmjs.org/@embedded-postgres/');
       expect(a.integrity).toMatch(/^sha512-[A-Za-z0-9+/]{86}==$/);
     }
+  });
+
+  it('registryRoot: npmjs by default, MAKURO_PG_REGISTRY overrides and trims trailing slash', () => {
+    expect(registryRoot({})).toBe('https://registry.npmjs.org');
+    expect(registryRoot({ MAKURO_PG_REGISTRY: '' })).toBe('https://registry.npmjs.org');
+    expect(registryRoot({ MAKURO_PG_REGISTRY: 'https://registry.npmmirror.com/' })).toBe(
+      'https://registry.npmmirror.com',
+    );
+  });
+
+  it('progressLine: percent + ETA with size, bytes + speed without', () => {
+    // 50% of 52.6 MB at ~1 MB/s → ~26 MB remaining ≈ 26s ETA.
+    expect(progressLine(26_214_400, 52_428_800, 1_048_576)).toBe(
+      '50% · 25.0/50.0 MB · 1.0 MB/s · ETA 25s',
+    );
+    expect(progressLine(10_485_760, 0, 2_097_152)).toBe('10.0 MB · 2.0 MB/s');
+    // Zero speed must not divide-by-zero the ETA.
+    expect(progressLine(0, 1000, 0)).toContain('ETA 0s');
   });
 });
 

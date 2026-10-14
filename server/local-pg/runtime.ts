@@ -6,9 +6,19 @@ import { currentPlatform, type PgPlatform, runtimeDir } from './paths';
 
 export type PgArchive = { url: string; integrity: string };
 
-const REGISTRY = 'https://registry.npmjs.org/@embedded-postgres';
+const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
+
+/** Registry root for the runtime tarball; MAKURO_PG_REGISTRY points it at a faster mirror (checksum still pinned). */
+export function registryRoot(env: NodeJS.ProcessEnv = process.env): string {
+  return (env.MAKURO_PG_REGISTRY || DEFAULT_REGISTRY).replace(/\/+$/, '');
+}
+
+function tarballUrl(p: PgPlatform, root = registryRoot()): string {
+  return `${root}/@embedded-postgres/${p}/-/${p}-18.4.0-beta.17.tgz`;
+}
+
 const archive = (p: PgPlatform, integrity: string): PgArchive => ({
-  url: `${REGISTRY}/${p}/-/${p}-18.4.0-beta.17.tgz`,
+  url: tarballUrl(p),
   integrity,
 });
 
@@ -56,10 +66,47 @@ async function sha512Integrity(file: string): Promise<string> {
   return `sha512-${hasher.digest('base64')}`;
 }
 
+/** One-line download status: `42% · 12.3/52.6 MB · 1.5 MB/s · ETA 27s` (drops %/ETA when size is unknown). */
+export function progressLine(downloaded: number, total: number, bytesPerSec: number): string {
+  const mb = (n: number) => (n / 1_048_576).toFixed(1);
+  const speed = `${mb(bytesPerSec)} MB/s`;
+  if (total > 0) {
+    const pct = Math.min(100, Math.round((downloaded / total) * 100));
+    const eta = bytesPerSec > 0 ? Math.max(0, Math.round((total - downloaded) / bytesPerSec)) : 0;
+    return `${pct}% · ${mb(downloaded)}/${mb(total)} MB · ${speed} · ETA ${eta}s`;
+  }
+  return `${mb(downloaded)} MB · ${speed}`;
+}
+
 async function download(url: string, dest: string): Promise<void> {
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Gagal mengunduh runtime Postgres ${url}: HTTP ${res.status}`);
-  await Bun.write(dest, res);
+  if (!res.ok || !res.body) {
+    throw new Error(`Gagal mengunduh runtime Postgres ${url}: HTTP ${res.status}`);
+  }
+  const total = Number(res.headers.get('content-length')) || 0;
+  const tty = Boolean(process.stderr.isTTY);
+  const sink = Bun.file(dest).writer();
+  const reader = res.body.getReader();
+  const start = Date.now();
+  let downloaded = 0;
+  let lastTick = 0;
+  const render = (final = false): void => {
+    const now = Date.now();
+    if (!final && now - lastTick < (tty ? 400 : 3000)) return;
+    lastTick = now;
+    const line = progressLine(downloaded, total, downloaded / Math.max(0.001, (now - start) / 1000));
+    process.stderr.write(tty ? `\r  ⬇  ${line}   ` : `  ⬇  ${line}\n`);
+  };
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    sink.write(value);
+    downloaded += value.byteLength;
+    render();
+  }
+  await sink.end();
+  render(true);
+  if (tty) process.stderr.write('\n');
 }
 
 async function untar(file: string, dest: string): Promise<void> {
