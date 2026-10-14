@@ -279,6 +279,8 @@ Saat bekerja dengan `bun build --compile --asset`:
 - Migrasi ter-embed di binary pada `/$bunfs/root/migrations`; di mode skrip dibaca dari `server/db/migrations`.
 - Menyentuh `local-pg/` atau `cli/` → jalankan `bun run smoke:coldboot` selain `smoke:prod`/`smoke:binary`.
 - PG lokal app memakai port `54329`. **Jangan** pkill/stop Postgres milik user (port 5432) — hentikan hanya PID yang kamu jalankan.
+- **Toggle mode = `DATABASE_URL`:** kosong → embedded, terisi → database itu. `.env.example` mengirim `DATABASE_URL` terisi ke `localhost:5432`, jadi clone baru **wajib** mengosongkannya (atau jalankan `bun run cli init --db=local` yang menulis `.env` benar) sebelum `bun run dev` — kalau tidak, dev gagal konek ke Postgres yang tak ada.
+- `drizzle.config.ts` mencerminkan `isLocalMode()`: `db:studio`/`db:migrate`/`db:push` otomatis menunjuk socket embedded saat `DATABASE_URL` kosong (dev harus jalan agar socket ada). Jangan kembalikan fallback URL `localhost:5432` yang hardcoded.
 
 ## Storage (S3 / RustFS lokal) — Catatan Agent
 

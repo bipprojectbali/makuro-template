@@ -67,7 +67,10 @@ bun install
 # 2. Konfigurasi env
 cp .env.example .env
 # Wajib: BETTER_AUTH_SECRET (openssl rand -base64 32)
-# DATABASE_URL: isi untuk Postgres sendiri, atau KOSONGKAN untuk Postgres lokal otomatis
+# DATABASE_URL: .env.example mengirimnya TERISI ke localhost:5432 — KOSONGKAN (atau
+#   komentari) untuk Postgres lokal otomatis, atau isi ke Postgres sendiri. Jangan
+#   biarkan nilai bawaan kalau tak punya Postgres di :5432, nanti `bun run dev` gagal.
+#   `bun run cli init --db=local` menuliskan .env yang benar untuk kamu.
 # Opsional: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 # Wajib di belakang reverse proxy/LB/Cloudflare: TRUSTED_PROXIES (IP/CIDR proxy, lihat "Rate limiting")
 
@@ -167,10 +170,18 @@ Satu dialect (PostgreSQL) di semua tahap — yang berganti hanya siapa yang menj
 
 **Postgres lokal otomatis** aktif bila `DATABASE_URL` kosong atau `LOCAL_PG_DIR` diset. Bila `DATABASE_URL` diisi, perilaku sama seperti biasa.
 
-- Runtime PostgreSQL 18.4 dari paket npm `@embedded-postgres/<os>-<arch>` (MIT), diunduh sekali saat `init`, hash sha512 di-pin di binary. Disimpan di cache global `~/.cache/makuro-template/pg/18.4.0/<platform>` (`XDG_CACHE_HOME` dihormati), dipakai bersama semua folder app.
+- Runtime PostgreSQL 18.4 dari paket npm `@embedded-postgres/<os>-<arch>` (MIT), diunduh sekali saat `init` (±53 MB, dengan progres: persen/kecepatan/ETA), hash sha512 di-pin di binary. Disimpan di cache global `~/.cache/makuro-template/pg/18.4.0/<platform>` (`XDG_CACHE_HOME` dihormati), dipakai bersama semua folder app dengan nama package sama.
+- **Unduhan lambat?** `registry.npmjs.org` bisa lambat/stall di sebagian wilayah. Alihkan ke mirror lebih dekat lewat `MAKURO_PG_REGISTRY` (checksum sha512 tetap diverifikasi, jadi aman):
+
+  ```bash
+  MAKURO_PG_REGISTRY=https://registry.npmmirror.com bun run cli init --db=local
+  ```
+
+  Atau unduh tarball sendiri (curl mendukung resume `-C -`) lalu pasang offline: `bun run cli init --db=local --pg-archive=<file.tgz>`.
 - Data di `./data/pg` (`LOCAL_PG_DIR`), port `54329` (`LOCAL_PG_PORT`), nama database = nama package `makuro_template` (ubah dengan `LOCAL_PG_DB`; test memakai `<nama>_test`). Tanpa listener TCP: koneksi hanya lewat unix socket di direktori 0700 milik user (`/tmp/makuro_template-pg-<uid>`, ubah dengan `LOCAL_PG_SOCKET_DIR`), sehingga user lain di mesin yang sama tidak bisa masuk. Zona waktu database selalu UTC. Postmaster yatim dari proses yang di-`kill -9` dihentikan otomatis saat start berikutnya. Migrasi berjalan otomatis saat boot (dev, `start`, binary).
 - Platform: linux-x64, linux-arm64 (glibc), darwin-arm64, darwin-x64. musl/Alpine tidak didukung untuk mode lokal.
 - Postgres menolak berjalan sebagai root — jalankan app sebagai user biasa.
+- Lihat struktur/data: `bun run db:studio` (Drizzle Studio) otomatis menunjuk cluster embedded lewat unix socket saat `DATABASE_URL` kosong — nyalakan `bun run dev` dulu agar socket-nya ada. Dengan `DATABASE_URL` terisi, Studio memakai database itu.
 
 **Tangga pertumbuhan:**
 
