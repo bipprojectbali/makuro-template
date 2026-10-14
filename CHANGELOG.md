@@ -25,6 +25,7 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 - Workflow rilis kini menolak tag yang tidak sama dengan `v<version>` di `package.json` atau versi yang belum punya entry di CHANGELOG, sebelum build dimulai. Catatan rilis di GitHub Release diambil dari bagian versi tersebut di CHANGELOG, bukan daftar commit otomatis.
 - CI dan build binary Linux kini berjalan di runner `ubuntu-24.04` yang dipatok, sehingga tidak ikut berpindah otomatis saat `ubuntu-latest` beralih ke Ubuntu 26.04 (mulai 19 Oktober 2026).
 - **Keamanan, Postgres lokal:** Postgres lokal tidak lagi membuka port TCP `127.0.0.1`. Sebelumnya auth `trust` di TCP membuat user lain di mesin yang sama bisa masuk sebagai superuser. Koneksi kini hanya lewat unix socket di direktori 0700 milik user (default `/tmp/makuro_template-pg-<uid>`, bisa diubah dengan `LOCAL_PG_SOCKET_DIR`). Format `DATABASE_URL` lokal berubah menjadi `postgres://postgres@localhost:54329/makuro_template?host=<dir socket>`. Perintah `pg_dump` di README sudah disesuaikan.
+- `bun run db:studio` dan perintah drizzle-kit lain (`db:migrate`, `db:push`) kini otomatis menunjuk ke Postgres embedded lewat unix socket saat `DATABASE_URL` kosong, tanpa perlu menyetel variabel manual. Dengan `DATABASE_URL` terisi, perintah memakai database itu seperti biasa.
 
 ### Fixed
 - `bun run test` kini menghentikan Postgres lokal yang ia nyalakan sendiri setelah test selesai. Sebelumnya proses Postgres tertinggal dan memegang port `54329`. Postgres milik `bun dev` yang sedang jalan tetap tidak disentuh.

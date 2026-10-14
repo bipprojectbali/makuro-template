@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { defineConfig } from 'drizzle-kit';
+import { isLocalMode, localPgDb, localPgPort, socketDir } from './server/local-pg/paths';
 
 export default defineConfig({
   dialect: 'postgresql',
@@ -10,9 +11,10 @@ export default defineConfig({
     './server/db/schema.keys.ts',
   ],
   out: './server/db/migrations',
-  dbCredentials: {
-    url: process.env.DATABASE_URL ?? 'postgres://makuro:makuro@localhost:5432/makuro',
-  },
+  // Mirror the app's mode: embedded cluster over its unix socket when DATABASE_URL is empty.
+  dbCredentials: isLocalMode()
+    ? { host: socketDir(), port: localPgPort(), user: 'postgres', database: localPgDb() }
+    : { url: process.env.DATABASE_URL! },
   verbose: true,
   strict: true,
 });
