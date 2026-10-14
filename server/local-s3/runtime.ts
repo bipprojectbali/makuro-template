@@ -2,6 +2,7 @@
 import { existsSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { downloadWithProgress } from '../runtime-download';
 import {
   currentS3Platform,
   RUSTFS_VERSION,
@@ -12,9 +13,15 @@ import {
 
 export type S3Archive = { url: string; sha256: string };
 
-const RELEASES = `https://github.com/rustfs/rustfs/releases/download/${RUSTFS_VERSION}`;
+const DEFAULT_RELEASES = `https://github.com/rustfs/rustfs/releases/download/${RUSTFS_VERSION}`;
+
+/** Release base for the RustFS zip; MAKURO_RUSTFS_RELEASES points it at a faster mirror (checksum still pinned). */
+export function releasesBase(env: NodeJS.ProcessEnv = process.env): string {
+  return (env.MAKURO_RUSTFS_RELEASES || DEFAULT_RELEASES).replace(/\/+$/, '');
+}
+
 const archive = (asset: string, sha256: string): S3Archive => ({
-  url: `${RELEASES}/${asset}`,
+  url: `${releasesBase()}/${asset}`,
   sha256,
 });
 
@@ -91,9 +98,7 @@ export async function ensureS3Runtime(opts: EnsureS3RuntimeOptions = {}): Promis
     let file = opts.archive;
     if (!file) {
       progress(`Mengunduh RustFS dari ${source.url}`);
-      const res = await fetch(source.url);
-      if (!res.ok) throw new Error(`Gagal mengunduh RustFS ${source.url}: HTTP ${res.status}`);
-      await Bun.write(tmpArchive, res);
+      await downloadWithProgress(source.url, tmpArchive, 'RustFS');
       file = tmpArchive;
     }
     progress('Memverifikasi checksum sha256');

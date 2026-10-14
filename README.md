@@ -216,7 +216,8 @@ await storage().delete(`docs/${id}.pdf`);
 
 **Storage lokal otomatis** aktif bila `S3_ENDPOINT` kosong: app menjalankan [RustFS](https://github.com/rustfs/rustfs) 1.0.1 (Apache-2.0) sebagai child process, sama seperti Postgres lokal, jadi tidak perlu menjalankan server storage sendiri.
 
-- Runtime diunduh sekali (`init`, atau otomatis saat `bun run dev`/test) dari GitHub Release RustFS dengan sha256 yang di-pin, ke `~/.cache/makuro-template/rustfs/1.0.1/<platform>` (~88 MB). Ekstraksi memakai `unzip`, jadi pastikan `unzip` terpasang. Server tanpa internet: `init --s3-archive=<zip>` memakai arsip yang diunduh manual (sha256 tetap diverifikasi).
+- Runtime diunduh sekali (`init`, atau otomatis saat `bun run dev`/test) dari GitHub Release RustFS dengan sha256 yang di-pin, ke `~/.cache/makuro-template/rustfs/1.0.1/<platform>` (~88 MB), dengan progres langsung (persen/MB/kecepatan/ETA). Ekstraksi memakai `unzip`, jadi pastikan `unzip` terpasang. Server tanpa internet: `init --s3-archive=<zip>` memakai arsip yang diunduh manual (sha256 tetap diverifikasi).
+- Unduhan lambat? Rilis GitHub bisa lambat/stall di sebagian wilayah — alihkan ke mirror lewat `MAKURO_RUSTFS_RELEASES` (checksum sha256 tetap diverifikasi), mis. `MAKURO_RUSTFS_RELEASES=https://mirror.example/rustfs/1.0.1 bun run cli init`.
 - Data di `./data/s3` (`LOCAL_S3_DIR`), port `54330` (`LOCAL_S3_PORT`), hanya `127.0.0.1`. Kredensial acak dibuat saat boot pertama dan disimpan di `<LOCAL_S3_DIR>/keys.json` (mode 0600). Nama bucket = nama package (ubah dengan `LOCAL_S3_BUCKET`), test memakai `<bucket>-test`.
 - Platform: linux-x64, linux-arm64, darwin-arm64. darwin-x64 belum didukung, jadi isi `S3_ENDPOINT` dengan S3 eksternal.
 - RustFS tidak mengunci volume sendiri. App mencegah dua instance dengan memeriksa port dan `<LOCAL_S3_DIR>/rustfs.pid`, jadi jangan menjalankan RustFS lain di direktori yang sama.

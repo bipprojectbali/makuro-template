@@ -15,6 +15,7 @@ import {
 } from '../../server/local-s3/paths';
 import {
   ensureS3Runtime,
+  releasesBase,
   rustfsBin,
   S3_ARCHIVES,
   s3RuntimeInstalled,
@@ -63,6 +64,16 @@ describe('local-s3 paths', () => {
     for (const s of ['Ab', 'a b c', '../x', 'ÄÖÜ-bucket']) {
       expect(toBucketName(s)).toMatch(/^[a-z0-9][a-z0-9-]{1,56}[a-z0-9]$/);
     }
+  });
+
+  it('releasesBase: GitHub by default, MAKURO_RUSTFS_RELEASES overrides and trims trailing slash', () => {
+    expect(releasesBase({})).toBe('https://github.com/rustfs/rustfs/releases/download/1.0.1');
+    expect(releasesBase({ MAKURO_RUSTFS_RELEASES: '' })).toBe(
+      'https://github.com/rustfs/rustfs/releases/download/1.0.1',
+    );
+    expect(releasesBase({ MAKURO_RUSTFS_RELEASES: 'https://mirror.example/rustfs/' })).toBe(
+      'https://mirror.example/rustfs',
+    );
   });
 
   it('pins an https GitHub release zip + sha256 for every supported platform', () => {
