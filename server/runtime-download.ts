@@ -13,7 +13,11 @@ export function progressLine(downloaded: number, total: number, bytesPerSec: num
 }
 
 /** Download `url` to `dest`, streaming to disk while writing live progress (percent/MB/speed/ETA) to stderr. */
-export async function downloadWithProgress(url: string, dest: string, label: string): Promise<void> {
+export async function downloadWithProgress(
+  url: string,
+  dest: string,
+  label: string,
+): Promise<void> {
   const res = await fetch(url);
   if (!res.ok || !res.body) throw new Error(`Gagal mengunduh ${label} ${url}: HTTP ${res.status}`);
   const total = Number(res.headers.get('content-length')) || 0;
@@ -27,7 +31,11 @@ export async function downloadWithProgress(url: string, dest: string, label: str
     const now = Date.now();
     if (!final && now - lastTick < (tty ? 400 : 3000)) return;
     lastTick = now;
-    const line = progressLine(downloaded, total, downloaded / Math.max(0.001, (now - start) / 1000));
+    const line = progressLine(
+      downloaded,
+      total,
+      downloaded / Math.max(0.001, (now - start) / 1000),
+    );
     process.stderr.write(tty ? `\r  ⬇  ${line}   ` : `  ⬇  ${line}\n`);
   };
   for (;;) {
