@@ -30,6 +30,7 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 - Unduhan runtime storage RustFS kini juga menampilkan progres langsung yang sama (persen/MB/kecepatan/ETA). Rilis GitHub yang lambat bisa dialihkan ke mirror lewat `MAKURO_RUSTFS_RELEASES`; checksum sha256 tetap diverifikasi. Tanpa internet, tetap bisa `init --s3-archive=<zip>`.
 
 ### Fixed
+- Halaman `/login` tidak lagi bisa dibuka saat sudah masuk. Sebelumnya user yang sudah login bisa membuka `/login` dan melakukan sign-in lagi; kini ia langsung diarahkan ke beranda sesuai rolenya (`/app`, `/dashboard`, atau `/dev`).
 - `bun run test` kini menghentikan Postgres lokal yang ia nyalakan sendiri setelah test selesai. Sebelumnya proses Postgres tertinggal dan memegang port `54329`. Postgres milik `bun dev` yang sedang jalan tetap tidak disentuh.
 - Variabel `.env` yang dibiarkan kosong (mis. `DATABASE_URL_TEST=` atau `MCP_ADMIN_TOKEN=`) kini dianggap tidak di-set, sehingga `bun run dev` tidak lagi gagal dengan "Invalid environment variables".
 - **Keamanan data:** test tidak lagi diam-diam memakai database dev saat `DATABASE_URL_TEST` kosong. Sebelumnya hal itu bisa menghapus data dev. Di mode Postgres lokal, `bun run test` kini otomatis menyiapkan database `<nama>_test` terpisah. Dengan Postgres eksternal, test menolak berjalan sampai `DATABASE_URL_TEST` di-set.
