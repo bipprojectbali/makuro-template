@@ -1,5 +1,6 @@
 import { Box, Paper, SimpleGrid } from '@mantine/core';
 import { hasGoogleAuth } from '@server/env';
+import { redirectIfSignedIn } from '@server/guard';
 import { getSettings } from '@server/settings';
 import { getBranding } from '@server/settings-branding';
 import { effectiveDemoTtlHours, getDemo } from '@server/settings-demo';
@@ -11,7 +12,8 @@ export function meta({ loaderData }: Route.MetaArgs) {
   return [{ title: `Masuk — ${loaderData?.branding.appName ?? 'Makuro'}` }];
 }
 
-export async function loader() {
+export async function loader({ request }: Route.LoaderArgs) {
+  await redirectIfSignedIn(request);
   const [{ emailAuthEnabled, signupEnabled }, branding, demo] = await Promise.all([
     getSettings(),
     getBranding(),

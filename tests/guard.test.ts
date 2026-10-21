@@ -31,7 +31,13 @@ const roleSpy = spyOn(rolesMod, 'resolveUserRole').mockImplementation(
   async () => ctx.role as 'user',
 );
 
-import { requireAnyRole, requireRole, requireUser, resolveActor } from '../server/guard';
+import {
+  redirectIfSignedIn,
+  requireAnyRole,
+  requireRole,
+  requireUser,
+  resolveActor,
+} from '../server/guard';
 import { ROLES } from '../server/permissions';
 import * as settingsCore from '../server/settings.core';
 
@@ -149,6 +155,31 @@ describe('resolveActor — demo expiry', () => {
     } finally {
       readSpy.mockRestore();
     }
+  });
+});
+
+describe('redirectIfSignedIn', () => {
+  test('anonymous → returns so the login page renders', async () => {
+    ctx.user = null;
+    expect(await catchRedirect(() => redirectIfSignedIn(request()))).toBeNull();
+  });
+
+  test('live session → bounced to that role’s home instead of logging in again', async () => {
+    ctx.user = { id: 'l1', email: 'l1@test.local' };
+    for (const [role, home] of [
+      [ROLES.USER, '/app'],
+      [ROLES.ADMIN, '/dashboard'],
+      [ROLES.SUPER_ADMIN, '/dev'],
+    ] as const) {
+      ctx.role = role;
+      const res = await catchRedirect(() => redirectIfSignedIn(request()));
+      expect({ role, to: res?.headers.get('Location') }).toEqual({ role, to: home });
+    }
+  });
+
+  test('banned session → login still renders (ban notice lives at /banned)', async () => {
+    ctx.user = { id: 'l2', email: 'l2@test.local', banned: true, banExpires: null };
+    expect(await catchRedirect(() => redirectIfSignedIn(request()))).toBeNull();
   });
 });
 

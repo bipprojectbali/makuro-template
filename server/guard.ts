@@ -104,3 +104,13 @@ export async function redirectToHome(request: Request): Promise<never> {
   if (!actor) throw redirect(signedOutTarget(request));
   throw redirect(homeFor(actor.role));
 }
+
+/**
+ * Guard for the login page: a caller who already has a live session is sent to
+ * their role's home instead of being offered a second sign-in. Returns normally
+ * for anonymous callers so the page can render.
+ */
+export async function redirectIfSignedIn(request: Request): Promise<void> {
+  const actor = await resolveActor(request);
+  if (actor) throw redirect(homeFor(actor.role));
+}
