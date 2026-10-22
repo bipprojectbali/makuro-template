@@ -1,15 +1,43 @@
-# Optional local Postgres for the Makuro template.
+# Makuro di Docker. Mode dipilih dari ada/tidaknya DATABASE_URL & S3_ENDPOINT.
 #
-# You already run a shared Postgres (infra-postgres / pgvector on :5432), so by
-# default this file does NOTHING unless you opt in with the `local-db` profile:
+# 1) Satu container, semuanya di dalam (Postgres + RustFS embedded, data di volume app_data):
+#      docker compose up -d app
 #
-#   docker compose --profile local-db up -d
+# 2) Postgres container terpisah — service `db` di file ini opt-in lewat profile
+#    `local-db`, jadi secara default ia TIDAK jalan:
+#      DATABASE_URL=postgres://makuro:makuro@db:5432/makuro APP_TARGET=runtime \
+#        docker compose --profile local-db up -d
 #
-# If you use the shared instance instead, just point DATABASE_URL at it and
-# create the database once:
-#   docker exec <your-postgres> psql -U <user> -d postgres -c "CREATE DATABASE makuro;"
+# 3) Postgres bersama yang sudah kamu jalankan sendiri (infra-postgres / pgvector
+#    di :5432) — biarkan service `db` mati, arahkan DATABASE_URL ke sana, dan buat
+#    database-nya sekali saja:
+#      docker exec <your-postgres> psql -U <user> -d postgres -c "CREATE DATABASE makuro;"
 
 services:
+  app:
+    build:
+      context: .
+      target: ${APP_TARGET:-embedded}
+    restart: unless-stopped
+    environment:
+      PORT: 3005
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?wajib diisi — openssl rand -hex 32}
+      APP_URL: ${APP_URL:-http://localhost:3005}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3005}
+      SUPER_ADMIN_EMAILS: ${SUPER_ADMIN_EMAILS-}
+      # Kosong = Postgres embedded di /app/data/pg; isi untuk memakai database lain.
+      # Terisi: migrasi tidak jalan otomatis — jalankan `bun run db:migrate` sendiri.
+      DATABASE_URL: ${DATABASE_URL-}
+      # Kosong = RustFS embedded di /app/data/s3; isi untuk S3 eksternal.
+      S3_ENDPOINT: ${S3_ENDPOINT-}
+      S3_BUCKET: ${S3_BUCKET-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY-}
+    ports:
+      - '${APP_PORT:-3005}:3005'
+    volumes:
+      - app_data:/app/data
+
   db:
     profiles: ['local-db']
     image: pgvector/pgvector:pg16
@@ -30,3 +58,4 @@ services:
 
 volumes:
   makuro_pgdata:
+  app_data:

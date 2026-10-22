@@ -8,3 +8,6 @@ build
 .vite
 Dockerfile
 docker-compose.yml
+data
+backups
+dist
