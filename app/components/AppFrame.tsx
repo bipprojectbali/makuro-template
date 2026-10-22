@@ -91,7 +91,11 @@ export function AppFrame(props: Props) {
   const appName = branding?.appName ?? 'Makuro';
   const [mobileOpened, { toggle: toggleMobile, close: closeMobile }] = useDisclosure();
   // Initialized from server-resolved value — no useEffect needed, no flash.
-  const [collapsed, setCollapsed] = useState(initialCollapsed);
+  const [collapsedPref, setCollapsed] = useState(initialCollapsed);
+  // The rail preference is desktop-only. An icon-only drawer hides every label behind a
+  // hover Tooltip, which touch cannot reach — so the mobile overlay always renders expanded.
+  // `mobileOpened` is a safe proxy for "below sm": the Burger that sets it is hiddenFrom="sm".
+  const collapsed = collapsedPref && !mobileOpened;
   const { data } = useSession();
   const impersonating = Boolean(
     (data?.session as { impersonatedBy?: string } | undefined)?.impersonatedBy,

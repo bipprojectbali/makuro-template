@@ -1,4 +1,15 @@
-import { Anchor, Badge, Divider, Drawer, Group, Stack, Table, Text, Tooltip } from '@mantine/core';
+import {
+  Anchor,
+  Badge,
+  Box,
+  Divider,
+  Drawer,
+  Group,
+  Stack,
+  Table,
+  Text,
+  Tooltip,
+} from '@mantine/core';
 import type { FkEdge, TableMeta } from '@server/db/schema-introspect';
 import type { TableStats } from '@server/db/schema-stats';
 import { columnSignature, defaultLabel, fmtBytes, onDeleteLabel } from '~/lib/db-schema-format';
@@ -57,61 +68,63 @@ export function TableDetailDrawer({ table, edges, stats, onClose, onSelect }: Pr
           <Divider />
 
           <Section title="Kolom">
-            <Table fz="xs" verticalSpacing={4} withRowBorders>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Nama</Table.Th>
-                  <Table.Th>Tipe</Table.Th>
-                  <Table.Th>Null</Table.Th>
-                  <Table.Th>Default</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {table.columns.map((c) => (
-                  <Table.Tr key={c.key}>
-                    <Table.Td>
-                      <Tooltip label={columnSignature(c)} withArrow openDelay={300}>
-                        <Group gap={4} wrap="nowrap">
-                          {c.pk && (
-                            <Text span fw={700} c={PK_COL} fz={9}>
-                              PK
-                            </Text>
-                          )}
-                          {c.fkTable && (
-                            <Text span fw={700} c={ACCENT} fz={9}>
-                              FK
-                            </Text>
-                          )}
-                          {c.unique && !c.pk && (
-                            <Text span fw={700} c="dimmed" fz={9}>
-                              UQ
-                            </Text>
-                          )}
-                          <Text ff="monospace" size="xs" fw={c.pk ? 600 : 400}>
-                            {c.dbName}
-                          </Text>
-                        </Group>
-                      </Tooltip>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text ff="monospace" size="xs" c="dimmed">
-                        {c.type}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="xs" c={c.notNull ? 'dimmed' : undefined}>
-                        {c.notNull ? 'tidak' : 'ya'}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text ff="monospace" size="xs" c="dimmed">
-                        {defaultLabel(c)}
-                      </Text>
-                    </Table.Td>
+            <Box style={{ overflowX: 'auto' }}>
+              <Table fz="xs" verticalSpacing={4} withRowBorders>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Nama</Table.Th>
+                    <Table.Th>Tipe</Table.Th>
+                    <Table.Th>Null</Table.Th>
+                    <Table.Th>Default</Table.Th>
                   </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
+                </Table.Thead>
+                <Table.Tbody>
+                  {table.columns.map((c) => (
+                    <Table.Tr key={c.key}>
+                      <Table.Td>
+                        <Tooltip label={columnSignature(c)} withArrow openDelay={300}>
+                          <Group gap={4} wrap="nowrap">
+                            {c.pk && (
+                              <Text span fw={700} c={PK_COL} fz={9}>
+                                PK
+                              </Text>
+                            )}
+                            {c.fkTable && (
+                              <Text span fw={700} c={ACCENT} fz={9}>
+                                FK
+                              </Text>
+                            )}
+                            {c.unique && !c.pk && (
+                              <Text span fw={700} c="dimmed" fz={9}>
+                                UQ
+                              </Text>
+                            )}
+                            <Text ff="monospace" size="xs" fw={c.pk ? 600 : 400}>
+                              {c.dbName}
+                            </Text>
+                          </Group>
+                        </Tooltip>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text ff="monospace" size="xs" c="dimmed">
+                          {c.type}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="xs" c={c.notNull ? 'dimmed' : undefined}>
+                          {c.notNull ? 'tidak' : 'ya'}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text ff="monospace" size="xs" c="dimmed">
+                          {defaultLabel(c)}
+                        </Text>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Box>
           </Section>
           <Divider />
 

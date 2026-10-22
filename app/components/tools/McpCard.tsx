@@ -1,6 +1,7 @@
 import {
   ActionIcon,
   Badge,
+  Box,
   Button,
   Code,
   CopyButton,
@@ -59,30 +60,32 @@ export function McpCard({ info }: { info: McpInfo | undefined }) {
           ? `Token bersama ${info.auth.legacyEnvVar} (header Bearer atau ?${info.auth.legacyQuery}=) masih diterima sebagai jalur lama; sebaiknya pindah ke API key lalu hapus env tersebut.`
           : `Token bersama ${info.auth.legacyEnvVar} tidak diset — hanya API key ber-scope mcp yang diterima.`}
       </Text>
-      <Table fz="sm" verticalSpacing={4} withRowBorders>
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>Tool</Table.Th>
-            <Table.Th>Fungsi</Table.Th>
-            <Table.Th w={100}>Grup</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {info.tools.map((t) => (
-            <Table.Tr key={t.name}>
-              <Table.Td>
-                <Code>{t.name}</Code>
-              </Table.Td>
-              <Table.Td>{t.description}</Table.Td>
-              <Table.Td>
-                <Badge size="xs" variant="light">
-                  {GROUP_LABEL[t.group] ?? t.group}
-                </Badge>
-              </Table.Td>
+      <Box style={{ overflowX: 'auto' }}>
+        <Table fz="sm" verticalSpacing={4} withRowBorders>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Tool</Table.Th>
+              <Table.Th>Fungsi</Table.Th>
+              <Table.Th w={100}>Grup</Table.Th>
             </Table.Tr>
-          ))}
-        </Table.Tbody>
-      </Table>
+          </Table.Thead>
+          <Table.Tbody>
+            {info.tools.map((t) => (
+              <Table.Tr key={t.name}>
+                <Table.Td>
+                  <Code>{t.name}</Code>
+                </Table.Td>
+                <Table.Td>{t.description}</Table.Td>
+                <Table.Td>
+                  <Badge size="xs" variant="light">
+                    {GROUP_LABEL[t.group] ?? t.group}
+                  </Badge>
+                </Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+      </Box>
       <Stack gap={4}>
         <Group justify="space-between">
           <Text size="sm" fw={500}>

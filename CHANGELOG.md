@@ -17,6 +17,7 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 - Saklar **Mode demo** di `/dev/settings` untuk menyalakan/mematikan demo dan mengatur masa berlaku (1 jam sampai 7 hari). Perubahan tercatat di audit log, dan badge sidebar Settings menampilkan jumlah user demo aktif.
 - Banner di setiap halaman `/app` saat memakai akun demo, berisi sisa waktu demo dan tombol keluar dari demo.
 - Aksi sensitif diblokir untuk user demo dengan pesan yang jelas: membuat API key, mengganti email atau password, reset password, mengunggah/menghapus foto profil, dan menautkan akun sosial.
+- Aturan mobile di `CLAUDE.md` kini dijaga `bun run test`, bukan sekadar dokumentasi: burger harus berada di dalam `AppShell.Header`, setiap tabel wajib punya wrapper geser horizontal, tabel ≥4 kolom wajib punya tampilan kartu untuk HP, tidak boleh ada lebar tetap di atas 375px, dan header halaman tidak boleh memakai `wrap="nowrap"` bersama tombol aksi. Halaman baru yang melanggar langsung gagal di test.
 
 ### Changed
 - Halaman login didesain ulang menjadi kartu dua kolom. Form ada di kiri: input bergaya filled, tombol Google di bawah pemisah "atau", tombol Coba Demo, dan tautan Daftar/Masuk menggantikan tab. Di kanan ada panel showcase bertema warna utama yang hanya tampil di layar lebar. Nama dan tagline diambil dari pengaturan branding.
@@ -31,6 +32,9 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 - Unduhan runtime storage RustFS kini juga menampilkan progres langsung yang sama (persen/MB/kecepatan/ETA). Rilis GitHub yang lambat bisa dialihkan ke mirror lewat `MAKURO_RUSTFS_RELEASES`; checksum sha256 tetap diverifikasi. Tanpa internet, tetap bisa `init --s3-archive=<zip>`.
 
 ### Fixed
+- Menu samping di layar HP kini selalu tampil lebar penuh dengan label teks. Sebelumnya preferensi sidebar ciut (rail ikon) di desktop ikut terpakai di HP, sehingga menu jadi deretan ikon yang labelnya hanya muncul saat hover — tidak bisa dijangkau sentuhan.
+- Tabel kolom di detail tabel database (`/dev/db-schema`) dan tabel tool MCP (`/dev/tools`) kini bisa digeser horizontal di layar sempit, tidak lagi terpotong.
+- Log pemakaian API key (`/dev/api-keys` → Log pemakaian) kini tampil sebagai kartu di HP, jadi waktu, kunci, path, status, dan durasi terbaca tanpa menggeser tabel ke samping.
 - Halaman `/login` tidak lagi bisa dibuka saat sudah masuk. Sebelumnya user yang sudah login bisa membuka `/login` dan melakukan sign-in lagi; kini ia langsung diarahkan ke beranda sesuai rolenya (`/app`, `/dashboard`, atau `/dev`).
 - `bun run test` kini menghentikan Postgres lokal yang ia nyalakan sendiri setelah test selesai. Sebelumnya proses Postgres tertinggal dan memegang port `54329`. Postgres milik `bun dev` yang sedang jalan tetap tidak disentuh.
 - Variabel `.env` yang dibiarkan kosong (mis. `DATABASE_URL_TEST=` atau `MCP_ADMIN_TOKEN=`) kini dianggap tidak di-set, sehingga `bun run dev` tidak lagi gagal dengan "Invalid environment variables".

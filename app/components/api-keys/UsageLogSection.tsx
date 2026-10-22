@@ -1,6 +1,5 @@
 import {
   Alert,
-  Badge,
   Box,
   Button,
   CloseButton,
@@ -26,7 +25,6 @@ import {
   type UsageLogFilters as Filters,
   fetchUsageLog,
   hasActiveUsageFilters,
-  statusClass,
   type UsageLogRow,
   usageExportUrl,
 } from '~/lib/api-keys-usage-api';
@@ -34,11 +32,11 @@ import { useTimeFormat } from '~/lib/time-format';
 import { countryFlag } from '~/lib/visits-format';
 import { TruncatedText } from '../logs/TruncatedText';
 import { VisitEmptyState } from '../visits/VisitEmptyState';
+import { StatusBadge, UsageCardList } from './UsageCardList';
 
 const LIMIT = 25;
 const nf = new Intl.NumberFormat('id-ID');
 const SKELETON_KEYS = ['s0', 's1', 's2', 's3', 's4'];
-const STATUS_COLOR = { ok: 'teal', client: 'orange', server: 'red' } as const;
 const STATUS_OPTIONS = [
   { value: 'all', label: 'Semua status' },
   { value: '2xx', label: 'Sukses (2xx)' },
@@ -56,14 +54,6 @@ const DAYS = [
   { value: '30', label: '30 hari' },
   { value: '90', label: '90 hari' },
 ];
-
-function StatusBadge({ status }: { status: number }) {
-  return (
-    <Badge size="xs" variant="light" color={STATUS_COLOR[statusClass(status)]}>
-      {status}
-    </Badge>
-  );
-}
 
 function Rows({ rows, onKey }: { rows: UsageLogRow[]; onKey: (id: string) => void }) {
   const { dateTime: formatDateTime, relative: formatRelative } = useTimeFormat();
@@ -244,7 +234,7 @@ export function UsageLogSection() {
           {(log.error as Error).message}
         </Alert>
       )}
-      <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
+      <Paper withBorder radius="md" visibleFrom="sm" style={{ overflow: 'hidden' }}>
         <Box style={{ overflowX: 'auto' }}>
           <Table
             highlightOnHover
@@ -282,6 +272,14 @@ export function UsageLogSection() {
           </Table>
         </Box>
       </Paper>
+      <Box hiddenFrom="sm">
+        <UsageCardList
+          rows={rows}
+          loading={log.isPending}
+          empty={empty}
+          onKey={(keyId) => setFilters({ keyId })}
+        />
+      </Box>
       <Group justify="space-between" align="center" wrap="wrap" gap="xs">
         <Text size="xs" c="dimmed">
           {total > 0
