@@ -202,7 +202,7 @@ docker run --rm --user "$(id -u)" -v "$PGSOCK:$PGSOCK" postgres:18 \
 psql "$DATABASE_URL" < dump.sql
 ```
 
-**Docker:** image runtime berjalan sebagai `USER bun` dengan `VOLUME /app/data`; default tetap memakai `DATABASE_URL` eksternal.
+**Docker:** `docker compose up -d app` menjalankan app lengkap dengan Postgres + RustFS di dalam container, datanya di volume `app_data`. `docker build .` menghasilkan image embedded — runtime Postgres/RustFS sudah ter-bake, jadi container baru boot tanpa mengunduh apa pun; `docker build --target runtime .` memberi image tipis untuk database/S3 eksternal. Modenya tetap ditentukan ada/tidaknya `DATABASE_URL`/`S3_ENDPOINT`. Image berjalan sebagai `USER bun` dengan `VOLUME /app/data`. Untuk database eksternal, migrasi tidak ikut jalan saat boot — jalankan `bun run db:migrate` sendiri.
 
 ## Penyimpanan file (S3)
 
