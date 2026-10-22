@@ -22,7 +22,7 @@ import bundledChangelog from '../CHANGELOG.md' with { type: 'text' };
 import { api } from './api';
 import { newRequestId } from './api-error';
 import { registerBundledChangelog } from './changelog';
-import { env } from './env';
+import { env, listenUrl } from './env';
 import { errorResponse } from './error-page';
 import { isHttpProbe, probeResponse } from './http-probes';
 import { logger } from './logger';
@@ -46,6 +46,7 @@ const CLIENT_DIR = Bun.isStandaloneExecutable
 
 const server = Bun.serve({
   port: env.PORT,
+  hostname: env.HOST,
   idleTimeout: 60,
   async fetch(request, bunServer) {
     const url = new URL(request.url);
@@ -96,4 +97,6 @@ const server = Bun.serve({
   },
 });
 
-logger.info(`\u{1F680} Makuro production server on http://localhost:${server.port}`);
+logger.info(
+  `\u{1F680} Makuro production server on ${listenUrl} (bind ${server.hostname}:${server.port})`,
+);

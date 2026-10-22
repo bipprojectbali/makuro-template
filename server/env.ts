@@ -15,6 +15,9 @@ export const TrustedProxiesSchema = z
 const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(3000),
+  // Interface to bind. 0.0.0.0 = all (default); 127.0.0.1 keeps the port off the
+  // network, which is what you want behind a reverse proxy on the same host.
+  HOST: z.string().min(1).default('0.0.0.0'),
   APP_URL: z.string().url().default('http://localhost:3000'),
   DATABASE_URL: z.string().url(),
   DATABASE_URL_TEST: z.string().url().optional(),
@@ -47,6 +50,8 @@ if (!parsed.success) {
 
 export const env = parsed.data;
 export const isProd = env.NODE_ENV === 'production';
+/** Address to print on boot: 0.0.0.0 means "all interfaces" and isn't reachable as a URL. */
+export const listenUrl = `http://${env.HOST === '0.0.0.0' ? 'localhost' : env.HOST}:${env.PORT}`;
 export const hasGoogleAuth = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
 
 /** Normalized set of super-admin emails (lowercased, de-duped, blanks dropped). */

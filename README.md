@@ -72,6 +72,8 @@ cp .env.example .env
 #   biarkan nilai bawaan kalau tak punya Postgres di :5432, nanti `bun run dev` gagal.
 #   `bun run cli init --db=local` menuliskan .env yang benar untuk kamu.
 # Opsional: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+# Opsional: HOST (interface yang di-bind; default 0.0.0.0 = semua interface,
+#   set 127.0.0.1 agar port tidak terekspos ke jaringan di belakang reverse proxy)
 # Wajib di belakang reverse proxy/LB/Cloudflare: TRUSTED_PROXIES (IP/CIDR proxy, lihat "Rate limiting")
 
 # 3. Database (pilih satu)
