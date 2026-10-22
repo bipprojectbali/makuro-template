@@ -7,6 +7,7 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 ## [Unreleased]
 
 ### Added
+- Interface yang di-bind server kini bisa diatur lewat `HOST` di `.env` (default `0.0.0.0` = semua interface, sama seperti sebelumnya). Set `HOST=127.0.0.1` agar port hanya bisa diakses dari mesin itu sendiri — yang dibutuhkan saat app berjalan di belakang reverse proxy dan port-nya tidak boleh ikut terekspos ke jaringan. Berlaku untuk `bun run dev`, `bun run start`, dan binary.
 - Penyimpanan file S3-compatible untuk file, gambar, dan dokumen. Kosongkan `S3_ENDPOINT` dan app menjalankan RustFS sendiri (data di `./data/s3`, hanya `127.0.0.1`, kredensial acak dibuat otomatis), tanpa server storage terpisah. Isi `S3_ENDPOINT`/`S3_BUCKET`/`S3_ACCESS_KEY_ID`/`S3_SECRET_ACCESS_KEY` untuk memakai AWS S3, Cloudflare R2, atau MinIO.
 - Foto profil kini bisa diunggah langsung dari halaman Profil (PNG, JPEG, WEBP, atau GIF, maks 2 MB) dan dihapus kembali, menggantikan isian URL foto. Foto yang tersimpan ikut dihapus saat diganti atau saat akunnya dihapus.
 - Server Logs kini punya pagination (50 entri per halaman) dengan total entri yang cocok dengan filter. Halaman 2 dan seterusnya tidak bergeser saat log baru masuk, dan tombol "N log baru" membawa kembali ke halaman pertama yang live.

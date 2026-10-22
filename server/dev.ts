@@ -13,7 +13,7 @@ import { createRequestHandler } from 'react-router';
 import { createServer as createViteServer } from 'vite';
 import { api } from './api';
 import { newRequestId } from './api-error';
-import { env } from './env';
+import { env, listenUrl } from './env';
 import { errorResponse } from './error-page';
 import { nodeToWebRequest, writeWebResponse } from './http-bridge';
 import { isHttpProbe, probeResponse } from './http-probes';
@@ -112,6 +112,6 @@ const vite = await createViteServer({
   appType: 'custom',
 });
 
-server.listen(env.PORT, () => {
-  logger.info(`\u{1F680} Makuro dev server on http://localhost:${env.PORT}`);
+server.listen(env.PORT, env.HOST, () => {
+  logger.info(`\u{1F680} Makuro dev server on ${listenUrl} (bind ${env.HOST}:${env.PORT})`);
 });
