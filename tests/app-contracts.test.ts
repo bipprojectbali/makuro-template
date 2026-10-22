@@ -37,6 +37,14 @@ describe('app contracts (CLAUDE.md blockers)', () => {
     expect(readFileSync(path.join(APP, 'root.tsx'), 'utf8')).toMatch(/export function meta\b/);
   });
 
+  test('root.tsx declares lang="id" on <html>', () => {
+    const src = readFileSync(path.join(APP, 'root.tsx'), 'utf8');
+    expect(
+      src,
+      'root.tsx: <html> wajib lang="id" — seluruh konten app berbahasa Indonesia',
+    ).toMatch(/<html lang="id"/);
+  });
+
   test('no native window.confirm/alert/prompt in app/', () => {
     const offenders = sourceFiles(APP).filter((f) =>
       /\bwindow\.(confirm|alert|prompt)\s*\(|(^|[^.\w])(confirm|alert|prompt)\s*\(\s*['"`]/m.test(

@@ -19,6 +19,7 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 - Aksi sensitif diblokir untuk user demo dengan pesan yang jelas: membuat API key, mengganti email atau password, reset password, mengunggah/menghapus foto profil, dan menautkan akun sosial.
 - Aturan mobile di `CLAUDE.md` kini dijaga `bun run test`, bukan sekadar dokumentasi: burger harus berada di dalam `AppShell.Header`, setiap tabel wajib punya wrapper geser horizontal, tabel ≥4 kolom wajib punya tampilan kartu untuk HP, tidak boleh ada lebar tetap di atas 375px, dan header halaman tidak boleh memakai `wrap="nowrap"` bersama tombol aksi. Halaman baru yang melanggar langsung gagal di test.
 - Docker kini bisa menjalankan app lengkap dalam satu container: `docker compose up -d app` menyalakan Postgres dan storage RustFS di dalamnya, dengan data tersimpan di volume agar tetap ada saat container dibuat ulang. Image bawaan sudah membawa runtime Postgres/RustFS-nya, jadi container baru langsung boot tanpa mengunduh apa pun — termasuk di server tanpa internet. Yang memakai database atau S3 eksternal bisa memakai image tipis `--target runtime`.
+- Kartu pratinjau saat halaman utama dibagikan (WhatsApp, Telegram, X, dan sejenisnya) kini mencantumkan bahasa Indonesia dan teks alternatif gambar, jadi pratinjaunya juga terbaca oleh pembaca layar. Teks alternatifnya mengikuti nama dan tagline dari pengaturan branding.
 
 ### Changed
 - Halaman login didesain ulang menjadi kartu dua kolom. Form ada di kiri: input bergaya filled, tombol Google di bawah pemisah "atau", tombol Coba Demo, dan tautan Daftar/Masuk menggantikan tab. Di kanan ada panel showcase bertema warna utama yang hanya tampil di layar lebar. Nama dan tagline diambil dari pengaturan branding.
@@ -44,6 +45,7 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 - Postgres lokal kini bisa start lagi setelah proses app di-`kill -9`. Postmaster yatim dari run sebelumnya dihentikan otomatis, termasuk saat app berjalan di bawah `systemd --user` atau di container dengan tini/dumb-init.
 - Postgres lokal dan `backup` tidak lagi salah mengira proses lain yang kebetulan memakai PID lama sebagai Postgres yang masih berjalan.
 - Daftar di konsol (visitor, login, rate limit, audit, user, sesi, posts, API key, pemakaian API key, File Health) tidak lagi error 500 saat parameter `page`/`limit` di URL berisi teks, angka negatif, atau pecahan. Nilai yang tidak valid kini kembali ke halaman 1 dan ukuran halaman default.
+- Halaman kini ditandai berbahasa Indonesia. Sebelumnya ditandai bahasa Inggris, sehingga pembaca layar melafalkan teks Indonesia dengan fonetik Inggris dan mesin pencari menerima sinyal bahasa yang salah.
 
 ## [0.2.0] - 2026-10-06
 

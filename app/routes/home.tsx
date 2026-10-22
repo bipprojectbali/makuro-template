@@ -24,6 +24,8 @@ export function meta({ loaderData }: Route.MetaArgs) {
   const url = `${loaderData?.siteUrl ?? ''}/`;
   const image = `${loaderData?.siteUrl ?? ''}/og.png`;
   const description = `${name}: template fullstack Bun + Elysia + React Router SSR + Drizzle + Better Auth dengan konsol admin lengkap (user, sesi, log, audit, rate limit, settings) dan deploy satu binary. Siap produksi, MIT.`;
+  // Follows the editable branding: a hardcoded alt goes stale the moment the app is renamed.
+  const imageAlt = `Kartu pratinjau ${name} — ${tagline}`;
   return [
     { title },
     { name: 'description', content: description },
@@ -31,14 +33,17 @@ export function meta({ loaderData }: Route.MetaArgs) {
     { property: 'og:description', content: description },
     { property: 'og:type', content: 'website' },
     { property: 'og:site_name', content: name },
+    { property: 'og:locale', content: 'id_ID' },
     { property: 'og:url', content: url },
     { property: 'og:image', content: image },
     { property: 'og:image:width', content: '1200' },
     { property: 'og:image:height', content: '630' },
+    { property: 'og:image:alt', content: imageAlt },
     { name: 'twitter:card', content: 'summary_large_image' },
     { name: 'twitter:title', content: title },
     { name: 'twitter:description', content: description },
     { name: 'twitter:image', content: image },
+    { name: 'twitter:image:alt', content: imageAlt },
     { tagName: 'link', rel: 'canonical', href: url },
   ];
 }
