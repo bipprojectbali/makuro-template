@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { buildVisitQuery, DEFAULT_FILTERS, hasActiveFilters } from '../app/lib/visits-api';
 import {
   botKindLabel,
@@ -22,6 +24,28 @@ describe('visits-format', () => {
     expect(formatRelative(at(86_400), now)).toBe('kemarin');
     expect(formatRelative(at(60 * 86_400), now)).toContain('2026');
     expect(formatRelative('not-a-date', now)).toBe('—');
+  });
+
+  it('formatRelative memakai kata hari milik sendiri, bukan kata idiomatik engine', () => {
+    const now = Date.parse('2026-09-13T08:00:00Z');
+    const at = (days: number) => new Date(now + days * 86_400_000).toISOString();
+    expect(formatRelative(at(-2), now)).toBe('kemarin lusa');
+    expect(formatRelative(at(-1), now)).toBe('kemarin');
+    expect(formatRelative(at(1), now)).toBe('besok');
+    expect(formatRelative(at(2), now)).toBe('lusa');
+    // Di luar tabel: tetap lewat Intl.
+    expect(formatRelative(at(-3), now)).toContain('3 hari');
+  });
+
+  it("sumber visits-format.ts tidak memakai numeric: 'auto'", () => {
+    const src = readFileSync(path.join(import.meta.dir, '../app/lib/visits-format.ts'), 'utf8');
+    expect(
+      src.includes("numeric: 'auto'"),
+      "numeric: 'auto' memakai kata idiomatik dari data locale engine, dan data itu berbeda " +
+        'antara ICU Bun (SSR) dan ICU browser (client). Teks SSR yang beda dari hasil render ' +
+        'client membuat hydration gagal dan halaman berhenti merespons. Pakai ' +
+        "numeric: 'always' + tabel kata hari milik sendiri.",
+    ).toBe(false);
   });
 
   it('countryFlag builds regional indicator emoji', () => {
