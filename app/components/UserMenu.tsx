@@ -54,8 +54,9 @@ export function UserMenu({
     window.location.assign('/go');
   }
 
+  // top-start: target ada di dasar sidebar, membuka ke atas tak butuh ruang horizontal.
   return (
-    <Menu position="right-end" withArrow width={240} onOpen={loadAccounts}>
+    <Menu position="top-start" withArrow width={240} onOpen={loadAccounts}>
       <Menu.Target>
         <UnstyledButton
           style={{
