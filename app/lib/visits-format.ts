@@ -21,7 +21,19 @@ function dateTimeFmt(timeZone: string | undefined): Intl.DateTimeFormat {
   return fmt;
 }
 
-const relativeFmt = new Intl.RelativeTimeFormat(LOCALE, { numeric: 'auto' });
+const relativeFmt = new Intl.RelativeTimeFormat(LOCALE, { numeric: 'always' });
+
+// Data locale ICU Bun dan browser tidak sepakat soal kata idiomatik hari
+// (Bun: "kemarin lusa", Chrome: "kemarin dulu"), jadi membiarkan Intl memilih
+// kata membuat teks SSR beda dari hasil render client → hydration gagal dan
+// seluruh halaman berhenti merespons (handler jalan, DOM tidak ikut berubah).
+// Kata-katanya kita miliki sendiri agar sama di semua engine.
+const DAY_WORDS: Record<number, string> = {
+  [-2]: 'kemarin lusa',
+  [-1]: 'kemarin',
+  1: 'besok',
+  2: 'lusa',
+};
 
 /** "13 Sep 2026, 08.25.48" in `timeZone` (default: the runtime's zone). */
 export function formatDateTime(iso: string, timeZone?: string): string {
@@ -38,7 +50,10 @@ export function formatRelative(iso: string, now: number = Date.now(), timeZone?:
   if (abs < 45) return 'baru saja';
   if (abs < 3600) return relativeFmt.format(Math.round(diffSec / 60), 'minute');
   if (abs < 86_400) return relativeFmt.format(Math.round(diffSec / 3600), 'hour');
-  if (abs < 30 * 86_400) return relativeFmt.format(Math.round(diffSec / 86_400), 'day');
+  if (abs < 30 * 86_400) {
+    const days = Math.round(diffSec / 86_400);
+    return DAY_WORDS[days] ?? relativeFmt.format(days, 'day');
+  }
   return formatDateTime(iso, timeZone);
 }
 
