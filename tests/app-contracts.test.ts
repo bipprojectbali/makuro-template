@@ -128,6 +128,22 @@ describe('mobile blockers (CLAUDE.md)', () => {
     expect(offenders).toEqual([]);
   });
 
+  test('Menu dropdown never anchors sideways', () => {
+    const offenders: string[] = [];
+    for (const f of files) {
+      // Hanya `position=` di dalam tag pembuka <Menu ...> — Tooltip/Drawer position="right" sah.
+      for (const m of f.src.matchAll(/<Menu\b[^>]*>/g)) {
+        if (/position="(right|left)/.test(m[0])) offenders.push(`${f.rel}: ${m[0].trim()}`);
+      }
+    }
+    expect(
+      offenders,
+      'Menu dengan position="right…"/"left…" butuh ≥240px ruang kosong di samping target — ' +
+        'di HP (viewport 375px, sidebar 240px) dropdown terdesak ke tepi dan memicu scroll ' +
+        'horizontal. Pakai "bottom-end" atau "top-start".',
+    ).toEqual([]);
+  });
+
   test('route headers let action buttons wrap', () => {
     const offenders: string[] = [];
     for (const f of files.filter((f) => f.rel.startsWith('routes/'))) {

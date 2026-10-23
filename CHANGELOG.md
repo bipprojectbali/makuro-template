@@ -34,6 +34,7 @@ Semua perubahan penting di project ini dicatat di sini. Format mengikuti
 - Unduhan runtime storage RustFS kini juga menampilkan progres langsung yang sama (persen/MB/kecepatan/ETA). Rilis GitHub yang lambat bisa dialihkan ke mirror lewat `MAKURO_RUSTFS_RELEASES`; checksum sha256 tetap diverifikasi. Tanpa internet, tetap bisa `init --s3-archive=<zip>`.
 
 ### Fixed
+- Menu akun di dasar menu samping kini terbuka ke atas, tidak lagi ke samping kanan. Di layar HP, popup-nya dulu terdesak menempel ke tepi kanan dan membuat halaman bisa digeser ke samping; sekarang tampil utuh tanpa menggeser halaman.
 - Menu samping di layar HP kini selalu tampil lebar penuh dengan label teks. Sebelumnya preferensi sidebar ciut (rail ikon) di desktop ikut terpakai di HP, sehingga menu jadi deretan ikon yang labelnya hanya muncul saat hover — tidak bisa dijangkau sentuhan.
 - Tabel kolom di detail tabel database (`/dev/db-schema`) dan tabel tool MCP (`/dev/tools`) kini bisa digeser horizontal di layar sempit, tidak lagi terpotong.
 - Log pemakaian API key (`/dev/api-keys` → Log pemakaian) kini tampil sebagai kartu di HP, jadi waktu, kunci, path, status, dan durasi terbaca tanpa menggeser tabel ke samping.
