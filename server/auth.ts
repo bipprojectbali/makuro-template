@@ -12,6 +12,8 @@ import { logger } from './logger';
 import { CLIENT_IP_HEADER, normalizeIp, resolveClientIp } from './middleware/client-ip';
 import { describeClient, loginMethodFromPath } from './middleware/request-meta';
 import { ac, ROLES, roles } from './permissions';
+// settings.core only, never ./settings: settings-maintenance imports this file.
+import { readSettingsRow } from './settings.core';
 
 /** Public part of every key, e.g. mk_live_abc… — also how the header getter recognises a key. */
 export const API_KEY_PREFIX = 'mk_live_';
@@ -73,8 +75,26 @@ export const auth = betterAuth({
     }),
   ],
   databaseHooks: {
-    // Self-delete and admin removeUser both go through internalAdapter.deleteUser → this hook.
-    user: { delete: { after: (u) => deleteAvatarObject(u.id, u.image) } },
+    user: {
+      // Every sign-up path (email, first Google sign-in, anonymous, admin) goes
+      // through internalAdapter.createUser → this hook, so one guard closes them
+      // all; a path-based hook cannot see the email of a first Google sign-in.
+      create: {
+        before: async (u, ctx) => {
+          // Demo visitors and admin-created accounts are not public sign-ups.
+          if (u.isAnonymous || ctx?.path === '/admin/create-user') return;
+          const row = await readSettingsRow();
+          // No settings row = registration open (matches the column default).
+          if (row && !row.signupEnabled)
+            throw new APIError('FORBIDDEN', {
+              message: 'Pendaftaran akun baru sedang ditutup.',
+              code: 'SIGNUP_DISABLED',
+            });
+        },
+      },
+      // Self-delete and admin removeUser both go through internalAdapter.deleteUser → this hook.
+      delete: { after: (u) => deleteAvatarObject(u.id, u.image) },
+    },
     session: {
       create: {
         after: async (session, ctx) => {
