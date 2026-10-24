@@ -70,6 +70,36 @@ describe('doctor', () => {
     expect((await find(env, 'Backup'))?.status).toBe('ok');
   });
 
+  it('stays silent about super admins when SUPER_ADMIN_EMAILS is unset', async () => {
+    expect(await find({ BETTER_AUTH_SECRET: SECRET }, 'SUPER_ADMIN_EMAILS')).toBeUndefined();
+  });
+
+  it('warns when super admins are set but Google auth is not configured', async () => {
+    const c = await find(
+      { BETTER_AUTH_SECRET: SECRET, SUPER_ADMIN_EMAILS: 'owner@example.com, ' },
+      'SUPER_ADMIN_EMAILS',
+    );
+    expect(c?.status).toBe('warn');
+    expect(c?.detail).toContain('1 alamat');
+    expect(c?.detail).not.toContain('owner@example.com');
+    expect(c?.hint).toContain('GOOGLE_CLIENT_ID');
+    expect(c?.hint).toContain('restart');
+  });
+
+  it('passes when super admins are set and Google auth is configured', async () => {
+    const c = await find(
+      {
+        BETTER_AUTH_SECRET: SECRET,
+        SUPER_ADMIN_EMAILS: 'owner@example.com',
+        GOOGLE_CLIENT_ID: 'gid', // test-only
+        GOOGLE_CLIENT_SECRET: 'gsecret', // test-only
+      },
+      'SUPER_ADMIN_EMAILS',
+    );
+    expect(c?.status).toBe('ok');
+    expect(c?.detail).not.toContain('gsecret');
+  });
+
   it('run --json exits 1 on failure and never prints the secret', async () => {
     process.env.BETTER_AUTH_SECRET = SECRET;
     process.env.DATABASE_URL = 'postgres://u:p@127.0.0.1:1/x'; // test-only, unreachable
