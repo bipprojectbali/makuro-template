@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { initialMode, modeCopy } from '../app/lib/login-mode';
+import { googleNote, initialMode, modeCopy } from '../app/lib/login-mode';
 
 const q = (s: string) => new URLSearchParams(s);
 
@@ -18,6 +18,25 @@ describe('initialMode', () => {
 
   test('unknown mode values fall back to signin', () => {
     expect(initialMode(q('mode=admin'), true)).toBe('signin');
+  });
+});
+
+describe('googleNote', () => {
+  test('no note while signup is open', () => {
+    expect(googleNote(true)).toBeNull();
+  });
+
+  test('warns before the OAuth round trip when signup is closed', () => {
+    const note = googleNote(false);
+    expect(note).toBeTruthy();
+    expect(note).toContain('ditutup');
+    expect(note).toContain('sudah terdaftar');
+  });
+
+  test('note leaks no internal setting or error code', () => {
+    const note = googleNote(false) ?? '';
+    expect(note).not.toContain('signupEnabled');
+    expect(note).not.toContain('SIGNUP_DISABLED');
   });
 });
 
