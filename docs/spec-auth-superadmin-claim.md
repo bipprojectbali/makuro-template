@@ -112,7 +112,12 @@ tambahan.
 Satu konsekuensi yang spesifik operasional, **bukan bagian dari spec ini**: bila
 `SUPER_ADMIN_EMAILS` terisi sementara `GOOGLE_CLIENT_ID`/`SECRET` tidak, pemilik tidak punya
 jalan masuk sama sekali — email diblokir hook ini, Google tidak tampil karena
-`hasGoogleAuth` false. Tempat yang benar untuk menangkap itu adalah satu pemeriksaan di
-`makuro doctor`. Jalan keluar darurat tanpa kode, bagi siapa pun yang punya akses host:
-keluarkan email itu dari `SUPER_ADMIN_EMAILS`, daftar dengan password, masukkan kembali —
+`hasGoogleAuth` false. Tempat yang benar untuk menangkap itu adalah `makuro doctor`, dan
+pemeriksaannya sudah ada: `envChecks()` di `server/cli/doctor.checks.ts` memuat check
+`SUPER_ADMIN_EMAILS` yang berstatus `warn` bila daftarnya terisi sementara kredensial Google
+kosong. Jalan keluar darurat tanpa kode, bagi siapa pun yang punya akses host:
+`superAdminEmails` di `server/env.ts` adalah `Set` level modul yang dibangun sekali saat
+proses boot, jadi setiap perubahan `SUPER_ADMIN_EMAILS` baru berlaku setelah proses
+di-restart — mengedit `.env` saja tidak berefek apa pun. Urutannya: keluarkan email itu dari
+`SUPER_ADMIN_EMAILS` → restart → daftar dengan password → masukkan kembali → restart;
 `reconcileRole` menaikkannya kembali saat resolve berikutnya.
