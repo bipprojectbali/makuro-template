@@ -1,12 +1,13 @@
 import { apiKey } from '@better-auth/api-key';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { admin, anonymous, multiSession } from 'better-auth/plugins';
 import { deleteAvatarObject } from './api/app-avatar';
 import { AUDIT_ACTIONS, audit } from './audit';
 import { db } from './db';
 import * as schema from './db/schema';
-import { env, hasGoogleAuth, isProd } from './env';
+import { env, hasGoogleAuth, isProd, superAdminEmails } from './env';
 import { logger } from './logger';
 import { CLIENT_IP_HEADER, normalizeIp, resolveClientIp } from './middleware/client-ip';
 import { describeClient, loginMethodFromPath } from './middleware/request-meta';
@@ -118,6 +119,22 @@ export const auth = betterAuth({
   // /api/auth/* skips the app limiter; BA's own per-IP limiter (default rules,
   // stricter on sign-in) guards it in production.
   rateLimit: { enabled: isProd, storage: 'memory' },
+  hooks: {
+    // reconcileRole treats the address itself as proof of super-admin, so that
+    // account must never be creatable with a self-chosen password: until the
+    // owner signs up, anyone knowing the address could claim the role.
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== '/sign-up/email') return;
+      const email = String((ctx.body as { email?: unknown } | null)?.email ?? '')
+        .trim()
+        .toLowerCase();
+      if (superAdminEmails.has(email))
+        throw new APIError('FORBIDDEN', {
+          message: 'Alamat ini dikelola sebagai akun pengelola dan hanya bisa masuk lewat Google.',
+          code: 'SUPER_ADMIN_EMAIL_RESERVED',
+        });
+    }),
+  },
   emailAndPassword: {
     enabled: true,
   },
