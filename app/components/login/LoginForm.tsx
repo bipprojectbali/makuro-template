@@ -19,7 +19,7 @@ import { DemoLoginOption } from '~/components/login/DemoStartButton';
 import { LoginNotice } from '~/components/login/LoginNotices';
 import { signIn, signUp } from '~/lib/auth-client';
 import { type AuthNotice, describeAuthError, loginNotice } from '~/lib/auth-errors';
-import { initialMode, type LoginMode, modeCopy } from '~/lib/login-mode';
+import { googleNote, initialMode, type LoginMode, modeCopy } from '~/lib/login-mode';
 
 const MIN_PASSWORD = 8;
 const FIELD = { variant: 'filled', size: 'md', radius: 'md' } as const;
@@ -52,6 +52,7 @@ export function LoginForm({
   const [googleLoading, setGoogleLoading] = useState(false);
   const signup = mode === 'signup' && signupEnabled;
   const copy = modeCopy(signup ? 'signup' : 'signin', appName);
+  const note = googleNote(signupEnabled);
 
   const form = useForm({
     mode: 'uncontrolled',
@@ -177,6 +178,11 @@ export function LoginForm({
           >
             Lanjutkan dengan Google
           </Button>
+          {note && (
+            <Text size="xs" c="dimmed" ta="center">
+              {note}
+            </Text>
+          )}
         </Stack>
       )}
 
