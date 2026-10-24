@@ -118,6 +118,26 @@ function envChecks(ctx: DoctorContext): Check[] {
         : { group: g, name: key, status: 'fail', detail: 'bukan URL yang valid' },
     );
   }
+  // Alamat di SUPER_ADMIN_EMAILS tidak boleh sign-up lewat email (server/auth.ts), jadi tanpa
+  // Google OAuth pemilik instance tidak punya jalan masuk sama sekali.
+  const superAdmins = (env.SUPER_ADMIN_EMAILS ?? '')
+    .split(',')
+    .map((e) => e.trim())
+    .filter(Boolean);
+  if (superAdmins.length) {
+    const google = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
+    checks.push({
+      group: g,
+      name: 'SUPER_ADMIN_EMAILS',
+      status: google ? 'ok' : 'warn',
+      detail: google
+        ? `${superAdmins.length} alamat, login Google tersedia`
+        : `${superAdmins.length} alamat tapi kredensial Google kosong: pemilik tak bisa masuk (sign-up email untuk alamat itu diblokir)`,
+      hint: google
+        ? undefined
+        : 'isi GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET lalu restart; atau keluarkan alamat itu dari SUPER_ADMIN_EMAILS → restart → daftar dengan password → masukkan kembali → restart (daftar hanya dibaca saat proses boot)',
+    });
+  }
   if (Bun.isStandaloneExecutable && env.NODE_ENV && env.NODE_ENV !== 'production') {
     checks.push({
       group: g,
