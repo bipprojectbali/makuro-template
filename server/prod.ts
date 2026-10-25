@@ -22,6 +22,7 @@ import bundledChangelog from '../CHANGELOG.md' with { type: 'text' };
 import { api } from './api';
 import { newRequestId } from './api-error';
 import { registerBundledChangelog } from './changelog';
+import { isDemoBuild } from './demo-build';
 import { env, listenUrl } from './env';
 import { errorResponse } from './error-page';
 import { isHttpProbe, probeResponse } from './http-probes';
@@ -98,5 +99,5 @@ const server = Bun.serve({
 });
 
 logger.info(
-  `\u{1F680} Makuro production server on ${listenUrl} (bind ${server.hostname}:${server.port})`,
+  `\u{1F680} Makuro production server${isDemoBuild() ? ' [DEMO BUILD — demo mode forced on]' : ''} on ${listenUrl} (bind ${server.hostname}:${server.port})`,
 );

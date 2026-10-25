@@ -104,6 +104,7 @@ bun run start
 | `bun run smoke:binary` | Sama, tetapi terhadap binary hasil `build:binary` |
 | `bun run smoke:coldboot` | Boot binary dari folder kosong dengan Postgres lokal (init → migrasi → start) |
 | `bun run build:binary` | Build binary platform saat ini → `./makuro-template`; `-- --all` → `dist/` 4 target + `checksums.txt` |
+| `bun run build:binary:demo` | Build binary instance demo → `./makuro-template-demo`; mode demo dipaku saat compile, tidak bisa dimatikan lagi |
 | `bun run cli <cmd>` | CLI dari source: `init`, `doctor`, `version`, `backup`, `start` |
 | `bun run typecheck` | `react-router typegen` + `tsc --noEmit` |
 | `bun run lint` | Biome check |
@@ -129,7 +130,7 @@ makuro-template doctor    # periksa kesiapan
 makuro-template           # = start
 ```
 
-Build sendiri: `bun run build:binary` → `./makuro-template` (platform saat ini), `bun run build:binary -- --all` → `dist/makuro-template-<os>-<arch>` untuk linux-x64, linux-arm64, darwin-arm64, darwin-x64 + `checksums.txt`. Push tag `v*` menjalankan `.github/workflows/release.yml` yang membangun dan mempublikasikan aset yang sama ke GitHub Release.
+Build sendiri: `bun run build:binary` → `./makuro-template` (platform saat ini), `bun run build:binary -- --all` → `dist/makuro-template-<os>-<arch>` untuk linux-x64, linux-arm64, darwin-arm64, darwin-x64 + `checksums.txt`. Push tag `v*` menjalankan `.github/workflows/release.yml` yang membangun dan mempublikasikan aset yang sama ke GitHub Release. Varian instance demo: `bun run build:binary:demo` → `./makuro-template-demo`, `bun run build:binary:demo -- --all` → `dist/makuro-template-demo-<os>-<arch>`.
 
 | Perintah | Fungsi |
 |---|---|
@@ -333,6 +334,7 @@ Untuk app turunan:
 
 - **Data contoh** — isi `seedDemo(userId)` di `server/demo/seed.ts`. Tabel baru milik user wajib punya FK ke `user.id` dengan `onDelete: 'cascade'` agar ikut terhapus saat demo berakhir.
 - **Aksi terlarang** — tambahkan entri `{ method?, prefix, reason }` ke `DEMO_BLOCKED` di `server/demo/restrict.ts`, atau di handler: `const denied = assertNotDemo(actor); if (denied) return status(403, denied);`.
+- **Instance demo khusus** — `bun run build:binary:demo` menghasilkan binary terpisah `./makuro-template-demo` dengan mode demo dipaku saat compile: tidak bisa dimatikan lewat env var (`MAKURO_DEMO=0`) maupun saklar `/dev/settings`, hanya masa berlakunya yang masih bisa diatur, dan banner start menandainya `[DEMO BUILD — demo mode forced on]`. Pakai ini agar instance demo publik terpisah dari produksi. Untuk mencoba mode demo tanpa build, jalankan dev dengan `MAKURO_DEMO=1`.
 
 ## Visitor analytics
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { checksumLine, isTarget, outfileFor, TARGETS } from '../scripts/build-binary';
+import { binName, checksumLine, isTarget, outfileFor, TARGETS } from '../scripts/build-binary';
 import { PKG_NAME } from '../server/pkg';
 
 describe('build-binary', () => {
@@ -10,6 +10,23 @@ describe('build-binary', () => {
       `dist/${PKG_NAME}-darwin-arm64`,
       `dist/${PKG_NAME}-darwin-x64`,
     ]);
+  });
+
+  test('demo build names derive from the package name and never collide', () => {
+    expect(binName()).toBe(PKG_NAME);
+    expect(binName(true)).toBe(`${PKG_NAME}-demo`);
+    expect(`./${binName(true)}`).not.toBe(`./${binName()}`);
+    expect(TARGETS.map((t) => outfileFor(t, binName(true)))).toEqual([
+      `dist/${PKG_NAME}-demo-linux-x64`,
+      `dist/${PKG_NAME}-demo-linux-arm64`,
+      `dist/${PKG_NAME}-demo-darwin-arm64`,
+      `dist/${PKG_NAME}-demo-darwin-x64`,
+    ]);
+  });
+
+  test('--demo passes the compile-time define that pins demo mode on', async () => {
+    const script = await Bun.file('scripts/build-binary.ts').text();
+    expect(script).toContain('process.env.MAKURO_DEMO_BUILD="1"');
   });
 
   test('install.sh asset name matches package name', async () => {
