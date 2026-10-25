@@ -50,7 +50,7 @@ Ketiga URL dokumentasi dilayani sebelum SSR, ber-ETag (`304` bila tidak berubah)
 | Runtime | Bun | 1.4.x |
 | Backend | Elysia + Eden Treaty | 1.4.x |
 | Auth | Better Auth (Drizzle adapter) | 1.7.x |
-| ORM / DB | Drizzle ORM + PostgreSQL | 0.45 / PG 16 |
+| ORM / DB | Drizzle ORM + PostgreSQL | 0.45 / PG 18 |
 | Frontend | React Router v8 SSR + React | 8.x / 19.x |
 | UI | Mantine + @mantine/form | 9.6.x |
 | Data fetching | TanStack Query | 5.x |
@@ -81,7 +81,7 @@ cp .env.example .env
 #   (migrasi otomatis saat boot, lihat "Database: dari lokal ke produksi"):
 #   bun run cli init --db=local
 # Opsi B — pakai Postgres yang sudah ada:
-#   psql -c "CREATE DATABASE makuro;" && bun run db:migrate
+#   psql -c "CREATE DATABASE makuro_template;" && bun run db:migrate
 # Opsi C — spin up lokal dengan Docker:
 #   docker compose --profile local-db up -d && bun run db:migrate
 

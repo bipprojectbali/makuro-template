@@ -8,12 +8,21 @@ import { type DemoDefaults, type DemoSettings, saveDemo } from '~/lib/settings-a
 import { SettingRow, SettingsCard } from './SettingsParts';
 
 /** Public "Coba Demo" sandbox switch + how long demo accounts live before cleanup. */
-export function DemoCard({ state, defaults }: { state: DemoSettings; defaults: DemoDefaults }) {
+export function DemoCard({
+  state,
+  defaults,
+  forcedByBuild,
+}: {
+  state: DemoSettings;
+  defaults: DemoDefaults;
+  forcedByBuild: boolean;
+}) {
   const qc = useQueryClient();
   const [form, setForm] = useState<DemoSettings>(state);
   useEffect(() => setForm(state), [state]);
   const dirty = form.enabled !== state.enabled || form.ttlHours !== state.ttlHours;
   const ttl = form.ttlHours ?? defaults.ttlHours;
+  const statusLabel = form.enabled ? (forcedByBuild ? 'Dipaku build' : 'Aktif') : 'Nonaktif';
 
   const save = useMutation({
     mutationFn: saveDemo,
@@ -58,16 +67,21 @@ export function DemoCard({ state, defaults }: { state: DemoSettings; defaults: D
           color={form.enabled ? 'teal' : 'gray'}
           leftSection={<FiPlayCircle size={11} />}
         >
-          {form.enabled ? 'Aktif' : 'Nonaktif'}
+          {statusLabel}
         </Badge>
       }
     >
       <SettingRow
         label="Aktifkan Coba Demo"
-        description="Menampilkan tombol Coba Demo di landing dan halaman login."
+        description={
+          forcedByBuild
+            ? 'Build ini dikompilasi dengan mode demo menyala, jadi saklar ini tidak bisa dimatikan. Pakai binary produksi (bun run build:binary) kalau mode demo harus bisa dimatikan.'
+            : 'Menampilkan tombol Coba Demo di landing dan halaman login.'
+        }
         control={
           <Switch
             size="md"
+            disabled={forcedByBuild}
             checked={form.enabled}
             onChange={(e) => setForm({ ...form, enabled: e.currentTarget.checked })}
             aria-label="Aktifkan mode demo"
