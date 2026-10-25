@@ -109,11 +109,28 @@ bun run start
 | `bun run typecheck` | `react-router typegen` + `tsc --noEmit` |
 | `bun run lint` | Biome check |
 | `bun run format` | Biome format --write |
+| `bun run rebrand` | Rebrand template ke nama project sendiri (dry run; `--apply` untuk menulis) |
 | `bun run db:generate` | Generate SQL migration dari Drizzle schema |
 | `bun run db:migrate` | Apply migration |
 | `bun run db:push` | Push schema langsung (interaktif) |
 | `bun run db:studio` | Drizzle Studio |
 | `bun run test` | Test suite (bun:test, `tests/`, pakai DATABASE_URL_TEST) |
+
+## Rebrand ke project sendiri
+
+Template ini dipakai sebagai dasar project lain, jadi penggantian nama tidak perlu cari-ganti manual:
+
+```bash
+bun run rebrand --name acme-app                          # dry run: lihat semua yang akan berubah
+bun run rebrand --name acme-app --owner acme --apply     # tulis ke disk
+bun install                                              # segarkan bun.lock
+```
+
+Nama lama dibaca dari `name` dan `repository.url` di `package.json`, bukan dipatok di script, jadi perintahnya tetap benar saat dijalankan ulang di project yang sudah di-rebrand. `--name` wajib dan harus kebab-case; brand (`acme-app` → `Acme`) ditebak dari segmen pertama nama — `--brand` menggantinya, `--old-brand` menimpa tebakan untuk sisi lama. Tanpa `--owner`, owner GitHub di slug repo dibiarkan apa adanya.
+
+**Dry run adalah default:** tanpa `--apply` script hanya mencetak setiap file dan baris yang akan berubah, tidak menulis apa pun. `--apply` menolak berjalan di working tree yang kotor (file untracked tidak masalah), supaya `git diff` tetap bisa dipakai untuk review dan `git checkout .` untuk membatalkan semuanya sekaligus. File biner dan `bun.lock` dilewati — jalankan `bun install` setelahnya.
+
+Token huruf kecil `makuro` **tidak** diganti otomatis: ia tertanam di identifier JavaScript, nama header internal, nama server MCP, kunci localStorage, nama env var `MAKURO_*`, dan kredensial contoh Postgres, di mana penggantian tekstual justru merusak kode. Barisnya dicetak sebagai daftar untuk kamu putuskan sendiri. Setelah `--apply`, script juga mengingatkan bahwa nama database Postgres lokal ikut berganti (cluster lama di `./data/pg` masih memegang database dengan nama lama) dan bahwa `.env` tidak tracked sehingga tidak ikut disentuh.
 
 ## Binary distribution (tanpa Bun di server)
 
