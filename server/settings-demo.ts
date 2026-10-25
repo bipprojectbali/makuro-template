@@ -1,11 +1,16 @@
 /** Demo sandbox switch + TTL (singleton `app_setting` row), toggled from /dev like maintenance. */
+import { isDemoBuild } from './demo-build';
 import { readSettingsRow, type SettingsRow, upsertSettingsRow } from './settings.core';
 
 export type DemoSettings = { enabled: boolean; ttlHours: number | null };
 export const DEMO_DEFAULTS = { ttlHours: 24, maxTtlHours: 24 * 7 };
 
+/** A demo build forces `enabled` on — the stored row can only set the TTL. */
 export function parseDemo(row: SettingsRow | null): DemoSettings {
-  return { enabled: Boolean(row?.demoEnabled), ttlHours: row?.demoTtlHours ?? null };
+  return {
+    enabled: isDemoBuild() || Boolean(row?.demoEnabled),
+    ttlHours: row?.demoTtlHours ?? null,
+  };
 }
 
 /** TTL actually applied (stored override or default). */

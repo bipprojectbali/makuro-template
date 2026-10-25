@@ -16,6 +16,7 @@
     "smoke:prod": "bun run build && bun scripts/smoke-server.ts bun run server/prod.ts",
     "smoke:binary": "bun run build:binary && bun scripts/smoke-server.ts ./makuro-template",
     "build:binary": "react-router build && bun scripts/build-binary.ts",
+    "build:binary:demo": "react-router build && bun scripts/build-binary.ts --demo",
     "build:binary:all": "react-router build && bun scripts/build-binary.ts --all",
     "smoke:coldboot": "bun run build:binary && bun scripts/smoke-coldboot.ts ./makuro-template",
     "typecheck": "react-router typegen && tsc --noEmit --singleThreaded",

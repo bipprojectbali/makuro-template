@@ -9,6 +9,7 @@ build
 /logs/
 # compiled binaries (scripts/build-binary.ts)
 /makuro-template
+/makuro-template-demo
 /dist/
 makuro.exe
 # legacy binary names (before the name came from package.json)

@@ -4,6 +4,8 @@
  *   bun scripts/build-binary.ts                          → ./<name>            (host)
  *   bun scripts/build-binary.ts --target=bun-linux-x64   → dist/<name>-linux-x64
  *   bun scripts/build-binary.ts --all                    → dist/<name>-{linux,darwin}-{x64,arm64} + dist/checksums.txt
+ *   bun scripts/build-binary.ts --demo                   → ./<name>-demo       (demo mode compiled in, cannot be disabled)
+ *   bun scripts/build-binary.ts --demo --all             → dist/<name>-demo-{linux,darwin}-{x64,arm64} + dist/checksums.txt
  *
  * Embeds build/client as /$bunfs/root/client and server/db/migrations as
  * /$bunfs/root/migrations (drizzle's migrator reads them via fs from the VFS).
@@ -22,6 +24,11 @@ export const TARGETS = [
 export type Target = (typeof TARGETS)[number];
 export const DIST_DIR = 'dist';
 
+/** Binary base name; a demo build gets a `-demo` suffix so it can never be mistaken for the real one. */
+export function binName(demo = false): string {
+  return demo ? `${PKG_NAME}-demo` : PKG_NAME;
+}
+
 /** Release asset path for a target: `dist/<name>-<os>-<arch>`. */
 export function outfileFor(target: Target, name = PKG_NAME): string {
   return path.join(DIST_DIR, `${name}-${target.replace(/^bun-/, '')}`);
@@ -36,13 +43,16 @@ export function isTarget(value: string): value is Target {
   return (TARGETS as readonly string[]).includes(value);
 }
 
-async function compile(outfile: string, target?: Target): Promise<void> {
+async function compile(outfile: string, target?: Target, demo = false): Promise<void> {
   const cmd = [
     process.execPath,
     'build',
     '--compile',
     '--minify',
     ...(target ? [`--target=${target}`] : []),
+    // Inlined at compile time, so no env var or DB row can turn demo mode off.
+    // Quotes belong to the value (Bun.spawn takes an array — no shell to strip them).
+    ...(demo ? ['--define', 'process.env.MAKURO_DEMO_BUILD="1"'] : []),
     '--asset',
     './build/client',
     '--asset',
@@ -72,8 +82,13 @@ async function writeChecksums(): Promise<void> {
 
 async function main(): Promise<number> {
   const { values } = parseArgs({
-    options: { target: { type: 'string', multiple: true }, all: { type: 'boolean' } },
+    options: {
+      target: { type: 'string', multiple: true },
+      all: { type: 'boolean' },
+      demo: { type: 'boolean' },
+    },
   });
+  const demo = values.demo ?? false;
   if (!(await Bun.file('build/server/index.js').exists())) {
     console.error('build/ belum ada — jalankan `react-router build` dulu.');
     return 1;
@@ -85,11 +100,11 @@ async function main(): Promise<number> {
     return 2;
   }
   if (targets.length === 0) {
-    await compile(`./${PKG_NAME}`);
+    await compile(`./${binName(demo)}`, undefined, demo);
     return 0;
   }
   await mkdir(DIST_DIR, { recursive: true });
-  for (const t of targets as Target[]) await compile(outfileFor(t), t);
+  for (const t of targets as Target[]) await compile(outfileFor(t, binName(demo)), t, demo);
   if (values.all) await writeChecksums();
   return 0;
 }

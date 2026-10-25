@@ -1,5 +1,5 @@
 /** Demo foundation: settings parsing, isDemo on the actor, seed data cascading with the user. */
-import { afterAll, describe, expect, spyOn, test } from 'bun:test';
+import { afterAll, afterEach, describe, expect, spyOn, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { auth } from '../server/auth';
 import { db } from '../server/db';
@@ -7,6 +7,7 @@ import { post, user } from '../server/db/schema';
 import { seedDemo } from '../server/demo/seed';
 import { resolveActor } from '../server/guard';
 import * as rolesMod from '../server/roles';
+import type { SettingsRow } from '../server/settings.core';
 import { DEMO_DEFAULTS, effectiveDemoTtlHours, parseDemo } from '../server/settings-demo';
 
 const ID = `demo-${crypto.randomUUID().slice(0, 8)}`;
@@ -22,6 +23,33 @@ describe('demo settings', () => {
     expect(s).toEqual({ enabled: false, ttlHours: null });
     expect(effectiveDemoTtlHours(s)).toBe(DEMO_DEFAULTS.ttlHours);
     expect(effectiveDemoTtlHours({ enabled: true, ttlHours: 2 })).toBe(2);
+  });
+});
+
+describe('demo build forces demo mode on', () => {
+  // test-only: parseDemo reads just these two columns.
+  const row = (demoEnabled: boolean, demoTtlHours: number | null = null) =>
+    ({ demoEnabled, demoTtlHours }) as SettingsRow;
+  const saved = process.env.MAKURO_DEMO;
+
+  afterEach(() => {
+    // Leaking this into other test files in the same run would break unrelated tests.
+    if (saved === undefined) delete process.env.MAKURO_DEMO;
+    else process.env.MAKURO_DEMO = saved;
+  });
+
+  test('without the flag the stored row decides', () => {
+    delete process.env.MAKURO_DEMO;
+    expect(parseDemo(null).enabled).toBe(false);
+    expect(parseDemo(row(true)).enabled).toBe(true);
+    expect(parseDemo(row(false)).enabled).toBe(false);
+  });
+
+  test('with the flag no row can switch it off, TTL still comes from the row', () => {
+    process.env.MAKURO_DEMO = '1';
+    expect(parseDemo(null).enabled).toBe(true);
+    expect(parseDemo(row(false))).toEqual({ enabled: true, ttlHours: null });
+    expect(parseDemo(row(false, 6))).toEqual({ enabled: true, ttlHours: 6 });
   });
 });
 
