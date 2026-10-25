@@ -111,6 +111,7 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
           <DemoCard
             state={{ enabled: data.demo.enabled, ttlHours: data.demo.ttlHours }}
             defaults={data.demo.defaults}
+            forcedByBuild={data.demo.forcedByBuild}
           />
         </Tabs.Panel>
         <Tabs.Panel value="features" pt="md">

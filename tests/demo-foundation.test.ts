@@ -7,6 +7,7 @@ import { post, user } from '../server/db/schema';
 import { seedDemo } from '../server/demo/seed';
 import { resolveActor } from '../server/guard';
 import * as rolesMod from '../server/roles';
+import { settingsOverview } from '../server/settings';
 import type { SettingsRow } from '../server/settings.core';
 import { DEMO_DEFAULTS, effectiveDemoTtlHours, parseDemo } from '../server/settings-demo';
 
@@ -50,6 +51,13 @@ describe('demo build forces demo mode on', () => {
     expect(parseDemo(null).enabled).toBe(true);
     expect(parseDemo(row(false))).toEqual({ enabled: true, ttlHours: null });
     expect(parseDemo(row(false, 6))).toEqual({ enabled: true, ttlHours: 6 });
+  });
+
+  test('settingsOverview reports forcedByBuild so the console can explain the locked switch', async () => {
+    process.env.MAKURO_DEMO = '1';
+    expect((await settingsOverview()).demo.forcedByBuild).toBe(true);
+    delete process.env.MAKURO_DEMO;
+    expect((await settingsOverview()).demo.forcedByBuild).toBe(false);
   });
 });
 

@@ -5,6 +5,7 @@
  * super-admin only and override the env defaults at runtime; NULL columns mean
  * "use the default", which the console shows as such and can reset per field.
  */
+import { isDemoBuild } from './demo-build';
 import { env, hasGoogleAuth } from './env';
 import { logger } from './logger';
 import {
@@ -135,7 +136,7 @@ export type SettingsOverview = {
   retention: RetentionState;
   maintenance: MaintenanceSettings & { defaults: typeof MAINTENANCE_DEFAULTS };
   features: FeatureFlag[];
-  demo: DemoSettings & { defaults: typeof DEMO_DEFAULTS };
+  demo: DemoSettings & { defaults: typeof DEMO_DEFAULTS; forcedByBuild: boolean };
   branding: {
     settings: BrandingSettings;
     defaults: typeof BRANDING_DEFAULTS;
@@ -155,7 +156,7 @@ export async function settingsOverview(): Promise<SettingsOverview> {
     retention: parseRetention(row),
     maintenance: { ...parseMaintenance(row), defaults: MAINTENANCE_DEFAULTS },
     features: parseFeatureFlags(row),
-    demo: { ...parseDemo(row), defaults: DEMO_DEFAULTS },
+    demo: { ...parseDemo(row), defaults: DEMO_DEFAULTS, forcedByBuild: isDemoBuild() },
     branding: {
       settings: branding,
       defaults: BRANDING_DEFAULTS,

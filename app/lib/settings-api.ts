@@ -108,7 +108,7 @@ export type SettingsOverviewFull = SettingsOverview & {
   };
   features: FeatureFlag[];
   branding: { settings: BrandingSettings; defaults: Branding; effective: Branding };
-  demo: DemoSettings & { defaults: DemoDefaults };
+  demo: DemoSettings & { defaults: DemoDefaults; forcedByBuild: boolean };
 };
 
 export const fetchSettingsOverviewFull = () => request<SettingsOverviewFull>(`${BASE}/all`);
