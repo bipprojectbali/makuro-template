@@ -5,6 +5,7 @@ import {
   isBinary,
   isDirty,
   isValidName,
+  leftoverTokenFrom,
   ownerFromRepoUrl,
   type Pair,
   rebrandLines,
@@ -81,6 +82,7 @@ describe('brand', () => {
       "serverInfo: { name: 'makuro-debug', version: '1.0.0' },",
       'DATABASE_URL=postgres://makuro:makuro@localhost:5432/makuro',
       '      - makuro_pgdata:/var/lib/postgresql/data',
+      '  "rebrandToken": "makuro",',
     ].join('\n');
     expect(rebrandText(text, pairs())).toBe(text);
   });
@@ -140,6 +142,17 @@ describe('ownerFromRepoUrl', () => {
   it('returns undefined for a non-GitHub url', () => {
     expect(ownerFromRepoUrl('https://gitlab.com/a/b.git')).toBeUndefined();
     expect(ownerFromRepoUrl('')).toBeUndefined();
+  });
+});
+
+describe('leftoverTokenFrom', () => {
+  it('derives the token from the current package name', () => {
+    expect(leftoverTokenFrom('makuro-template')).toBe('makuro');
+    expect(leftoverTokenFrom('acme')).toBe('acme');
+  });
+
+  it('prefers the saved token so a second rebrand keeps reporting the original', () => {
+    expect(leftoverTokenFrom('acme-app', 'makuro')).toBe('makuro');
   });
 });
 

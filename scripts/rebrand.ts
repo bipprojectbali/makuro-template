@@ -4,8 +4,8 @@
  *   bun scripts/rebrand.ts --name acme-app [--brand Acme] [--owner gh-owner] [--apply]
  *   bun scripts/rebrand.ts --name acme-app --old-brand OldName  → override the heuristic
  *
- * Old tokens come from package.json (name + repository.url), never hardcoded, so this
- * stays correct when re-run inside an already rebranded project.
+ * Old tokens come from package.json — name + repository.url, plus the `rebrandToken` field
+ * holding the leftover token, so this stays correct when re-run after an earlier rebrand.
  */
 import { parseArgs } from 'node:util';
 
@@ -13,7 +13,7 @@ export type Pair = { from: string; to: string };
 export type Change = { line: number; before: string; after: string };
 type Side = 'old' | 'new';
 export type Tokens = Record<`${Side}${'Name' | 'Owner' | 'Brand'}`, string>;
-type Pkg = { name?: string; repository?: { url?: string } };
+type Pkg = { name?: string; rebrandToken?: string; repository?: { url?: string } };
 
 export const isValidName = (name: string): boolean => /^[a-z][a-z0-9-]*$/.test(name);
 
@@ -69,6 +69,14 @@ export const findLeftovers = (text: string, token: string): Change[] =>
     .map((before, i) => ({ line: i + 1, before, after: before }))
     .filter((c) => c.before.toLowerCase().includes(token.toLowerCase()));
 
+/**
+ * The leftover token must outlive the first rebrand: by the second run package.json
+ * holds the NEW name, so re-deriving it would scan for a token that was replaced
+ * everywhere and silently stop reporting the original identifiers still in the tree.
+ */
+export const leftoverTokenFrom = (name: string, saved?: string): string =>
+  saved ?? name.split('-')[0] ?? name;
+
 /** Untracked entries (`??`) are expected in a working checkout and must not block. */
 export const isDirty = (porcelain: string): boolean =>
   porcelain.split('\n').some((l) => l.trim() !== '' && !l.startsWith('??'));
@@ -111,7 +119,7 @@ async function main(): Promise<number> {
   const newBrand = values.brand ?? brandFrom(newName);
   const newOwner = values.owner ?? oldOwner;
   const pairs = replacements({ oldName, oldOwner, oldBrand, newName, newOwner, newBrand });
-  const leftoverToken = oldName.split('-')[0] ?? oldName;
+  const leftoverToken = leftoverTokenFrom(oldName, pkg.rebrandToken);
 
   if (values.apply && isDirty(await git(['status', '--porcelain']))) {
     console.error(`Working tree kotor. \`--apply\` menulis ulang puluhan file, jadi commit atau stash
@@ -156,6 +164,14 @@ Owner  : ${oldOwner} → ${newOwner}${note}
     } catch (err) {
       throw new Error(`gagal menulis ${file}: ${(err as Error).message}`);
     }
+  }
+
+  // Written after the loop, which has already rewritten package.json. The replacement
+  // pairs never touch the bare lowercase token, so this field survives later rebrands.
+  if (values.apply && !pkg.rebrandToken) {
+    const after = (await Bun.file('package.json').json()) as Pkg;
+    after.rebrandToken = leftoverToken;
+    await Bun.write('package.json', `${JSON.stringify(after, null, 2)}\n`);
   }
 
   const verb = values.apply ? 'diubah' : 'akan diubah';
