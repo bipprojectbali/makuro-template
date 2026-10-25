@@ -1,7 +1,12 @@
 /**
  * Blocks sensitive actions for demo visitors (403 DEMO_RESTRICTED). Derived apps
  * extend `DEMO_BLOCKED` (push at module load) or call `assertNotDemo` in handlers.
- * Admin/dev APIs need no entry: the demo role is `user`, already denied there.
+ * A demo visitor may pick the `admin` role, so `/api/admin` is listed here: that
+ * router guards itself by role alone and would hand every real user's name and
+ * email to an anonymous visitor. A derived app that wants its demo admin to see
+ * a populated console must scope that data per demo session first — do not
+ * loosen this rule. `/dev` needs no entry: it requires super-admin, which the
+ * demo can never be (SUPER_ADMIN_EMAILS is the only source of that role).
  */
 import { Elysia } from 'elysia';
 import { newRequestId } from '../api-error';
@@ -12,6 +17,7 @@ import type { Actor } from '../guard';
 export type DemoBlockRule = { method?: string; prefix: string; reason?: string };
 
 export const DEMO_BLOCKED: DemoBlockRule[] = [
+  { prefix: '/api/admin', reason: 'Konsol admin' },
   { prefix: '/api/me/api-keys', reason: 'API key pribadi' },
   { prefix: '/api/auth/api-key/', reason: 'API key' },
   { prefix: '/api/auth/change-email', reason: 'Mengganti email' },

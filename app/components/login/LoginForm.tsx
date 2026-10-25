@@ -31,6 +31,7 @@ type Props = {
   emailAuthEnabled: boolean;
   signupEnabled: boolean;
   demoTtlHours: number | null;
+  demoRoles: string[] | null;
 };
 
 /** Left column of the login card: brand, email/password form, Google, demo, mode toggle. */
@@ -41,6 +42,7 @@ export function LoginForm({
   emailAuthEnabled,
   signupEnabled,
   demoTtlHours,
+  demoRoles,
 }: Props) {
   const theme = useMantineTheme();
   const navigate = useNavigate();
@@ -186,7 +188,9 @@ export function LoginForm({
         </Stack>
       )}
 
-      {demoTtlHours !== null && <DemoLoginOption ttlHours={demoTtlHours} />}
+      {demoTtlHours !== null && demoRoles !== null && (
+        <DemoLoginOption ttlHours={demoTtlHours} roles={demoRoles} />
+      )}
 
       {!googleEnabled && !emailAuthEnabled && (
         <Text c="dimmed" size="sm" ta="center">

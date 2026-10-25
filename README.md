@@ -337,15 +337,15 @@ Template ini dipakai sebagai dasar project lain, jadi fitur produk punya satu te
 
 ## Mode demo
 
-Tombol **Coba Demo** di `/login` memasukkan pengunjung ke `/app` sebagai user anonim sementara (Better Auth `anonymous`, `user.isAnonymous = true`, role `user`) yang sudah berisi data contoh. Setelah masa berlaku habis (default 24 jam, 1–168 jam) sesi demo dianggap keluar dan job per jam menghapus user beserta datanya (cascade). Saklar dan masa berlaku diatur super-admin di `/dev/settings`; user demo tidak ikut statistik/daftar user admin.
+Halaman `/login` dan hero halaman utama menampilkan satu tombol **Coba sebagai …** per role yang ditawarkan server (semua `ASSIGNABLE_ROLES`, jadi `super-admin` tidak termasuk — role itu hanya dari `SUPER_ADMIN_EMAILS`). Tombolnya memasukkan pengunjung sebagai user anonim sementara (Better Auth `anonymous`, `user.isAnonymous = true`) dengan role yang dipilih dan data contoh, lalu mendarat di beranda role itu (`homeFor`: `user` → `/app`, `admin` → `/dashboard`). Daftar role datang dari `GET /api/demo`, jadi menambah role di `ASSIGNABLE_ROLES` otomatis menambah tombolnya. Gunanya: QC manual tiap area bisa dilakukan tanpa menyiapkan akun per role, dan mendemokan app ke orang lain cukup satu klik. Pengunjung yang sudah di demo bisa berpindah role tanpa keluar dulu (sesi yang sama dipakai ulang), dan banner sisa waktu + tombol keluar tampil di `/app` maupun `/dashboard`. Setelah masa berlaku habis (default 24 jam, 1–168 jam) sesi demo dianggap keluar dan job per jam menghapus user beserta datanya (cascade). Saklar dan masa berlaku diatur super-admin di `/dev/settings`; user demo tidak ikut statistik/daftar user admin.
 
 | Endpoint | Akses | Respons |
 |---|---|---|
-| `GET /api/demo` | publik | `{ enabled, ttlHours }` |
-| `POST /api/demo/start` | publik | `200 { redirect: "/app" }` + cookie sesi; sesi demo yang masih aktif dipakai ulang, yang kedaluwarsa diganti sandbox baru. `403 INVALID_ORIGIN` (header `Origin` dari situs lain), `404 DEMO_DISABLED`, `409 ALREADY_SIGNED_IN` (sudah masuk dengan akun biasa), `429 DEMO_RATE_LIMITED` (maks. 5 per 10 menit per IP, dengan `Retry-After`) |
+| `GET /api/demo` | publik | `{ enabled, ttlHours, roles }` (`roles` = role yang bisa dicoba) |
+| `POST /api/demo/start` | publik | body opsional `{ role }` (tanpa body → `user`). `200 { redirect }` + cookie sesi, `redirect` = beranda role itu (`/app`, `/dashboard`); sesi demo yang masih aktif dipakai ulang dengan role baru, yang kedaluwarsa diganti sandbox baru. `400 INVALID_ROLE` (role di luar daftar — ditolak, bukan diturunkan diam-diam), `403 INVALID_ORIGIN` (header `Origin` dari situs lain), `404 DEMO_DISABLED`, `409 ALREADY_SIGNED_IN` (sudah masuk dengan akun biasa), `429 DEMO_RATE_LIMITED` (maks. 5 per 10 menit per IP, dengan `Retry-After`) |
 | `PUT /api/settings/demo` | super-admin, teraudit | body `{ enabled, ttlHours: number \| null }` (`null` = default) |
 
-`POST /api/auth/sign-in/anonymous` tidak bisa dipanggil lewat HTTP (`404`); demo hanya dimulai lewat `/api/demo/start`, yang memeriksa saklar dan batas IP. Aksi sensitif dari user demo ditolak `403 DEMO_RESTRICTED` dengan pesan yang menjelaskan alasannya: API key, ganti email/password, reset password, verifikasi email, foto profil, dan menautkan akun sosial.
+`POST /api/auth/sign-in/anonymous` tidak bisa dipanggil lewat HTTP (`404`); demo hanya dimulai lewat `/api/demo/start`, yang memeriksa saklar dan batas IP. Aksi sensitif dari user demo ditolak `403 DEMO_RESTRICTED` dengan pesan yang menjelaskan alasannya: API key, ganti email/password, reset password, verifikasi email, foto profil, dan menautkan akun sosial. Termasuk juga seluruh konsol admin (`/api/admin`) — pengunjung demo boleh memegang role `admin`, jadi router itu tetap ditutup agar nama dan email user asli tidak terbuka untuk pengunjung anonim. `/dev` tidak perlu entri karena butuh super-admin, yang tidak bisa dipegang akun demo.
 
 Untuk app turunan:
 

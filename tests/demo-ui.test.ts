@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, spyOn, test } from 'bun:test';
-import { demoHoursLeft, demoNote, startDemo } from '../app/lib/demo-api';
+import { demoHoursLeft, demoNote, roleLabel, startDemo } from '../app/lib/demo-api';
 
 const H = 3_600_000;
 const created = new Date('2026-10-12T00:00:00Z');
@@ -28,6 +28,21 @@ test('demoNote states the TTL', () => {
   expect(demoNote(6)).toBe('Data demo dihapus otomatis dalam 6 jam');
 });
 
+describe('roleLabel', () => {
+  test('capitalises a single-segment role', () => {
+    expect(roleLabel('user')).toBe('User');
+    expect(roleLabel('admin')).toBe('Admin');
+  });
+
+  test('splits hyphenated roles into words', () => {
+    expect(roleLabel('super-admin')).toBe('Super Admin');
+  });
+
+  test('is a transformation, not a lookup table (unknown roles still render)', () => {
+    expect(roleLabel('content-review-lead')).toBe('Content Review Lead');
+  });
+});
+
 describe('startDemo', () => {
   afterEach(() => {
     (globalThis.fetch as unknown as { mockRestore?: () => void }).mockRestore?.();
@@ -36,6 +51,20 @@ describe('startDemo', () => {
   test('returns the redirect on 200', async () => {
     spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ redirect: '/app' }));
     expect(await startDemo()).toBe('/app');
+  });
+
+  test('sends no body without a role, JSON body with one', async () => {
+    const fetchMock = spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json({ redirect: '/app' }))
+      .mockResolvedValueOnce(Response.json({ redirect: '/dashboard' }));
+    await startDemo();
+    const firstInit = fetchMock.mock.calls[0]?.[1] as unknown as RequestInit;
+    expect(firstInit.body).toBeUndefined();
+
+    expect(await startDemo('admin')).toBe('/dashboard');
+    const init = fetchMock.mock.calls[1]?.[1] as unknown as RequestInit;
+    expect(init.body).toBe('{"role":"admin"}');
+    expect((init.headers as Record<string, string>)['content-type']).toBe('application/json');
   });
 
   test('throws the server error message', async () => {

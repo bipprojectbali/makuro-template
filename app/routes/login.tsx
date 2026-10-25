@@ -1,6 +1,7 @@
 import { Box, Paper, SimpleGrid } from '@mantine/core';
 import { hasGoogleAuth } from '@server/env';
 import { redirectIfSignedIn } from '@server/guard';
+import { ASSIGNABLE_ROLES } from '@server/permissions';
 import { getSettings } from '@server/settings';
 import { getBranding } from '@server/settings-branding';
 import { effectiveDemoTtlHours, getDemo } from '@server/settings-demo';
@@ -20,7 +21,16 @@ export async function loader({ request }: Route.LoaderArgs) {
     getDemo(),
   ]);
   const demoTtlHours = demo.enabled ? effectiveDemoTtlHours(demo) : null;
-  return { googleEnabled: hasGoogleAuth, emailAuthEnabled, signupEnabled, branding, demoTtlHours };
+  // Daftar role dari server supaya kartu login ikut bertambah tombol saat ASSIGNABLE_ROLES tumbuh.
+  const demoRoles = demo.enabled ? [...ASSIGNABLE_ROLES] : null;
+  return {
+    googleEnabled: hasGoogleAuth,
+    emailAuthEnabled,
+    signupEnabled,
+    branding,
+    demoTtlHours,
+    demoRoles,
+  };
 }
 
 export default function Login({ loaderData }: Route.ComponentProps) {
