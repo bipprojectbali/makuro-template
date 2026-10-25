@@ -14,7 +14,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { FiArrowRight, FiCheck, FiGithub } from 'react-icons/fi';
 import { Link } from 'react-router';
-import { DemoStartButton } from '~/components/login/DemoStartButton';
+import { DemoRoleButtons } from '~/components/login/DemoStartButton';
 import { demoNote, fetchDemoStatus } from '~/lib/demo-api';
 import { GITHUB_URL } from './landing.content';
 
@@ -61,7 +61,8 @@ export function Hero({
     queryFn: fetchDemoStatus,
     enabled: !signedIn,
   });
-  const demoTtl = !signedIn && demo.data?.enabled ? demo.data.ttlHours : null;
+  const demoStatus =
+    !signedIn && demo.data?.enabled && demo.data.roles.length > 0 ? demo.data : null;
   return (
     <Box component="section" pt={{ base: 48, md: 80 }} pb={{ base: 40, md: 64 }}>
       <Container size="lg">
@@ -99,11 +100,11 @@ export function Hero({
               >
                 Lihat di GitHub
               </Button>
-              {demoTtl !== null && <DemoStartButton size="md" />}
+              {demoStatus && <DemoRoleButtons roles={demoStatus.roles} size="md" />}
             </Group>
-            {demoTtl !== null && (
+            {demoStatus && (
               <Text size="sm" c="dimmed" mt={-8}>
-                Coba Demo tanpa akun. {demoNote(demoTtl)}.
+                Pilih peran dan coba tanpa akun. {demoNote(demoStatus.ttlHours)}.
               </Text>
             )}
             <Group gap="xs" wrap="wrap">

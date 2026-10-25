@@ -6,6 +6,7 @@ import { db } from '../../server/db';
 import { auditLog, post, user } from '../../server/db/schema';
 import { env } from '../../server/env';
 import { CLIENT_IP_HEADER } from '../../server/middleware/client-ip';
+import { ASSIGNABLE_ROLES } from '../../server/permissions';
 import * as rolesMod from '../../server/roles';
 import { type DemoSettings, getDemo, upsertDemo } from '../../server/settings-demo';
 
@@ -50,8 +51,10 @@ async function call(
   );
   return { res, body: (await res.json().catch(() => null)) as Record<string, unknown> };
 }
-const start = (headers: Record<string, string> = { [CLIENT_IP_HEADER]: freshIp() }) =>
-  call('POST', '/api/demo/start', { headers });
+const start = (
+  headers: Record<string, string> = { [CLIENT_IP_HEADER]: freshIp() },
+  role?: string,
+) => call('POST', '/api/demo/start', { headers, body: role ? { role } : undefined });
 const cookieHeader = (res: Response) =>
   res.headers
     .getSetCookie()
@@ -78,7 +81,7 @@ describe('demo entry API', () => {
     await upsertDemo({ enabled: false, ttlHours: null });
     const status = await call('GET', '/api/demo');
     expect(status.res.status).toBe(200);
-    expect(status.body).toEqual({ enabled: false, ttlHours: 24 });
+    expect(status.body).toEqual({ enabled: false, ttlHours: 24, roles: ASSIGNABLE_ROLES });
     const { res, body } = await start();
     expect(res.status).toBe(404);
     expect(body.code).toBe('DEMO_DISABLED');
@@ -96,11 +99,47 @@ describe('demo entry API', () => {
     const userId = session?.user.id as string;
     const [row] = await db.select().from(user).where(eq(user.id, userId));
     expect(row?.isAnonymous).toBe(true);
+    expect(row?.role).toBe('user'); // tanpa body → peran default
     expect((await db.select().from(post).where(eq(post.authorId, userId))).length).toBe(2);
 
     const again = await start({ cookie, [CLIENT_IP_HEADER]: freshIp() });
     expect(again.res.status).toBe(200);
     expect(again.res.headers.getSetCookie()).toHaveLength(0);
+  });
+
+  test('GET exposes the assignable roles and never super-admin', async () => {
+    await upsertDemo({ enabled: true, ttlHours: null });
+    const { body } = await call('GET', '/api/demo');
+    expect(body.roles).toEqual(ASSIGNABLE_ROLES);
+    expect(body.roles).not.toContain('super-admin');
+  });
+
+  test('role admin → stored role is admin and the visitor lands on /dashboard', async () => {
+    await upsertDemo({ enabled: true, ttlHours: null });
+    const { res, body } = await start({ [CLIENT_IP_HEADER]: freshIp() }, 'admin');
+    expect(res.status).toBe(200);
+    expect(body).toEqual({ redirect: '/dashboard' });
+
+    const cookie = cookieHeader(res);
+    const userId = (await realGetSession({ headers: new Headers({ cookie }) }))?.user.id as string;
+    const [row] = await db.select().from(user).where(eq(user.id, userId));
+    expect(row?.role).toBe('admin');
+
+    // Switching role from inside the demo must move the visitor, not no-op.
+    const again = await start({ cookie, [CLIENT_IP_HEADER]: freshIp() }, 'user');
+    expect(again.body).toEqual({ redirect: '/app' });
+    const [after] = await db.select().from(user).where(eq(user.id, userId));
+    expect(after?.role).toBe('user');
+  });
+
+  test('a role outside ASSIGNABLE_ROLES → 400 INVALID_ROLE and no session', async () => {
+    await upsertDemo({ enabled: true, ttlHours: null });
+    for (const role of ['super-admin', 'bukan-role']) {
+      const { res, body } = await start({ [CLIENT_IP_HEADER]: freshIp() }, role);
+      expect(res.status).toBe(400);
+      expect(body.code).toBe('INVALID_ROLE');
+      expect(res.headers.getSetCookie()).toHaveLength(0);
+    }
   });
 
   test('foreign Origin → 403 INVALID_ORIGIN without a session; trusted Origin passes', async () => {
@@ -140,8 +179,11 @@ describe('demo entry API', () => {
 
   test('demo session: admin/dev APIs denied, sign-out still works', async () => {
     await upsertDemo({ enabled: true, ttlHours: null });
-    const cookie = cookieHeader((await start()).res);
-    expect((await call('GET', '/api/admin/users', { headers: { cookie } })).res.status).toBe(403);
+    // Peran admin bisa dipilih di demo, jadi /api/admin harus ditolak oleh aturan demo.
+    const cookie = cookieHeader((await start({ [CLIENT_IP_HEADER]: freshIp() }, 'admin')).res);
+    const adminUsers = await call('GET', '/api/admin/users', { headers: { cookie } });
+    expect(adminUsers.res.status).toBe(403);
+    expect(adminUsers.body.code).toBe('DEMO_RESTRICTED');
     const demoPut = { headers: { cookie }, body: { enabled: false, ttlHours: null } };
     expect((await call('PUT', '/api/settings/demo', demoPut)).res.status).toBe(403);
 
@@ -208,6 +250,10 @@ describe('PUT /api/settings/demo', () => {
     expect(put.res.status).toBe(200);
     expect(put.body).toEqual({ enabled: true, ttlHours: 3 });
     ctx.actor = null;
-    expect((await call('GET', '/api/demo')).body).toEqual({ enabled: true, ttlHours: 3 });
+    expect((await call('GET', '/api/demo')).body).toEqual({
+      enabled: true,
+      ttlHours: 3,
+      roles: ASSIGNABLE_ROLES,
+    });
   });
 });

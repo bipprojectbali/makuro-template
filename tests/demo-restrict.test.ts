@@ -91,6 +91,13 @@ describe('isDemoBlocked', () => {
     expect(isDemoBlocked('POST', '/api/auth/sign-out')).toBe(false);
   });
 
+  test('the whole admin console is blocked, since demo can hold the admin role', () => {
+    expect(isDemoBlocked('GET', '/api/admin/users')).toBe(true);
+    expect(isDemoBlocked('POST', '/api/admin/users/x/ban')).toBe(true);
+    expect(isDemoBlocked('GET', '/api/admin')).toBe(true);
+    expect(isDemoBlocked('GET', '/api/app/whoami')).toBe(false);
+  });
+
   test('method filter', () => {
     expect(isDemoBlocked('POST', '/api/app/avatar')).toBe(true);
     expect(isDemoBlocked('delete', '/api/app/avatar')).toBe(true);
