@@ -43,6 +43,11 @@ export function isTarget(value: string): value is Target {
   return (TARGETS as readonly string[]).includes(value);
 }
 
+/** Exactly the four release filenames for `name`. A shared dist/ must never mix demo and production. */
+export function isReleaseAsset(file: string, name = PKG_NAME): boolean {
+  return TARGETS.some((t) => path.basename(outfileFor(t, name)) === file);
+}
+
 async function compile(outfile: string, target?: Target, demo = false): Promise<void> {
   const cmd = [
     process.execPath,
@@ -67,9 +72,9 @@ async function compile(outfile: string, target?: Target, demo = false): Promise<
     throw new Error(`bun build gagal (exit ${code}) untuk ${target ?? 'host'} → ${outfile}`);
 }
 
-/** Write dist/checksums.txt covering every release binary in dist/. */
-async function writeChecksums(): Promise<void> {
-  const files = (await readdir(DIST_DIR)).filter((f) => f.startsWith(`${PKG_NAME}-`)).sort();
+/** Write dist/checksums.txt covering every release binary in dist/ for this build's base name. */
+async function writeChecksums(name: string): Promise<void> {
+  const files = (await readdir(DIST_DIR)).filter((f) => isReleaseAsset(f, name)).sort();
   const lines: string[] = [];
   for (const file of files) {
     const hasher = new Bun.CryptoHasher('sha256');
@@ -104,8 +109,9 @@ async function main(): Promise<number> {
     return 0;
   }
   await mkdir(DIST_DIR, { recursive: true });
-  for (const t of targets as Target[]) await compile(outfileFor(t, binName(demo)), t, demo);
-  if (values.all) await writeChecksums();
+  const name = binName(demo);
+  for (const t of targets as Target[]) await compile(outfileFor(t, name), t, demo);
+  if (values.all) await writeChecksums(name);
   return 0;
 }
 

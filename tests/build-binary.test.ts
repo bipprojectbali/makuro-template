@@ -1,5 +1,13 @@
 import { describe, expect, test } from 'bun:test';
-import { binName, checksumLine, isTarget, outfileFor, TARGETS } from '../scripts/build-binary';
+import path from 'node:path';
+import {
+  binName,
+  checksumLine,
+  isReleaseAsset,
+  isTarget,
+  outfileFor,
+  TARGETS,
+} from '../scripts/build-binary';
 import { PKG_NAME } from '../server/pkg';
 
 describe('build-binary', () => {
@@ -22,6 +30,21 @@ describe('build-binary', () => {
       `dist/${PKG_NAME}-demo-darwin-arm64`,
       `dist/${PKG_NAME}-demo-darwin-x64`,
     ]);
+  });
+
+  test('release assets match one base name exactly, so a shared dist/ never mixes demo and production', () => {
+    const prod = TARGETS.map((t) => path.basename(outfileFor(t)));
+    const demo = TARGETS.map((t) => path.basename(outfileFor(t, binName(true))));
+    for (const file of prod) {
+      expect(isReleaseAsset(file)).toBe(true);
+      expect(isReleaseAsset(file, binName(true))).toBe(false);
+    }
+    for (const file of demo) {
+      expect(isReleaseAsset(file)).toBe(false);
+      expect(isReleaseAsset(file, binName(true))).toBe(true);
+    }
+    expect(isReleaseAsset('checksums.txt')).toBe(false);
+    expect(isReleaseAsset('checksums.txt', binName(true))).toBe(false);
   });
 
   test('--demo passes the compile-time define that pins demo mode on', async () => {
