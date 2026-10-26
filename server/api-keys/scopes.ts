@@ -165,6 +165,8 @@ export function requiredScope(method: string, pathname: string): Scope | null {
   if (p.startsWith('/api/me')) return read ? 'me:read' : null;
   if (p.startsWith('/api/app/') || p === '/api/app') return read ? 'app:read' : 'app:write';
   if (p.startsWith('/api/posts')) return read ? null : 'posts:write';
+  // Scalar UI (/api/docs) is a super-admin session page; API keys may not call it.
+  if (p === '/api/docs') return null;
   return null;
 }
 

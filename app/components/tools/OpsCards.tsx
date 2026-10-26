@@ -137,6 +137,18 @@ export function ApiCard() {
     <SettingsCard
       title="API"
       description="Semua endpoint di bawah /api dibatasi per IP klien (X-RateLimit-Limit / -Remaining, 429 RATE_LIMITED + Retry-After). IP klien = IP koneksi, atau X-Forwarded-For hanya dari proxy di TRUSTED_PROXIES. /api/auth/* memakai rate limit Better Auth; /api/mcp dikecualikan."
+      aside={
+        <Button
+          component="a"
+          href="/api/docs"
+          target="_blank"
+          rel="noreferrer"
+          size="xs"
+          variant="light"
+        >
+          Buka API docs
+        </Button>
+      }
     >
       <Stack gap={6}>
         {rows.map((r) => (
