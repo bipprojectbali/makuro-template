@@ -50,6 +50,8 @@ describe('requiredScope', () => {
     expect(requiredScope('GET', '/api/settings/demo')).toBe('settings:read');
     expect(requiredScope('PUT', '/api/settings/demo')).toBe('settings:write');
     expect(requiredScope('POST', '/api/auth/sign-in/anonymous')).toBeNull();
+    expect(requiredScope('GET', '/api/docs')).toBeNull();
+    expect(isPublicRead('GET', '/api/docs')).toBe(false);
   });
 });
 
